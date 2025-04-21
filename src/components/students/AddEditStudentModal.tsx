@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -70,6 +69,31 @@ export function AddEditStudentModal({
   const isEditMode = !!student;
   const { toast } = useToast();
 
+  // Helper function to format date to YYYY-MM-DD safely
+  const formatDateSafely = (date: Date | string | undefined): string => {
+    if (!date) return "";
+    
+    try {
+      // If it's already a string in YYYY-MM-DD format, return it
+      if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date;
+      }
+      
+      // Otherwise, try to convert to a Date object and format
+      const dateObj = new Date(date);
+      
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime())) {
+        return "";
+      }
+      
+      return dateObj.toISOString().substring(0, 10);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
+  };
+
   // Initialize form with student data or empty values
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -78,7 +102,7 @@ export function AddEditStudentModal({
           firstName: student.firstName,
           lastName: student.lastName,
           gender: student.gender,
-          dateOfBirth: new Date(student.dateOfBirth).toISOString().substring(0, 10),
+          dateOfBirth: formatDateSafely(student.dateOfBirth),
           grade: student.grade,
           guardianName: student.guardianName || "",
           guardianContact: student.guardianContact || "",
