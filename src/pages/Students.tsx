@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -260,14 +259,14 @@ const columns = [
 ];
 
 export default function Students() {
-  const [grade, setGrade] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
-  const [sponsored, setSponsored] = useState<string>("");
+  const [grade, setGrade] = useState<string>("all");
+  const [status, setStatus] = useState<string>("all");
+  const [sponsored, setSponsored] = useState<string>("all");
 
   // Filter students based on filters
   const filteredStudents = students.filter((student) => {
-    if (grade && student.grade !== grade) return false;
-    if (status && student.status !== status) return false;
+    if (grade && grade !== "all" && student.grade !== grade) return false;
+    if (status && status !== "all" && student.status !== status) return false;
     if (sponsored === "sponsored" && !student.sponsorId) return false;
     if (sponsored === "unsponsored" && student.sponsorId) return false;
     return true;
@@ -304,7 +303,7 @@ export default function Students() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               {["1", "2", "3", "4", "5", "6", "7", "8"].map((g) => (
                 <SelectItem key={g} value={g}>
                   Grade {g}
@@ -326,7 +325,7 @@ export default function Students() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
               <SelectItem value="graduated">Graduated</SelectItem>
@@ -346,7 +345,7 @@ export default function Students() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="sponsored">Sponsored</SelectItem>
               <SelectItem value="unsponsored">Unsponsored</SelectItem>
             </SelectContent>
