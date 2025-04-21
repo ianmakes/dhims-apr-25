@@ -27,6 +27,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileText, Filter, Search } from "lucide-react";
 
 // Form schema for general settings
 const generalSettingsSchema = z.object({
@@ -95,9 +97,22 @@ type GeneralSettingsValues = z.infer<typeof generalSettingsSchema>;
 type AccountSettingsValues = z.infer<typeof accountSettingsSchema>;
 type EmailSettingsValues = z.infer<typeof emailSettingsSchema>;
 
+// Mock audit log data
+const auditLogs = [
+  { id: 1, user: "Admin User", action: "Created student", entity: "Student", entityId: "STU001", timestamp: "2025-04-21 09:45:23", details: "Created new student John Doe" },
+  { id: 2, user: "Manager User", action: "Updated sponsor", entity: "Sponsor", entityId: "SPO003", timestamp: "2025-04-21 08:30:15", details: "Updated sponsor status to active" },
+  { id: 3, user: "Admin User", action: "Added exam score", entity: "Exam", entityId: "EX005", timestamp: "2025-04-20 14:22:10", details: "Added score for Math Final Exam" },
+  { id: 4, user: "Admin User", action: "Updated student", entity: "Student", entityId: "STU042", timestamp: "2025-04-20 11:15:55", details: "Updated student address" },
+  { id: 5, user: "Manager User", action: "Created sponsor", entity: "Sponsor", entityId: "SPO011", timestamp: "2025-04-19 16:05:30", details: "Created new sponsor Jane Smith" },
+  { id: 6, user: "Admin User", action: "Updated system settings", entity: "Settings", entityId: "SYS001", timestamp: "2025-04-19 10:22:40", details: "Updated academic year to 2025-2026" },
+  { id: 7, user: "Admin User", action: "Created exam", entity: "Exam", entityId: "EX006", timestamp: "2025-04-18 15:10:12", details: "Created new Science Mid-term Exam" },
+  { id: 8, user: "Manager User", action: "Assigned student to sponsor", entity: "Sponsorship", entityId: "SHI009", timestamp: "2025-04-18 09:25:35", details: "Assigned student STU005 to sponsor SPO003" },
+];
+
 export default function Settings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Default form values
   const generalDefaultValues: GeneralSettingsValues = {
@@ -168,6 +183,14 @@ export default function Settings() {
     });
   };
 
+  // Filter audit logs based on search term
+  const filteredAuditLogs = auditLogs.filter(log => 
+    log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.entity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.details.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6 fade-in">
       <div>
@@ -178,11 +201,12 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="smtp">Email & SMTP</TabsTrigger>
+          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
         </TabsList>
         
         {/* General Settings Tab */}
@@ -730,6 +754,86 @@ export default function Settings() {
               </Card>
             </form>
           </Form>
+        </TabsContent>
+
+        {/* Audit Logs Tab */}
+        <TabsContent value="audit" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Audit Logs</CardTitle>
+              <CardDescription>
+                View and search system audit logs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search audit logs..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button variant="outline">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
+                </Button>
+                <Button variant="outline">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Entity</TableHead>
+                      <TableHead>Entity ID</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead>Timestamp</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAuditLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No audit logs found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredAuditLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell>{log.user}</TableCell>
+                          <TableCell>{log.action}</TableCell>
+                          <TableCell>{log.entity}</TableCell>
+                          <TableCell>{log.entityId}</TableCell>
+                          <TableCell>{log.details}</TableCell>
+                          <TableCell>{log.timestamp}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" disabled>
+                Previous
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Page 1 of 1
+              </div>
+              <Button variant="outline" disabled>
+                Next
+              </Button>
+            </CardFooter>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

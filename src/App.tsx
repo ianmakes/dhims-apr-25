@@ -10,6 +10,8 @@ import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
 import Sponsors from "./pages/Sponsors";
 import SponsorDetail from "./pages/SponsorDetail";
+import Exams from "./pages/Exams";
+import ExamDetail from "./pages/ExamDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -36,7 +38,8 @@ const App = () => (
             <Route path="/sponsors/:id" element={<SponsorDetail />} />
             
             {/* Exams */}
-            {/* To be implemented */}
+            <Route path="/exams" element={<Exams />} />
+            <Route path="/exams/:id" element={<ExamDetail />} />
             
             {/* Users */}
             <Route path="/users" element={<Users />} />
