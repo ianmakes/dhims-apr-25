@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -18,7 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { AddEditStudentModal, StudentFormValues } from "@/components/students/AddEditStudentModal";
+import { useToast } from "@/hooks/use-toast";
+import { Student } from "@/types";
 
 // Sample data for students
 const students = [
@@ -262,6 +276,12 @@ export default function Students() {
   const [grade, setGrade] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [sponsored, setSponsored] = useState<string>("all");
+  const [academicYear, setAcademicYear] = useState<string>("2023-2024");
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const { toast } = useToast();
 
   // Filter students based on filters
   const filteredStudents = students.filter((student) => {
@@ -272,6 +292,97 @@ export default function Students() {
     return true;
   });
 
+  const handleAddStudent = (data: StudentFormValues) => {
+    // In a real app, this would be an API call
+    console.log("Adding student:", data);
+    toast({
+      title: "Student added",
+      description: `${data.firstName} ${data.lastName} has been added successfully.`,
+    });
+  };
+
+  const handleEditStudent = (data: StudentFormValues) => {
+    // In a real app, this would be an API call
+    console.log("Editing student:", selectedStudent?.id, data);
+    toast({
+      title: "Student updated",
+      description: `${data.firstName} ${data.lastName} has been updated successfully.`,
+    });
+  };
+
+  const handleDeleteStudent = () => {
+    // In a real app, this would be an API call
+    console.log("Deleting student:", selectedStudent?.id);
+    toast({
+      title: "Student deleted",
+      description: `Student has been deleted successfully.`,
+    });
+    setIsDeleteAlertOpen(false);
+  };
+
+  const handleOpenEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    setIsEditStudentModalOpen(true);
+  };
+
+  const handleOpenDeleteAlert = (student: Student) => {
+    setSelectedStudent(student);
+    setIsDeleteAlertOpen(true);
+  };
+
+  // Updated columns with edit/delete actions
+  const columnsWithActions = [
+    ...columns.slice(0, -1), // Take all columns except the last one (actions)
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const student = row.original;
+        
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => navigator.clipboard.writeText(student.id)}
+                >
+                  Copy student ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <Link
+                    to={`/students/${student.id}`}
+                    className="flex items-center"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    <span>View</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleOpenEditModal(student)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  <span>Edit</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="text-destructive"
+                  onClick={() => handleOpenDeleteAlert(student)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
@@ -281,12 +392,31 @@ export default function Students() {
             Manage and track all students in the system
           </p>
         </div>
-        <Link to="/students/new">
-          <Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="academicYear" className="text-sm font-medium">
+              Academic Year:
+            </label>
+            <Select
+              value={academicYear}
+              onValueChange={setAcademicYear}
+            >
+              <SelectTrigger id="academicYear" className="w-36">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2023-2024">2023-2024</SelectItem>
+                <SelectItem value="2022-2023">2022-2023</SelectItem>
+                <SelectItem value="2021-2022">2021-2022</SelectItem>
+                <SelectItem value="2020-2021">2020-2021</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={() => setIsAddStudentModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Student
           </Button>
-        </Link>
+        </div>
       </div>
 
       {/* Filter section */}
@@ -355,11 +485,50 @@ export default function Students() {
 
       {/* Students table */}
       <DataTable
-        columns={columns}
+        columns={columnsWithActions}
         data={filteredStudents}
         searchColumn="firstName"
         searchPlaceholder="Search students..."
       />
+
+      {/* Add Student Modal */}
+      <AddEditStudentModal
+        open={isAddStudentModalOpen}
+        onOpenChange={setIsAddStudentModalOpen}
+        onSubmit={handleAddStudent}
+      />
+
+      {/* Edit Student Modal */}
+      {selectedStudent && (
+        <AddEditStudentModal
+          open={isEditStudentModalOpen}
+          onOpenChange={setIsEditStudentModalOpen}
+          student={selectedStudent as Student}
+          onSubmit={handleEditStudent}
+        />
+      )}
+
+      {/* Delete Student Alert */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the student record
+              and remove their data from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteStudent} 
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

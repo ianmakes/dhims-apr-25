@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +8,8 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
+import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,10 +36,10 @@ const App = () => (
             {/* To be implemented */}
             
             {/* Users */}
-            {/* To be implemented */}
+            <Route path="/users" element={<Users />} />
             
             {/* Settings */}
-            {/* To be implemented */}
+            <Route path="/settings" element={<Settings />} />
           </Route>
           
           {/* Catch-all route */}
