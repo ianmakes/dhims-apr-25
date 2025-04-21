@@ -8,6 +8,8 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
+import Sponsors from "./pages/Sponsors";
+import SponsorDetail from "./pages/SponsorDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -30,7 +32,8 @@ const App = () => (
             <Route path="/students/:id" element={<StudentDetail />} />
             
             {/* Sponsors */}
-            {/* To be implemented */}
+            <Route path="/sponsors" element={<Sponsors />} />
+            <Route path="/sponsors/:id" element={<SponsorDetail />} />
             
             {/* Exams */}
             {/* To be implemented */}

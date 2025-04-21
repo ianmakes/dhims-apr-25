@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
@@ -23,10 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
-// Form schema for app settings
-const appSettingsSchema = z.object({
+// Form schema for general settings
+const generalSettingsSchema = z.object({
   organizationName: z.string().min(2, {
     message: "Organization name must be at least 2 characters.",
   }),
@@ -36,6 +39,34 @@ const appSettingsSchema = z.object({
   currentTerm: z.string({
     required_error: "Please select the current term.",
   }),
+  primaryColor: z.string().min(1, {
+    message: "Primary color is required.",
+  }),
+  themeMode: z.enum(["light", "dark", "system"], {
+    required_error: "Please select a theme mode.",
+  }),
+});
+
+// Form schema for account settings
+const accountSettingsSchema = z.object({
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  role: z.string({
+    required_error: "Please select a role.",
+  }),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Form schema for email settings
+const emailSettingsSchema = z.object({
   emailFromName: z.string().min(2, {
     message: "From name must be at least 2 characters.",
   }),
@@ -54,45 +85,86 @@ const appSettingsSchema = z.object({
   smtpPassword: z.string().min(1, {
     message: "SMTP password is required.",
   }),
-  themeMode: z.enum(["light", "dark", "system"], {
-    required_error: "Please select a theme mode.",
-  }),
-  primaryColor: z.string().min(1, {
-    message: "Primary color is required.",
-  }),
+  emailNotifications: z.boolean().default(true),
+  notifyOnNewStudent: z.boolean().default(true),
+  notifyOnNewSponsor: z.boolean().default(true),
+  notifyOnSponsorshipChange: z.boolean().default(true),
 });
 
-type AppSettingsValues = z.infer<typeof appSettingsSchema>;
+type GeneralSettingsValues = z.infer<typeof generalSettingsSchema>;
+type AccountSettingsValues = z.infer<typeof accountSettingsSchema>;
+type EmailSettingsValues = z.infer<typeof emailSettingsSchema>;
 
 export default function Settings() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("general");
   
   // Default form values
-  const defaultValues: AppSettingsValues = {
+  const generalDefaultValues: GeneralSettingsValues = {
     organizationName: "David's Hope International",
     currentAcademicYear: "2023-2024",
     currentTerm: "Term 1",
+    primaryColor: "#9b87f5",
+    themeMode: "light",
+  };
+
+  const accountDefaultValues: AccountSettingsValues = {
+    name: "Admin User",
+    email: "admin@davidshope.org",
+    role: "admin",
+    password: "",
+    confirmPassword: "",
+  };
+
+  const emailDefaultValues: EmailSettingsValues = {
     emailFromName: "David's Hope International",
     emailFromAddress: "noreply@davidshope.org",
     smtpHost: "smtp.example.com",
     smtpPort: "587",
     smtpUsername: "smtp-user",
     smtpPassword: "********",
-    themeMode: "light",
-    primaryColor: "#9b87f5",
+    emailNotifications: true,
+    notifyOnNewStudent: true,
+    notifyOnNewSponsor: true,
+    notifyOnSponsorshipChange: true,
   };
 
-  const form = useForm<AppSettingsValues>({
-    resolver: zodResolver(appSettingsSchema),
-    defaultValues,
+  const generalForm = useForm<GeneralSettingsValues>({
+    resolver: zodResolver(generalSettingsSchema),
+    defaultValues: generalDefaultValues,
   });
 
-  const onSubmit = (data: AppSettingsValues) => {
-    // In a real app, this would update settings through an API
-    console.log("Settings updated:", data);
+  const accountForm = useForm<AccountSettingsValues>({
+    resolver: zodResolver(accountSettingsSchema),
+    defaultValues: accountDefaultValues,
+  });
+
+  const emailForm = useForm<EmailSettingsValues>({
+    resolver: zodResolver(emailSettingsSchema),
+    defaultValues: emailDefaultValues,
+  });
+
+  const onGeneralSubmit = (data: GeneralSettingsValues) => {
+    console.log("General settings updated:", data);
     toast({
       title: "Settings updated",
-      description: "Your settings have been updated successfully.",
+      description: "General settings have been updated successfully.",
+    });
+  };
+
+  const onAccountSubmit = (data: AccountSettingsValues) => {
+    console.log("Account settings updated:", data);
+    toast({
+      title: "Account updated",
+      description: "Your account settings have been updated successfully.",
+    });
+  };
+
+  const onEmailSubmit = (data: EmailSettingsValues) => {
+    console.log("Email settings updated:", data);
+    toast({
+      title: "Email settings updated",
+      description: "Email settings have been updated successfully.",
     });
   };
 
@@ -105,273 +177,561 @@ export default function Settings() {
         </p>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Organization Settings */}
+      <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="smtp">Email & SMTP</TabsTrigger>
+        </TabsList>
+        
+        {/* General Settings Tab */}
+        <TabsContent value="general" className="space-y-6">
+          <Form {...generalForm}>
+            <form onSubmit={generalForm.handleSubmit(onGeneralSubmit)} className="space-y-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>General Settings</CardTitle>
+                  <CardDescription>
+                    Configure your organization and application settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={generalForm.control}
+                    name="organizationName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Organization Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          This will be displayed throughout the application.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={generalForm.control}
+                      name="currentAcademicYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Academic Year</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select academic year" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="2023-2024">2023-2024</SelectItem>
+                              <SelectItem value="2022-2023">2022-2023</SelectItem>
+                              <SelectItem value="2021-2022">2021-2022</SelectItem>
+                              <SelectItem value="2020-2021">2020-2021</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            The academic year for all reports and records.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={generalForm.control}
+                      name="currentTerm"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Term</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select term" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Term 1">Term 1</SelectItem>
+                              <SelectItem value="Term 2">Term 2</SelectItem>
+                              <SelectItem value="Term 3">Term 3</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            The current school term.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Separator />
+                  <h3 className="text-lg font-medium">Appearance</h3>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={generalForm.control}
+                      name="themeMode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Theme Mode</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select theme mode" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="light">Light</SelectItem>
+                              <SelectItem value="dark">Dark</SelectItem>
+                              <SelectItem value="system">System</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Choose the theme mode for the application.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={generalForm.control}
+                      name="primaryColor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Primary Color</FormLabel>
+                          <div className="flex gap-2">
+                            <FormControl>
+                              <Input type="color" {...field} className="w-16 h-10" />
+                            </FormControl>
+                            <Input 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              className="flex-1"
+                            />
+                          </div>
+                          <FormDescription>
+                            Select the primary color for the application.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <div className="grid flex-1 gap-2">
+                      <label
+                        htmlFor="app-logo"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Application Logo
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        Upload your organization's logo (recommended size: 200x60px)
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline">
+                      Upload
+                    </Button>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit">Save General Settings</Button>
+                </CardFooter>
+              </Card>
+            </form>
+          </Form>
+        </TabsContent>
+        
+        {/* Account Settings Tab */}
+        <TabsContent value="account" className="space-y-6">
+          <Form {...accountForm}>
+            <form onSubmit={accountForm.handleSubmit(onAccountSubmit)} className="space-y-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account Settings</CardTitle>
+                  <CardDescription>
+                    Manage your account settings and credentials
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={accountForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={accountForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={accountForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>User Role</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="superuser">Superuser</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="viewer">Viewer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          User role determines access permissions in the system.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Separator />
+                  <h3 className="text-lg font-medium">Change Password</h3>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={accountForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Leave blank to keep current password.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={accountForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit">Save Account Settings</Button>
+                </CardFooter>
+              </Card>
+            </form>
+          </Form>
+        </TabsContent>
+        
+        {/* Profile Settings Tab */}
+        <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Organization Settings</CardTitle>
+              <CardTitle>Profile Settings</CardTitle>
               <CardDescription>
-                Configure your organization and academic year settings
+                Manage your personal profile information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="organizationName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Organization Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      This will be displayed throughout the application.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex items-center space-x-4">
+                <div className="rounded-full bg-primary/20 p-6 text-primary">
+                  <span className="text-3xl font-semibold">AU</span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Profile Picture</p>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm">Upload</Button>
+                    <Button type="button" variant="outline" size="sm">Remove</Button>
+                  </div>
+                </div>
+              </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="currentAcademicYear"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Academic Year</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select academic year" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="2023-2024">2023-2024</SelectItem>
-                          <SelectItem value="2022-2023">2022-2023</SelectItem>
-                          <SelectItem value="2021-2022">2021-2022</SelectItem>
-                          <SelectItem value="2020-2021">2020-2021</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        The academic year for all reports and records.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Bio</label>
+                <Textarea 
+                  placeholder="Tell us a little about yourself" 
+                  className="resize-none h-20"
                 />
+                <p className="text-sm text-muted-foreground">Brief description for your profile.</p>
+              </div>
 
-                <FormField
-                  control={form.control}
-                  name="currentTerm"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Term</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select term" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Term 1">Term 1</SelectItem>
-                          <SelectItem value="Term 2">Term 2</SelectItem>
-                          <SelectItem value="Term 3">Term 3</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        The current school term.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Position</label>
+                <Input placeholder="e.g. Administrator" />
+                <p className="text-sm text-muted-foreground">Your role or position in the organization.</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Contact Number</label>
+                <Input placeholder="e.g. +1 234 567 8901" />
               </div>
             </CardContent>
+            <CardFooter>
+              <Button>Save Profile</Button>
+            </CardFooter>
           </Card>
+        </TabsContent>
+        
+        {/* Email & SMTP Settings Tab */}
+        <TabsContent value="smtp" className="space-y-6">
+          <Form {...emailForm}>
+            <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>SMTP Settings</CardTitle>
+                  <CardDescription>
+                    Configure your email server settings for notifications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={emailForm.control}
+                      name="emailFromName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>From Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The name that will appear in email notifications.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-          {/* Email Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Settings</CardTitle>
-              <CardDescription>
-                Configure your email server settings for notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="emailFromName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>From Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The name that will appear in email notifications.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={emailForm.control}
+                      name="emailFromAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>From Email Address</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The email address that will be used to send notifications.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <FormField
-                  control={form.control}
-                  name="emailFromAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>From Email Address</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The email address that will be used to send notifications.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={emailForm.control}
+                      name="smtpHost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SMTP Host</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="smtpHost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SMTP Host</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={emailForm.control}
+                      name="smtpPort"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SMTP Port</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <FormField
-                  control={form.control}
-                  name="smtpPort"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SMTP Port</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={emailForm.control}
+                      name="smtpUsername"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SMTP Username</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="smtpUsername"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SMTP Username</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={emailForm.control}
+                      name="smtpPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SMTP Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <FormField
-                  control={form.control}
-                  name="smtpPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SMTP Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                  <Button type="button" variant="outline" className="mt-2">
+                    Test SMTP Connection
+                  </Button>
 
-          {/* Theme Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Theme Settings</CardTitle>
-              <CardDescription>
-                Customize the appearance of the application
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="themeMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Theme Mode</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                  <Separator />
+                  <h3 className="text-lg font-medium">Notification Settings</h3>
+
+                  <FormField
+                    control={emailForm.control}
+                    name="emailNotifications"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Email Notifications</FormLabel>
+                          <FormDescription>
+                            Enable email notifications for system events
+                          </FormDescription>
+                        </div>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select theme mode" />
-                          </SelectTrigger>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="light">Light</SelectItem>
-                          <SelectItem value="dark">Dark</SelectItem>
-                          <SelectItem value="system">System</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Choose the theme mode for the application.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="primaryColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Primary Color</FormLabel>
-                      <div className="flex gap-2">
-                        <FormControl>
-                          <Input type="color" {...field} className="w-16 h-10" />
-                        </FormControl>
-                        <Input 
-                          value={field.value} 
-                          onChange={field.onChange} 
-                          className="flex-1"
-                        />
-                      </div>
-                      <FormDescription>
-                        Select the primary color for the application.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="space-y-3">
+                    <FormField
+                      control={emailForm.control}
+                      name="notifyOnNewStudent"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                          <div className="space-y-0.5">
+                            <FormLabel>New Student Notifications</FormLabel>
+                            <FormDescription>
+                              Receive notifications when new students are added
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
 
-          <Button type="submit">Save Changes</Button>
-        </form>
-      </Form>
+                    <FormField
+                      control={emailForm.control}
+                      name="notifyOnNewSponsor"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                          <div className="space-y-0.5">
+                            <FormLabel>New Sponsor Notifications</FormLabel>
+                            <FormDescription>
+                              Receive notifications when new sponsors are added
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={emailForm.control}
+                      name="notifyOnSponsorshipChange"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                          <div className="space-y-0.5">
+                            <FormLabel>Sponsorship Change Notifications</FormLabel>
+                            <FormDescription>
+                              Receive notifications when sponsorship changes occur
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit">Save Email Settings</Button>
+                </CardFooter>
+              </Card>
+            </form>
+          </Form>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

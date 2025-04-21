@@ -1,4 +1,3 @@
-
 // Type definitions for DHIMS
 
 // User roles type
@@ -13,6 +12,8 @@ export interface User {
   avatar?: string;
   createdAt: Date;
   updatedAt: Date;
+  createdBy?: string;
+  lastModifiedBy?: string;
 }
 
 // Student interface
@@ -32,6 +33,8 @@ export interface Student {
   status: "active" | "inactive" | "graduated";
   createdAt: Date;
   updatedAt: Date;
+  createdBy?: string;
+  lastModifiedBy?: string;
 }
 
 // Sponsor interface
@@ -40,6 +43,7 @@ export interface Sponsor {
   firstName: string;
   lastName: string;
   email: string;
+  email2?: string;
   phone?: string;
   address?: string;
   country?: string;
@@ -50,6 +54,8 @@ export interface Sponsor {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  createdBy?: string;
+  lastModifiedBy?: string;
 }
 
 // Exam interface
@@ -106,14 +112,39 @@ export interface AuditLog {
   timestamp: Date;
 }
 
-// App settings
+// App settings interface with expanded properties
 export interface AppSettings {
   currentAcademicYear: string;
   currentTerm: string;
   organizationName: string;
   organizationLogo?: string;
+  theme: {
+    primaryColor: string;
+    mode: "light" | "dark" | "system";
+  };
   smtpSettings?: SMTPSettings;
-  themeSettings?: ThemeSettings;
+  generalSettings?: GeneralSettings;
+  notificationSettings?: NotificationSettings;
+}
+
+// General settings
+export interface GeneralSettings {
+  defaultAcademicYear: string;
+  appName: string;
+  appLogo?: string;
+  timezone: string;
+  dateFormat: string;
+  timeFormat: string;
+}
+
+// Notification settings
+export interface NotificationSettings {
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  pushNotifications: boolean;
+  notifyOnNewStudent: boolean;
+  notifyOnNewSponsor: boolean;
+  notifyOnSponsorshipChange: boolean;
 }
 
 // SMTP settings

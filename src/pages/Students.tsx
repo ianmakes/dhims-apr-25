@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,10 +146,24 @@ const columns = [
   {
     accessorKey: "firstName",
     header: "First Name",
+    cell: ({ row }) => {
+      return (
+        <Link to={`/students/${row.original.id}`} className="text-primary hover:underline">
+          {row.getValue("firstName")}
+        </Link>
+      );
+    },
   },
   {
     accessorKey: "lastName",
     header: "Last Name",
+    cell: ({ row }) => {
+      return (
+        <Link to={`/students/${row.original.id}`} className="text-primary hover:underline">
+          {row.getValue("lastName")}
+        </Link>
+      );
+    },
   },
   {
     accessorKey: "grade",

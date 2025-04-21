@@ -1,4 +1,3 @@
-
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BackpackIcon, BookOpen, Calendar, Edit, Mail, MapPin, Phone, User, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock student data
 const studentData = {
@@ -87,11 +87,16 @@ const studentData = {
     { id: "6", date: new Date(2022, 9, 5), title: "Award", description: "Received academic excellence award", type: "academic" },
     { id: "7", date: new Date(2022, 11, 5), title: "Term 3 Exams", description: "Completed Term 3 assessments", type: "academic" },
   ],
+  createdAt: new Date(2022, 0, 15),
+  updatedAt: new Date(2022, 5, 10),
+  createdBy: "admin",
+  lastModifiedBy: "manager",
 };
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // In a real app, you would fetch the student data based on the ID
   const student = studentData;
@@ -102,6 +107,15 @@ export default function StudentDetail() {
       month: 'long',
       day: 'numeric'
     }).format(date);
+  };
+
+  const handleRemoveSponsor = () => {
+    // In a real app, this would be an API call
+    console.log("Removing sponsor:", student.sponsorId);
+    toast({
+      title: "Sponsor Removed",
+      description: "The sponsor has been removed from this student.",
+    });
   };
 
   return (
@@ -198,6 +212,15 @@ export default function StudentDetail() {
                   {student.address}
                 </span>
               </div>
+            </div>
+
+            <Separator />
+            
+            <div className="text-xs text-muted-foreground">
+              <p>Created by: {student.createdBy} on {formatDate(student.createdAt)}</p>
+              {student.lastModifiedBy && student.updatedAt && (
+                <p>Last modified by: {student.lastModifiedBy} on {formatDate(student.updatedAt)}</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -391,8 +414,16 @@ export default function StudentDetail() {
                       </div>
                     </div>
                     
-                    <div className="flex justify-end">
-                      <Button variant="outline">
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={handleRemoveSponsor}
+                      >
+                        Remove Sponsorship
+                      </Button>
+                      
+                      <Button variant="outline" onClick={() => navigate(`/sponsors/${student.sponsor.id}`)}>
                         <Users className="mr-2 h-4 w-4" />
                         View Full Profile
                       </Button>
