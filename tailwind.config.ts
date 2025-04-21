@@ -61,7 +61,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+                // Custom colors for DHIMS
+                dhims: {
+                    primary: '#4361ee',
+                    secondary: '#3f37c9',
+                    accent: '#4895ef',
+                    muted: '#f8f9fa',
+                    success: '#4cc9f0',
+                    warning: '#f72585',
+                    error: '#e63946',
+                    dark: '#1a1f2c',
+                }
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
