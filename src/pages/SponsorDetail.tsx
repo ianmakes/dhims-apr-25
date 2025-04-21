@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
