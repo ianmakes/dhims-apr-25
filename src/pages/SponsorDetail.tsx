@@ -143,6 +143,14 @@ export default function SponsorDetail() {
     );
   };
 
+  const navigateToAssignTab = () => {
+    // Safely navigate to the assign tab
+    const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement | null;
+    if (assignTab && 'click' in assignTab) {
+      assignTab.click();
+    }
+  };
+
   return (
     <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
@@ -349,7 +357,7 @@ export default function SponsorDetail() {
                       <Button 
                         variant="outline" 
                         className="mt-4"
-                        onClick={() => document.querySelector('[data-value="assign"]')?.click()}
+                        onClick={navigateToAssignTab}
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Assign Students
