@@ -2,7 +2,6 @@
 import { supabase } from "./client";
 
 // This is a development utility function to create the initial superuser
-// In production, you would use a more secure method
 export const createSuperuser = async () => {
   const email = "itest6904@gmail.com";
   const password = "Kenya123!";
@@ -29,7 +28,7 @@ export const createSuperuser = async () => {
       password,
       options: {
         data: {
-          name: "Superuser",
+          name: "Super Admin",
           role: "superuser"
         },
       }
