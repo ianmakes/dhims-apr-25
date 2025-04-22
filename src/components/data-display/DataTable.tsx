@@ -26,6 +26,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Loader2,
   SearchIcon,
 } from "lucide-react";
 import {
@@ -41,6 +42,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   searchColumn?: string;
   searchPlaceholder?: string;
+  isLoading?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -48,6 +50,7 @@ export function DataTable<TData, TValue>({
   data,
   searchColumn,
   searchPlaceholder = "Search...",
+  isLoading = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -85,6 +88,7 @@ export function DataTable<TData, TValue>({
                   table.getColumn(searchColumn)?.setFilterValue(event.target.value)
                 }
                 className="pl-8"
+                disabled={isLoading}
               />
             </div>
           )}
@@ -119,7 +123,19 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center space-x-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -161,6 +177,7 @@ export function DataTable<TData, TValue>({
               onValueChange={(value) => {
                 table.setPageSize(Number(value));
               }}
+              disabled={isLoading}
             >
               <SelectTrigger className="h-8 w-16">
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
@@ -180,7 +197,7 @@ export function DataTable<TData, TValue>({
             variant="outline"
             size="icon"
             onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
+            disabled={!table.getCanPreviousPage() || isLoading}
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
@@ -188,7 +205,7 @@ export function DataTable<TData, TValue>({
             variant="outline"
             size="icon"
             onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            disabled={!table.getCanPreviousPage() || isLoading}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -202,7 +219,7 @@ export function DataTable<TData, TValue>({
             variant="outline"
             size="icon"
             onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            disabled={!table.getCanNextPage() || isLoading}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -210,7 +227,7 @@ export function DataTable<TData, TValue>({
             variant="outline"
             size="icon"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
+            disabled={!table.getCanNextPage() || isLoading}
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>
