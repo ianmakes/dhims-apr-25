@@ -9,8 +9,8 @@ export type StudentLetter = Database['public']['Tables']['student_letters']['Row
 
 // New student form input type
 export interface StudentFormInput {
-  admission_number: string;
   name: string;
+  admission_number: string;
   dob?: string | null;
   gender?: 'Male' | 'Female' | null;
   status: string;

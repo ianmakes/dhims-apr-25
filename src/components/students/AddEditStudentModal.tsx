@@ -2,26 +2,19 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -29,217 +22,118 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentFormInput } from "@/types/database";
 
-interface AddEditStudentModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  student?: any;
-  onSuccess: () => void;
-}
-
+// Form schema for student
 const studentSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  admission_number: z.string().min(1, { message: "Admission number is required" }),
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
+  admission_number: z.string().min(1, {
+    message: "Admission number is required.",
+  }),
   dob: z.string().optional().nullable(),
   gender: z.enum(["Male", "Female"]).optional().nullable(),
-  status: z.string().min(1, { message: "Status is required" }),
-  accommodation_status: z.string().optional().nullable(),
-  health_status: z.string().optional().nullable(),
+  status: z.string({
+    required_error: "Please select a status.",
+  }),
+  current_grade: z.string().optional().nullable(),
+  admission_date: z.string().optional().nullable(),
   location: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   school_level: z.string().optional().nullable(),
   cbc_category: z.string().optional().nullable(),
-  current_grade: z.string().optional().nullable(),
   current_academic_year: z.coerce.number().optional().nullable(),
+  accommodation_status: z.string().optional().nullable(),
+  health_status: z.string().optional().nullable(),
   height_cm: z.coerce.number().optional().nullable(),
   weight_kg: z.coerce.number().optional().nullable(),
-  admission_date: z.string().optional().nullable(),
-  sponsored_since: z.string().optional().nullable(),
+  profile_image_url: z.string().optional().nullable(),
 });
+
+interface AddEditStudentModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  student?: any; // The student object if editing, undefined if adding
+  onSubmit: (data: StudentFormInput) => void;
+}
 
 export function AddEditStudentModal({
   open,
   onOpenChange,
   student,
-  onSuccess,
+  onSubmit,
 }: AddEditStudentModalProps) {
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("basic");
+  const isEditing = !!student;
 
-  const isEditMode = !!student;
-
+  // Form with validation
   const form = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
-      name: student?.name || "",
-      admission_number: student?.admission_number || "",
-      dob: student?.dob ? new Date(student.dob).toISOString().split('T')[0] : "",
-      gender: student?.gender || null,
-      status: student?.status || "active",
-      accommodation_status: student?.accommodation_status || null,
-      health_status: student?.health_status || null,
-      location: student?.location || null,
-      description: student?.description || null,
-      school_level: student?.school_level || null,
-      cbc_category: student?.cbc_category || null,
-      current_grade: student?.current_grade || null,
-      current_academic_year: student?.current_academic_year || null,
-      height_cm: student?.height_cm || null,
-      weight_kg: student?.weight_kg || null,
-      admission_date: student?.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : "",
-      sponsored_since: student?.sponsored_since ? new Date(student.sponsored_since).toISOString().split('T')[0] : "",
+      name: "",
+      admission_number: "",
+      dob: "",
+      gender: null,
+      status: "Active",
+      current_grade: "",
+      admission_date: "",
+      location: "",
+      description: "",
+      school_level: "",
+      cbc_category: "",
+      current_academic_year: new Date().getFullYear(),
+      accommodation_status: "",
+      health_status: "",
+      height_cm: null,
+      weight_kg: null,
+      profile_image_url: "",
     },
   });
 
+  // Update form values when student data changes
   useEffect(() => {
-    if (student?.profile_image_url) {
-      setImagePreview(student.profile_image_url);
-    }
-  }, [student]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setProfileImage(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSubmit = async (values: z.infer<typeof studentSchema>) => {
-    setIsSubmitting(true);
-    try {
-      let profileImageUrl = student?.profile_image_url || null;
-
-      // Upload profile image if selected
-      if (profileImage) {
-        const fileExt = profileImage.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError, data } = await supabase.storage
-          .from('student-images')
-          .upload(filePath, profileImage, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('student-images')
-          .getPublicUrl(filePath);
-
-        profileImageUrl = publicUrl;
-      }
-
-      // Generate a slug from the name
-      const slug = values.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-
-      const studentData: StudentFormInput = {
-        ...values,
-        profile_image_url: profileImageUrl,
-        slug,
+    if (student) {
+      // Format date fields for the form
+      const formattedStudent = {
+        ...student,
+        dob: student.dob ? new Date(student.dob).toISOString().split('T')[0] : null,
+        admission_date: student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : null,
       };
-
-      if (isEditMode) {
-        // Update existing student
-        const { error } = await supabase
-          .from('students')
-          .update({
-            ...studentData,
-            updated_at: new Date().toISOString(),
-            updated_by: user?.id,
-          })
-          .eq('id', student.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Student updated",
-          description: "Student information has been updated successfully.",
-        });
-      } else {
-        // Create new student
-        const { error } = await supabase
-          .from('students')
-          .insert({
-            ...studentData,
-            created_at: new Date().toISOString(),
-            created_by: user?.id,
-          });
-
-        if (error) throw error;
-
-        toast({
-          title: "Student added",
-          description: "New student has been added successfully.",
-        });
-      }
-
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Error saving student:', error);
-      toast({
-        title: 'Error saving student',
-        description: 'Failed to save student information. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
+      
+      // Reset form with student data
+      form.reset(formattedStudent);
     }
+  }, [student, form]);
+
+  const handleFormSubmit = (data: z.infer<typeof studentSchema>) => {
+    onSubmit(data as StudentFormInput);
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Student" : "Add New Student"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Student" : "Add New Student"}</DialogTitle>
           <DialogDescription>
-            {isEditMode
-              ? "Update the student's information below."
-              : "Fill in the student's information to add them to the system."}
+            {isEditing
+              ? "Update the student's information."
+              : "Enter the details of the new student."}
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Basic Information */}
-              <div className="space-y-4 md:col-span-2">
-                <h3 className="text-lg font-medium">Basic Information</h3>
-                
-                <div className="flex flex-col items-center mb-4">
-                  {imagePreview && (
-                    <img
-                      src={imagePreview}
-                      alt="Profile Preview"
-                      className="w-32 h-32 object-cover rounded-full mb-2"
-                    />
-                  )}
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="max-w-xs"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: Square image, 300x300px or larger
-                  </p>
-                </div>
-                
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="academic">Academic</TabsTrigger>
+                <TabsTrigger value="additional">Additional</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="basic" className="space-y-4 pt-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -247,28 +141,57 @@ export function AddEditStudentModal({
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter student's full name" {...field} />
+                        <Input placeholder="John Doe" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="admission_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admission Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter admission number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="admission_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. STU001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Active">Active</SelectItem>
+                            <SelectItem value="Inactive">Inactive</SelectItem>
+                            <SelectItem value="Graduated">Graduated</SelectItem>
+                            <SelectItem value="Transferred">Transferred</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="dob"
@@ -311,37 +234,71 @@ export function AddEditStudentModal({
                 
                 <FormField
                   control={form.control}
-                  name="status"
+                  name="location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                          <SelectItem value="graduated">Graduated</SelectItem>
-                          <SelectItem value="transferred">Transferred</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Nairobi, Kenya" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormDescription>
+                        The student's home location or address
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-              
-              {/* Academic Information */}
-              <div className="space-y-4 md:col-span-2">
-                <h3 className="text-lg font-medium">Academic Information</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="profile_image_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profile Image URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://example.com/image.jpg" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormDescription>
+                        URL to the student's profile image
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              
+              <TabsContent value="academic" className="space-y-4 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="current_grade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Current Grade</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Grade 5" {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="admission_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="school_level"
@@ -358,42 +315,12 @@ export function AddEditStudentModal({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="primary">Primary</SelectItem>
-                            <SelectItem value="secondary">Secondary</SelectItem>
-                            <SelectItem value="college">College</SelectItem>
-                            <SelectItem value="university">University</SelectItem>
+                            <SelectItem value="Primary">Primary</SelectItem>
+                            <SelectItem value="Secondary">Secondary</SelectItem>
+                            <SelectItem value="College">College</SelectItem>
+                            <SelectItem value="University">University</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="current_grade"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Grade</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Grade 5, Form 2" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="current_academic_year"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Academic Year</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="e.g. 2023" {...field} value={field.value || ""} />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -405,51 +332,49 @@ export function AddEditStudentModal({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>CBC Category</FormLabel>
-                        <FormControl>
-                          <Input placeholder="CBC Category" {...field} value={field.value || ""} />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value || undefined}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select CBC category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="PP1">PP1</SelectItem>
+                            <SelectItem value="PP2">PP2</SelectItem>
+                            <SelectItem value="Grade 1">Grade 1</SelectItem>
+                            <SelectItem value="Grade 2">Grade 2</SelectItem>
+                            <SelectItem value="Grade 3">Grade 3</SelectItem>
+                            <SelectItem value="Grade 4">Grade 4</SelectItem>
+                            <SelectItem value="Grade 5">Grade 5</SelectItem>
+                            <SelectItem value="Grade 6">Grade 6</SelectItem>
+                            <SelectItem value="Junior Secondary">Junior Secondary</SelectItem>
+                            <SelectItem value="Senior Secondary">Senior Secondary</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="admission_date"
+                    name="current_academic_year"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Admission Date</FormLabel>
+                        <FormLabel>Academic Year</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} />
+                          <Input type="number" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
-                  <FormField
-                    control={form.control}
-                    name="sponsored_since"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sponsored Since</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-              
-              {/* Additional Information */}
-              <div className="space-y-4 md:col-span-2">
-                <h3 className="text-lg font-medium">Additional Information</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="accommodation_status"
@@ -462,36 +387,53 @@ export function AddEditStudentModal({
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select accommodation status" />
+                              <SelectValue placeholder="Select accommodation" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="day_scholar">Day Scholar</SelectItem>
-                            <SelectItem value="boarder">Boarder</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="Boarding">Boarding</SelectItem>
+                            <SelectItem value="Day Scholar">Day Scholar</SelectItem>
+                            <SelectItem value="Hostel">Hostel</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="additional" className="space-y-4 pt-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="health_status"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Health Status</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Health status" {...field} value={field.value || ""} />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value || undefined}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select health status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Healthy">Healthy</SelectItem>
+                            <SelectItem value="Chronic Condition">Chronic Condition</SelectItem>
+                            <SelectItem value="Disability">Disability</SelectItem>
+                            <SelectItem value="Special Needs">Special Needs</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="height_cm"
@@ -499,7 +441,7 @@ export function AddEditStudentModal({
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Height in cm" {...field} value={field.value || ""} />
+                          <Input type="number" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -513,7 +455,7 @@ export function AddEditStudentModal({
                       <FormItem>
                         <FormLabel>Weight (kg)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Weight in kg" {...field} value={field.value || ""} />
+                          <Input type="number" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -523,45 +465,34 @@ export function AddEditStudentModal({
                 
                 <FormField
                   control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Student's location" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Enter a description of the student" 
-                          className="min-h-[100px]" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Enter a description of the student..."
+                          className="resize-none h-32"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Provide any additional information about the student
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-            </div>
-            
+              </TabsContent>
+            </Tabs>
+
             <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : isEditMode ? "Update Student" : "Add Student"}
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {isEditing ? "Update Student" : "Add Student"}
               </Button>
             </DialogFooter>
           </form>
