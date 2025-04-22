@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
+import { SettingsLayout } from "./components/settings/SettingsLayout";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
@@ -16,6 +17,7 @@ import Exams from "./pages/Exams";
 import ExamDetail from "./pages/ExamDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -53,7 +55,11 @@ const App = () => (
               <Route path="/users" element={<Users />} />
               
               {/* Settings */}
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings" element={<SettingsLayout />}>
+                <Route index element={<Navigate to="/settings/general" replace />} />
+                <Route path="general" element={<Settings />} />
+                <Route path="profile" element={<Profile />} />
+              </Route>
             </Route>
             
             {/* Catch-all route */}

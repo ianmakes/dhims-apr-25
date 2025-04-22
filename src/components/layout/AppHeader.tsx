@@ -40,7 +40,7 @@ export function AppHeader() {
       <div className="flex h-16 items-center px-4">
         <div className="flex-1">
           {/* Logo/Title */}
-          <div className="flex items-center">
+          <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
             <img 
               src="/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png" 
               alt="Logo" 
