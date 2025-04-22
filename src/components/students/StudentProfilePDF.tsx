@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf"; // Fix: import jsPDF correctly with curly braces
 import { format } from "date-fns";
 
 interface StudentProfilePDFProps {
