@@ -9,7 +9,202 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          id: string
+          name: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          id: string
+          name?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      student_letters: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          date: string | null
+          file_url: string | null
+          id: string
+          student_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string | null
+          file_url?: string | null
+          id?: string
+          student_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string | null
+          file_url?: string | null
+          id?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_letters_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          accommodation_status: string | null
+          admission_date: string | null
+          admission_number: string
+          cbc_category: string | null
+          created_at: string | null
+          created_by: string | null
+          current_academic_year: number | null
+          current_grade: string | null
+          description: string | null
+          dob: string | null
+          gender: string | null
+          health_status: string | null
+          height_cm: number | null
+          id: string
+          location: string | null
+          name: string
+          profile_image_url: string | null
+          school_level: string | null
+          slug: string | null
+          sponsor_id: string | null
+          sponsored_since: string | null
+          status: string
+          updated_at: string | null
+          updated_by: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          accommodation_status?: string | null
+          admission_date?: string | null
+          admission_number: string
+          cbc_category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_academic_year?: number | null
+          current_grade?: string | null
+          description?: string | null
+          dob?: string | null
+          gender?: string | null
+          health_status?: string | null
+          height_cm?: number | null
+          id?: string
+          location?: string | null
+          name: string
+          profile_image_url?: string | null
+          school_level?: string | null
+          slug?: string | null
+          sponsor_id?: string | null
+          sponsored_since?: string | null
+          status?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          accommodation_status?: string | null
+          admission_date?: string | null
+          admission_number?: string
+          cbc_category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_academic_year?: number | null
+          current_grade?: string | null
+          description?: string | null
+          dob?: string | null
+          gender?: string | null
+          health_status?: string | null
+          height_cm?: number | null
+          id?: string
+          location?: string | null
+          name?: string
+          profile_image_url?: string | null
+          school_level?: string | null
+          slug?: string | null
+          sponsor_id?: string | null
+          sponsored_since?: string | null
+          status?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      timeline_events: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date: string | null
+          description: string | null
+          id: string
+          student_id: string | null
+          title: string
+          type: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date?: string | null
+          description?: string | null
+          id?: string
+          student_id?: string | null
+          title: string
+          type?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date?: string | null
+          description?: string | null
+          id?: string
+          student_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
