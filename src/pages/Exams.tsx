@@ -1,9 +1,22 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart2, BookOpen, Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { 
+  BarChart2, 
+  BookOpen, 
+  Edit, 
+  Eye, 
+  Plus, 
+  Search, 
+  Trash2
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -13,6 +26,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +112,10 @@ const mockExams = [
   },
 ];
 
+// Academic years and terms data
+const academicYears = ["2023-2024", "2022-2023", "2021-2022"];
+const terms = ["Term 1", "Term 2", "Term 3"];
+
 interface ExamFormData {
   name: string;
   subject: string;
@@ -106,7 +130,10 @@ export default function Exams() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState("");
   const [isAddExamOpen, setIsAddExamOpen] = useState(false);
+
   const [formData, setFormData] = useState<ExamFormData>({
     name: "",
     subject: "",
@@ -120,8 +147,11 @@ export default function Exams() {
   // Filter exams based on search term
   const filteredExams = mockExams.filter(
     (exam) =>
-      exam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.subject.toLowerCase().includes(searchTerm.toLowerCase())
+      (selectedYear ? exam.academicYear === selectedYear : true) &&
+      (selectedTerm ? exam.term === selectedTerm : true) &&
+      (searchTerm ? 
+        exam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.subject.toLowerCase().includes(searchTerm.toLowerCase()) : true)
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -277,6 +307,36 @@ export default function Exams() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="flex space-x-4 mb-4">
+        <Select 
+          value={selectedYear} 
+          onValueChange={setSelectedYear}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Academic Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {academicYears.map(year => (
+              <SelectItem key={year} value={year}>{year}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select 
+          value={selectedTerm} 
+          onValueChange={setSelectedTerm}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Term" />
+          </SelectTrigger>
+          <SelectContent>
+            {terms.map(term => (
+              <SelectItem key={term} value={term}>{term}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
