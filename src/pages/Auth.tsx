@@ -122,12 +122,10 @@ export default function Auth() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <img 
-            src="/lovable-uploads/8ee36117-8f74-4a32-8f8e-18562c02e236.png" 
-            alt="David's Hope Logo" 
-            className="h-20 w-auto" 
-          />
-          <h1 className="text-3xl font-bold">Welcome to DHIMS</h1>
+          <h1 className="text-4xl font-bold">DHIMS</h1>
+          <p className="text-xl text-muted-foreground">
+            David's Hope Information Management System
+          </p>
           <p className="text-muted-foreground">
             Sign in to your account to continue
           </p>
