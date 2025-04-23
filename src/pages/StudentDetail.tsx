@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -833,3 +834,42 @@ export default function StudentDetail() {
             gender: (student.gender === "Male" || student.gender === "Female") 
               ? student.gender 
               : "Male" // Default to "Male" if it's not a valid value
+          }}
+          onSubmit={handleEditStudent}
+        />
+      )}
+
+      {/* Add Photo Modal */}
+      <AddPhotoModal
+        open={isAddPhotoModalOpen}
+        onOpenChange={setIsAddPhotoModalOpen}
+        studentId={id || ''}
+        onSuccess={() => {
+          // Update photos list
+          setPhotos(getStudentPhotos());
+        }}
+      />
+
+      {/* Add Letter Modal */}
+      <AddLetterModal
+        open={isAddLetterModalOpen}
+        onOpenChange={setIsAddLetterModalOpen}
+        studentId={id || ''}
+        onSuccess={() => {
+          // Refresh letters
+        }}
+      />
+
+      {/* Add Timeline Event Modal */}
+      <AddTimelineEventModal
+        open={isAddTimelineEventModalOpen}
+        onOpenChange={setIsAddTimelineEventModalOpen}
+        studentId={id || ''}
+        onSuccess={() => {
+          // Refresh timeline events
+          refetchTimeline();
+        }}
+      />
+    </div>
+  );
+}
