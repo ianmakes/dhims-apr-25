@@ -179,7 +179,15 @@ export default function UserRolesSettings() {
         throw error;
       }
 
-      setRoles(data || []);
+      // Parse the JSON permissions if needed
+      const formattedRoles = data?.map(role => ({
+        ...role,
+        permissions: typeof role.permissions === 'string' 
+          ? JSON.parse(role.permissions) 
+          : role.permissions
+      })) as Role[];
+
+      setRoles(formattedRoles || []);
     } catch (error: any) {
       console.error("Error fetching roles:", error);
       toast({
