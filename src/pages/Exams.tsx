@@ -9,6 +9,7 @@ import {
   Search, 
   Trash2
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -52,73 +53,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { ExamWithScores } from "@/types/exam";
 
-// Mock exam data
-const mockExams = [
-  { 
-    id: "1", 
-    name: "Math Midterm", 
-    subject: "Mathematics", 
-    term: "Term 1", 
-    academicYear: "2023-2024", 
-    maxScore: 100,
-    examDate: "2023-10-15",
-    studentsTaken: 42,
-    averageScore: 76.5
-  },
-  { 
-    id: "2", 
-    name: "English Composition", 
-    subject: "English", 
-    term: "Term 1", 
-    academicYear: "2023-2024", 
-    maxScore: 50,
-    examDate: "2023-10-22",
-    studentsTaken: 45,
-    averageScore: 82.3
-  },
-  { 
-    id: "3", 
-    name: "Science Final", 
-    subject: "Science", 
-    term: "Term 1", 
-    academicYear: "2023-2024", 
-    maxScore: 100,
-    examDate: "2023-12-05",
-    studentsTaken: 40,
-    averageScore: 68.2
-  },
-  { 
-    id: "4", 
-    name: "History Quiz", 
-    subject: "History", 
-    term: "Term 1", 
-    academicYear: "2023-2024", 
-    maxScore: 30,
-    examDate: "2023-11-10",
-    studentsTaken: 38,
-    averageScore: 74.1
-  },
-  { 
-    id: "5", 
-    name: "Geography Project", 
-    subject: "Geography", 
-    term: "Term 1", 
-    academicYear: "2023-2024", 
-    maxScore: 50,
-    examDate: "2023-11-20",
-    studentsTaken: 41,
-    averageScore: 79.8
-  },
-];
-
-// Academic years and terms data
 const academicYears = ["2023-2024", "2022-2023", "2021-2022"];
 const terms = ["Term 1", "Term 2", "Term 3"];
 
 interface ExamFormData {
   name: string;
-  subject: string;
   academicYear: string;
   term: string;
   examDate: string;
@@ -129,6 +71,7 @@ interface ExamFormData {
 export default function Exams() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("");
@@ -136,7 +79,6 @@ export default function Exams() {
 
   const [formData, setFormData] = useState<ExamFormData>({
     name: "",
-    subject: "",
     academicYear: "2023-2024",
     term: "Term 1",
     examDate: "",
@@ -144,15 +86,93 @@ export default function Exams() {
     passingScore: "40",
   });
 
-  // Filter exams based on search term
-  const filteredExams = mockExams.filter(
-    (exam) =>
-      (selectedYear ? exam.academicYear === selectedYear : true) &&
-      (selectedTerm ? exam.term === selectedTerm : true) &&
-      (searchTerm ? 
-        exam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.subject.toLowerCase().includes(searchTerm.toLowerCase()) : true)
-  );
+  // Fetch exams
+  const { data: exams = [], isLoading } = useQuery({
+    queryKey: ['exams'],
+    queryFn: async () => {
+      const { data: exams, error } = await supabase
+        .from('exams')
+        .select(`
+          *,
+          student_exam_scores (
+            score
+          )
+        `);
+
+      if (error) throw error;
+
+      return exams.map(exam => ({
+        ...exam,
+        studentsTaken: exam.student_exam_scores?.length || 0,
+        averageScore: exam.student_exam_scores?.length 
+          ? exam.student_exam_scores.reduce((acc: number, curr: any) => acc + curr.score, 0) / exam.student_exam_scores.length
+          : 0
+      })) as ExamWithScores[];
+    }
+  });
+
+  // Create exam mutation
+  const createExam = useMutation({
+    mutationFn: async (examData: ExamFormData) => {
+      const { data, error } = await supabase
+        .from('exams')
+        .insert({
+          name: examData.name,
+          academic_year: examData.academicYear,
+          term: examData.term,
+          exam_date: examData.examDate,
+          max_score: parseInt(examData.maxScore),
+          passing_score: parseInt(examData.passingScore)
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      setIsAddExamOpen(false);
+      toast({
+        title: "Exam Added",
+        description: `${formData.name} has been added successfully.`,
+      });
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete exam mutation
+  const deleteExam = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('exams')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      toast({
+        title: "Exam Deleted",
+        description: "The exam has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -161,15 +181,12 @@ export default function Exams() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Adding new exam:", formData);
-    toast({
-      title: "Exam Added",
-      description: `${formData.name} has been added successfully.`,
-    });
-    setIsAddExamOpen(false);
+    createExam.mutate(formData);
+  };
+
+  const resetForm = () => {
     setFormData({
       name: "",
-      subject: "",
       academicYear: "2023-2024",
       term: "Term 1",
       examDate: "",
@@ -178,13 +195,21 @@ export default function Exams() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    console.log("Deleting exam with ID:", id);
-    toast({
-      title: "Exam Deleted",
-      description: "The exam has been deleted successfully.",
-    });
-  };
+  // Filter exams based on search term and filters
+  const filteredExams = exams.filter(
+    (exam) =>
+      (selectedYear ? exam.academic_year === selectedYear : true) &&
+      (selectedTerm ? exam.term === selectedTerm : true) &&
+      (searchTerm ? 
+        exam.name.toLowerCase().includes(searchTerm.toLowerCase()) : true)
+  );
+
+  // Calculate statistics
+  const totalExams = exams.length;
+  const averageScore = exams.length > 0
+    ? exams.reduce((acc, exam) => acc + (exam.averageScore || 0), 0) / exams.length
+    : 0;
+  const totalStudentsTaken = exams.reduce((acc, exam) => acc + (exam.studentsTaken || 0), 0);
 
   return (
     <div className="space-y-6 fade-in">
@@ -217,17 +242,6 @@ export default function Exams() {
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="e.g. Math Midterm Exam"
-                    required
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Mathematics"
                     required
                   />
                 </div>
@@ -346,7 +360,7 @@ export default function Exams() {
             <BookOpen className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockExams.length}</div>
+            <div className="text-2xl font-bold">{totalExams}</div>
             <p className="text-xs text-muted-foreground">
               For current academic year
             </p>
@@ -358,9 +372,7 @@ export default function Exams() {
             <BarChart2 className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {(mockExams.reduce((acc, exam) => acc + exam.averageScore, 0) / mockExams.length).toFixed(1)}%
-            </div>
+            <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               Across all exams this term
             </p>
@@ -372,9 +384,9 @@ export default function Exams() {
             <BookOpen className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45</div>
+            <div className="text-2xl font-bold">{totalStudentsTaken}</div>
             <p className="text-xs text-muted-foreground">
-              Out of 45 enrolled students
+              Total exam attempts
             </p>
           </CardContent>
         </Card>
@@ -406,7 +418,6 @@ export default function Exams() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Subject</TableHead>
                   <TableHead>Term</TableHead>
                   <TableHead>Academic Year</TableHead>
                   <TableHead>Exam Date</TableHead>
@@ -416,22 +427,30 @@ export default function Exams() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredExams.length === 0 ? (
+                {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8">
+                      Loading exams...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredExams.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No exams found. Try a different search or add a new exam.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredExams.map((exam) => (
-                    <TableRow key={exam.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/exams/${exam.id}`)}>
+                    <TableRow key={exam.id} 
+                      className="cursor-pointer hover:bg-muted/50" 
+                      onClick={() => navigate(`/exams/${exam.id}`)}
+                    >
                       <TableCell>{exam.name}</TableCell>
-                      <TableCell>{exam.subject}</TableCell>
                       <TableCell>{exam.term}</TableCell>
-                      <TableCell>{exam.academicYear}</TableCell>
-                      <TableCell>{exam.examDate}</TableCell>
+                      <TableCell>{exam.academic_year}</TableCell>
+                      <TableCell>{new Date(exam.exam_date).toLocaleDateString()}</TableCell>
                       <TableCell>{exam.studentsTaken}</TableCell>
-                      <TableCell>{exam.averageScore}%</TableCell>
+                      <TableCell>{exam.averageScore?.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -478,7 +497,7 @@ export default function Exams() {
                               className="text-destructive focus:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDelete(exam.id);
+                                deleteExam.mutate(exam.id);
                               }}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -493,6 +512,105 @@ export default function Exams() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Add Exam Dialog */}
+          <Dialog open={isAddExamOpen} onOpenChange={setIsAddExamOpen}>
+            <DialogContent className="sm:max-w-[550px]">
+              <DialogHeader>
+                <DialogTitle>Add New Exam</DialogTitle>
+                <DialogDescription>
+                  Enter the details for the new exam. Click save when you're done.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit}>
+                <div className="grid grid-cols-2 gap-4 py-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="name">Exam Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="e.g. End Term Examination"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label htmlFor="academicYear">Academic Year</Label>
+                    <select
+                      id="academicYear"
+                      name="academicYear"
+                      value={formData.academicYear}
+                      onChange={handleInputChange}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      required
+                    >
+                      {academicYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-1">
+                    <Label htmlFor="term">Term</Label>
+                    <select
+                      id="term"
+                      name="term"
+                      value={formData.term}
+                      onChange={handleInputChange}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      required
+                    >
+                      {terms.map(term => (
+                        <option key={term} value={term}>{term}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-1">
+                    <Label htmlFor="examDate">Exam Date</Label>
+                    <Input
+                      id="examDate"
+                      name="examDate"
+                      type="date"
+                      value={formData.examDate}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label htmlFor="maxScore">Maximum Score</Label>
+                    <Input
+                      id="maxScore"
+                      name="maxScore"
+                      type="number"
+                      value={formData.maxScore}
+                      onChange={handleInputChange}
+                      min="1"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="passingScore">Passing Score</Label>
+                    <Input
+                      id="passingScore"
+                      name="passingScore"
+                      type="number"
+                      value={formData.passingScore}
+                      onChange={handleInputChange}
+                      min="1"
+                      max={formData.maxScore}
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsAddExamOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Exam</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
     </div>

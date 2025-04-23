@@ -1,6 +1,6 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   ArrowLeft, 
   BarChart2, 
@@ -55,57 +55,7 @@ import {
 } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-
-// Mock exam details
-const examDetails = {
-  id: "1",
-  name: "Math Midterm",
-  subject: "Mathematics",
-  term: "Term 1",
-  academicYear: "2023-2024",
-  maxScore: 100,
-  passingScore: 40,
-  examDate: "2023-10-15",
-  studentsTaken: 42,
-  averageScore: 76.5,
-  createdBy: "Admin User",
-  createdAt: "2023-09-20",
-  updatedBy: "Admin User",
-  updatedAt: "2023-10-01",
-};
-
-// Mock students data
-const mockStudents = [
-  { id: "S1", name: "John Doe", grade: "Grade 8", score: 87, status: "Exceeding Expectation" },
-  { id: "S2", name: "Jane Smith", grade: "Grade 8", score: 72, status: "Meeting Expectation" },
-  { id: "S3", name: "Robert Johnson", grade: "Grade 8", score: 45, status: "Approaching Expectation" },
-  { id: "S4", name: "Emily Brown", grade: "Grade 8", score: 92, status: "Exceeding Expectation" },
-  { id: "S5", name: "Michael Wilson", grade: "Grade 8", score: 64, status: "Meeting Expectation" },
-  { id: "S6", name: "Sarah Davis", grade: "Grade 8", score: 78, status: "Meeting Expectation" },
-  { id: "S7", name: "David Miller", grade: "Grade 8", score: 55, status: "Meeting Expectation" },
-  { id: "S8", name: "Lisa Wilson", grade: "Grade 8", score: 32, status: "Below Expectation" },
-  { id: "S9", name: "Kevin Moore", grade: "Grade 8", score: 90, status: "Exceeding Expectation" },
-  { id: "S10", name: "Sophia Anderson", grade: "Grade 8", score: 84, status: "Exceeding Expectation" },
-  { id: "S11", name: "Oliver Taylor", grade: "Grade 8", score: 37, status: "Below Expectation" },
-  { id: "S12", name: "Emma Thomas", grade: "Grade 8", score: 67, status: "Meeting Expectation" },
-];
-
-// Performance distribution data
-const performanceData = [
-  { name: "Exceeding Expectation", value: 4, color: "#10b981" },
-  { name: "Meeting Expectation", value: 5, color: "#3b82f6" },
-  { name: "Approaching Expectation", value: 1, color: "#f59e0b" },
-  { name: "Below Expectation", value: 2, color: "#ef4444" },
-];
-
-// Score distribution data
-const scoreDistribution = [
-  { range: "0-20", count: 1 },
-  { range: "21-40", count: 1 },
-  { range: "41-60", count: 2 },
-  { range: "61-80", count: 4 },
-  { range: "81-100", count: 4 },
-];
+import { supabase } from "@/integrations/supabase/client";
 
 // Get grade based on score percentage
 const getGrade = (score: number): string => {
@@ -134,58 +84,211 @@ const getGradeColor = (grade: string): string => {
 export default function ExamDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditing, setIsEditing] = useState(false);
-  const [students, setStudents] = useState([...mockStudents]);
   const [editData, setEditData] = useState<{ [key: string]: number }>({});
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
-  const [examData, setExamData] = useState(examDetails);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    // Initialize edit data with current scores
-    const initialEditData = students.reduce((acc, student) => {
-      acc[student.id] = student.score;
-      return acc;
-    }, {} as { [key: string]: number });
-    setEditData(initialEditData);
-  }, [students]);
+  // Fetch exam details with scores
+  const { data: examData, isLoading: isLoadingExam } = useQuery({
+    queryKey: ['exam', id],
+    queryFn: async () => {
+      const { data: exam, error } = await supabase
+        .from('exams')
+        .select(`
+          *,
+          student_exam_scores (
+            id,
+            score,
+            student:students (
+              id,
+              name,
+              current_grade
+            )
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return exam;
+    }
+  });
+
+  // Save scores mutation
+  const updateScores = useMutation({
+    mutationFn: async (scores: { id: string, score: number }[]) => {
+      const promises = scores.map(({ id, score }) => 
+        supabase
+          .from('student_exam_scores')
+          .update({ score })
+          .eq('id', id)
+      );
+
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exam', id] });
+      setIsEditing(false);
+      toast({
+        title: "Scores Saved",
+        description: "Student scores have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update exam mutation
+  const updateExam = useMutation({
+    mutationFn: async (examData: any) => {
+      const { data, error } = await supabase
+        .from('exams')
+        .update(examData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exam', id] });
+      setIsEditExamOpen(false);
+      toast({
+        title: "Exam Updated",
+        description: "Exam details have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete exam mutation
+  const deleteExam = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('exams')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      navigate('/exams');
+      toast({
+        title: "Exam Deleted",
+        description: "The exam has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  if (isLoadingExam) {
+    return <div>Loading...</div>;
+  }
+
+  if (!examData) {
+    return <div>Exam not found</div>;
+  }
+
+  const students = examData.student_exam_scores.map((score: any) => ({
+    id: score.id,
+    studentId: score.student.id,
+    name: score.student.name,
+    grade: score.student.current_grade,
+    score: score.score,
+    status: getGrade(score.score)
+  }));
+
+  // Calculate statistics
+  const scores = students.map(s => s.score);
+  const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const highestScore = Math.max(...scores);
+  const lowestScore = Math.min(...scores);
+  const passRate = (students.filter(s => s.score >= examData.passing_score).length / students.length) * 100;
+
+  // Performance distribution data
+  const performanceData = [
+    {
+      name: "Exceeding Expectation",
+      value: students.filter(s => s.score >= 80).length,
+      color: "#4ade80"
+    },
+    {
+      name: "Meeting Expectation",
+      value: students.filter(s => s.score >= 50 && s.score < 80).length,
+      color: "#3b82f6"
+    },
+    {
+      name: "Approaching Expectation",
+      value: students.filter(s => s.score >= 40 && s.score < 50).length,
+      color: "#f59e0b"
+    },
+    {
+      name: "Below Expectation",
+      value: students.filter(s => s.score < 40).length,
+      color: "#ef4444"
+    }
+  ];
+
+  // Score distribution data
+  const scoreDistribution = [
+    { range: "0-20", count: students.filter(s => s.score >= 0 && s.score <= 20).length },
+    { range: "21-40", count: students.filter(s => s.score > 20 && s.score <= 40).length },
+    { range: "41-60", count: students.filter(s => s.score > 40 && s.score <= 60).length },
+    { range: "61-80", count: students.filter(s => s.score > 60 && s.score <= 80).length },
+    { range: "81-100", count: students.filter(s => s.score > 80 && s.score <= 100).length }
+  ];
 
   const handleEditExam = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Updating exam:", examData);
-    toast({
-      title: "Exam Updated",
-      description: "Exam details have been updated successfully.",
+    updateExam.mutate({
+      name: examData.name,
+      academic_year: examData.academic_year,
+      term: examData.term,
+      exam_date: examData.exam_date,
+      max_score: examData.max_score,
+      passing_score: examData.passing_score
     });
-    setIsEditExamOpen(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setExamData((prev) => ({ ...prev, [name]: value }));
+    setExamData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   const handleScoreChange = (id: string, value: string) => {
     const numValue = parseInt(value, 10) || 0;
-    const clampedValue = Math.min(Math.max(numValue, 0), examData.maxScore);
+    const clampedValue = Math.min(Math.max(numValue, 0), examData.max_score);
     setEditData((prev) => ({ ...prev, [id]: clampedValue }));
   };
 
   const saveScores = () => {
-    setStudents((prevStudents) =>
-      prevStudents.map((student) => ({
-        ...student,
-        score: editData[student.id] || 0,
-        status: getGrade(editData[student.id] || 0),
-      }))
-    );
-    setIsEditing(false);
-    toast({
-      title: "Scores Saved",
-      description: "Student scores have been updated successfully.",
-    });
+    const scoresToUpdate = Object.entries(editData).map(([studentExamScoreId, score]) => ({
+      id: studentExamScoreId,
+      score: score
+    }));
+    updateScores.mutate(scoresToUpdate);
   };
 
   const cancelEditing = () => {
@@ -203,12 +306,6 @@ export default function ExamDetail() {
     (student) => student.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Calculate statistics
-  const averageScore = students.reduce((acc, student) => acc + student.score, 0) / students.length;
-  const highestScore = Math.max(...students.map((student) => student.score));
-  const lowestScore = Math.min(...students.map((student) => student.score));
-  const passRate = (students.filter((student) => student.score >= examData.passingScore).length / students.length) * 100;
-
   return (
     <div className="space-y-6 fade-in">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -218,7 +315,7 @@ export default function ExamDetail() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{examData.name}</h1>
-            <p className="text-muted-foreground">{examData.subject} • {examData.term} • {examData.academicYear}</p>
+            <p className="text-muted-foreground">{examData.subject} • {examData.term} • {examData.academic_year}</p>
           </div>
         </div>
         <div className="flex gap-2 mt-2 sm:mt-0">
@@ -256,14 +353,15 @@ export default function ExamDetail() {
                       value={examData.subject}
                       onChange={handleInputChange}
                       required
+                      disabled
                     />
                   </div>
                   <div className="col-span-1">
-                    <Label htmlFor="academicYear">Academic Year</Label>
+                    <Label htmlFor="academic_year">Academic Year</Label>
                     <select
-                      id="academicYear"
-                      name="academicYear"
-                      value={examData.academicYear}
+                      id="academic_year"
+                      name="academic_year"
+                      value={examData.academic_year}
                       onChange={handleInputChange}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       required
@@ -289,38 +387,38 @@ export default function ExamDetail() {
                     </select>
                   </div>
                   <div className="col-span-1">
-                    <Label htmlFor="examDate">Exam Date</Label>
+                    <Label htmlFor="exam_date">Exam Date</Label>
                     <Input
-                      id="examDate"
-                      name="examDate"
+                      id="exam_date"
+                      name="exam_date"
                       type="date"
-                      value={examData.examDate}
+                      value={examData.exam_date}
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="col-span-1">
-                    <Label htmlFor="maxScore">Maximum Score</Label>
+                    <Label htmlFor="max_score">Maximum Score</Label>
                     <Input
-                      id="maxScore"
-                      name="maxScore"
+                      id="max_score"
+                      name="max_score"
                       type="number"
-                      value={examData.maxScore}
+                      value={examData.max_score}
                       onChange={handleInputChange}
                       min="1"
                       required
                     />
                   </div>
                   <div className="col-span-2">
-                    <Label htmlFor="passingScore">Passing Score</Label>
+                    <Label htmlFor="passing_score">Passing Score</Label>
                     <Input
-                      id="passingScore"
-                      name="passingScore"
+                      id="passing_score"
+                      name="passing_score"
                       type="number"
-                      value={examData.passingScore}
+                      value={examData.passing_score}
                       onChange={handleInputChange}
                       min="1"
-                      max={examData.maxScore}
+                      max={examData.max_score}
                       required
                     />
                   </div>
@@ -334,7 +432,7 @@ export default function ExamDetail() {
               </form>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive">
+          <Button variant="destructive" onClick={() => deleteExam.mutate()}>
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
           </Button>
@@ -360,7 +458,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">
-                  Out of {examData.maxScore} points
+                  Out of {examData.max_score} points
                 </p>
               </CardContent>
             </Card>
@@ -396,7 +494,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">
-                  {students.filter(s => s.score >= examData.passingScore).length} out of {students.length} students
+                  {students.filter(s => s.score >= examData.passing_score).length} out of {students.length} students
                 </p>
               </CardContent>
             </Card>
@@ -516,7 +614,7 @@ export default function ExamDetail() {
                       <TableHead>ID</TableHead>
                       <TableHead>Student Name</TableHead>
                       <TableHead>Grade Level</TableHead>
-                      <TableHead className="text-center">Score (out of {examData.maxScore})</TableHead>
+                      <TableHead className="text-center">Score (out of {examData.max_score})</TableHead>
                       <TableHead className="text-center">Performance</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -530,7 +628,7 @@ export default function ExamDetail() {
                     ) : (
                       filteredStudents.map((student) => (
                         <TableRow key={student.id}>
-                          <TableCell>{student.id}</TableCell>
+                          <TableCell>{student.studentId}</TableCell>
                           <TableCell className="font-medium">{student.name}</TableCell>
                           <TableCell>{student.grade}</TableCell>
                           <TableCell className="text-center">
@@ -541,7 +639,7 @@ export default function ExamDetail() {
                                 onChange={(e) => handleScoreChange(student.id, e.target.value)}
                                 className="w-20 mx-auto text-center"
                                 min={0}
-                                max={examData.maxScore}
+                                max={examData.max_score}
                               />
                             ) : (
                               <span>{student.score}</span>
@@ -683,7 +781,7 @@ export default function ExamDetail() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Academic Year</h3>
-                  <p>{examData.academicYear}</p>
+                  <p>{examData.academic_year}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Term</h3>
@@ -691,15 +789,15 @@ export default function ExamDetail() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Exam Date</h3>
-                  <p>{examData.examDate}</p>
+                  <p>{examData.exam_date}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Maximum Score</h3>
-                  <p>{examData.maxScore}</p>
+                  <p>{examData.max_score}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Passing Score</h3>
-                  <p>{examData.passingScore}</p>
+                  <p>{examData.passing_score}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Students Taken</h3>
@@ -750,32 +848,15 @@ export default function ExamDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Created By</h3>
-                    <p>{examData.createdBy}</p>
+                    <p>{examData.created_by}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Created At</h3>
-                    <p>{examData.createdAt}</p>
+                    <p>{examData.created_at}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated By</h3>
-                    <p>{examData.updatedBy}</p>
+                    <p>{examData.updated_by}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated At</h3>
-                    <p>{examData.updatedAt}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" onClick={() => setIsEditExamOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Details
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated

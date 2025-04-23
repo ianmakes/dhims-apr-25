@@ -45,6 +45,48 @@ export type Database = {
         }
         Relationships: []
       }
+      exams: {
+        Row: {
+          academic_year: string
+          created_at: string | null
+          created_by: string | null
+          exam_date: string
+          id: string
+          max_score: number
+          name: string
+          passing_score: number
+          term: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string | null
+          created_by?: string | null
+          exam_date: string
+          id?: string
+          max_score: number
+          name: string
+          passing_score: number
+          term: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string | null
+          created_by?: string | null
+          exam_date?: string
+          id?: string
+          max_score?: number
+          name?: string
+          passing_score?: number
+          term?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -71,6 +113,54 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      student_exam_scores: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          exam_id: string | null
+          id: string
+          score: number
+          student_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          exam_id?: string | null
+          id?: string
+          score: number
+          student_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          exam_id?: string | null
+          id?: string
+          score?: number
+          student_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_exam_scores_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_exam_scores_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_letters: {
         Row: {
