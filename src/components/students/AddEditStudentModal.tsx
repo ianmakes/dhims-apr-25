@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import ImageUploadCropper from "./ImageUploadCropper";
+import { StudentFormInput } from "@/types/database";
 
 const SCHOOL_LEVELS = [
   "SNE",
@@ -22,29 +23,6 @@ const CBC_CATEGORIES = [
 ];
 const ACCOMMODATION = ["Boarder", "Day Scholar"];
 const GENDERS = ["Male", "Female"];
-
-type StudentFormInput = {
-  name: string;
-  admission_number: string;
-  dob?: string | null;
-  gender?: string | null;
-  status: string;
-  accommodation_status?: string | null;
-  health_status?: string | null;
-  location?: string | null;
-  description?: string | null;
-  school_level?: string | null;
-  cbc_category?: string | null;
-  current_grade?: string | null;
-  current_academic_year?: number | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  admission_date?: string | null;
-  sponsor_id?: string | null;
-  sponsored_since?: string | null;
-  profile_image_url?: string | null;
-  slug?: string | null;
-};
 
 interface AddEditStudentModalProps {
   open: boolean;
@@ -65,7 +43,28 @@ export function AddEditStudentModal({
 }: AddEditStudentModalProps) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<StudentFormInput>(
-    student || {
+    student ? {
+      name: student.name || "",
+      admission_number: student.admission_number || "",
+      dob: student.dob || "",
+      gender: student.gender || "",
+      status: student.status || "Active",
+      accommodation_status: student.accommodation_status || ACCOMMODATION[0],
+      health_status: student.health_status || "",
+      location: student.location || "",
+      description: student.description || "",
+      school_level: student.school_level || "",
+      cbc_category: student.cbc_category || "",
+      current_grade: student.current_grade || "",
+      current_academic_year: student.current_academic_year || null,
+      height_cm: student.height_cm || null,
+      weight_kg: student.weight_kg || null,
+      admission_date: student.admission_date || "",
+      sponsor_id: student.sponsor_id || "",
+      sponsored_since: student.sponsored_since || "",
+      profile_image_url: student.profile_image_url || "",
+      slug: student.slug || "",
+    } : {
       name: "",
       admission_number: "",
       dob: "",

@@ -143,6 +143,7 @@ export default function Students() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   
   // Fetch students data from Supabase
   const { data: students = [], isLoading, error } = useQuery({
@@ -268,11 +269,13 @@ export default function Students() {
     // Attach academic year id to save record in current academic year
     data.academic_year_id = null; // set this to the currentYear id if available, can be updated on settings integration
     addStudentMutation.mutate(data);
+    setIsAddStudentModalOpen(false);
   };
 
   const handleEditStudent = (data: any) => {
     if (selectedStudent) {
       updateStudentMutation.mutate({ id: selectedStudent.id, data });
+      setIsEditStudentModalOpen(false);
     }
   };
 
@@ -462,7 +465,7 @@ export default function Students() {
         open={isAddStudentModalOpen}
         onOpenChange={setIsAddStudentModalOpen}
         onSubmit={handleAddStudent}
-        isLoading={addStudentMutation.isLoading}
+        isLoading={addStudentMutation.isPending}
       />
 
       {/* Edit Student Modal */}
@@ -472,7 +475,7 @@ export default function Students() {
           onOpenChange={setIsEditStudentModalOpen}
           student={selectedStudent as any}
           onSubmit={handleEditStudent}
-          isLoading={updateStudentMutation.isLoading}
+          isLoading={updateStudentMutation.isPending}
         />
       )}
 
