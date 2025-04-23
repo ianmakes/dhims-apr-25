@@ -1,3 +1,4 @@
+
 // Type definitions for DHIMS
 
 // User roles type
@@ -163,4 +164,34 @@ export interface ThemeSettings {
   secondaryColor: string;
   accentColor: string;
   mode: "light" | "dark" | "system";
+}
+
+// User role with permissions
+export interface UserRoleWithPermissions {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: {
+    students?: { read?: boolean; write?: boolean; delete?: boolean; };
+    sponsors?: { read?: boolean; write?: boolean; delete?: boolean; };
+    exams?: { read?: boolean; write?: boolean; delete?: boolean; };
+    settings?: { read?: boolean; write?: boolean; delete?: boolean; };
+  };
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+}
+
+// Academic year
+export interface AcademicYear {
+  id: string;
+  year_name: string;
+  is_current: boolean;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
 }

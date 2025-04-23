@@ -17,6 +17,8 @@ import Exams from "./pages/Exams";
 import ExamDetail from "./pages/ExamDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import UserRolesSettings from "./pages/settings/UserRolesSettings";
+import AcademicYearsSettings from "./pages/settings/AcademicYearsSettings";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -59,6 +61,8 @@ const App = () => (
                 <Route index element={<Navigate to="/settings/general" replace />} />
                 <Route path="general" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="roles" element={<UserRolesSettings />} />
+                <Route path="academic" element={<AcademicYearsSettings />} />
               </Route>
             </Route>
             
