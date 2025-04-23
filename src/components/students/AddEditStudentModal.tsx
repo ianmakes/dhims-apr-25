@@ -47,7 +47,7 @@ export function AddEditStudentModal({
       name: student.name || "",
       admission_number: student.admission_number || "",
       dob: student.dob || "",
-      gender: student.gender || "",
+      gender: (student.gender as "Male" | "Female") || "Male",
       status: student.status || "Active",
       accommodation_status: student.accommodation_status || ACCOMMODATION[0],
       health_status: student.health_status || "",
@@ -68,7 +68,7 @@ export function AddEditStudentModal({
       name: "",
       admission_number: "",
       dob: "",
-      gender: "",
+      gender: "Male",
       status: "Active",
       accommodation_status: ACCOMMODATION[0],
       health_status: "",
@@ -98,7 +98,7 @@ export function AddEditStudentModal({
     }));
   };
 
-  const handlePickGender = (value: string) => setForm(f => ({ ...f, gender: value }));
+  const handlePickGender = (value: "Male" | "Female") => setForm(f => ({ ...f, gender: value }));
 
   const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
 

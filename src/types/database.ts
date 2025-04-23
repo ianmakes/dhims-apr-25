@@ -12,7 +12,7 @@ export interface StudentFormInput {
   name: string;
   admission_number: string;
   dob?: string | null;
-  gender?: 'Male' | 'Female' | null;
+  gender: 'Male' | 'Female';
   status: string;
   accommodation_status?: string | null;
   health_status?: string | null;
