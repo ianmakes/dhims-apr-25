@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -14,7 +13,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -142,10 +140,6 @@ export default function Students() {
   const [status, setStatus] = useState<string>("all");
   const [sponsored, setSponsored] = useState<string>("all");
   const [academicYear, setAcademicYear] = useState<string>("2024");
-  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
-  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
-  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -265,7 +259,14 @@ export default function Students() {
     return true;
   });
 
+  // Updated Add Student Modal logic
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
   const handleAddStudent = (data: any) => {
+    // Attach academic year id to save record in current academic year
+    data.academic_year_id = null; // set this to the currentYear id if available, can be updated on settings integration
     addStudentMutation.mutate(data);
   };
 
@@ -461,6 +462,7 @@ export default function Students() {
         open={isAddStudentModalOpen}
         onOpenChange={setIsAddStudentModalOpen}
         onSubmit={handleAddStudent}
+        isLoading={addStudentMutation.isLoading}
       />
 
       {/* Edit Student Modal */}
@@ -470,6 +472,7 @@ export default function Students() {
           onOpenChange={setIsEditStudentModalOpen}
           student={selectedStudent as any}
           onSubmit={handleEditStudent}
+          isLoading={updateStudentMutation.isLoading}
         />
       )}
 

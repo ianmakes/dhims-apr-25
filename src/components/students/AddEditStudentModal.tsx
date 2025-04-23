@@ -1,502 +1,278 @@
-import { useState, useEffect } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StudentFormInput } from "@/types/database";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import ImageUploadCropper from "./ImageUploadCropper";
 
-// Form schema for student
-const studentSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  admission_number: z.string().min(1, {
-    message: "Admission number is required.",
-  }),
-  dob: z.string().optional().nullable(),
-  gender: z.enum(["Male", "Female"]).optional().nullable(),
-  status: z.string({
-    required_error: "Please select a status.",
-  }),
-  current_grade: z.string().optional().nullable(),
-  admission_date: z.string().optional().nullable(),
-  location: z.string().optional().nullable(),
-  description: z.string().optional().nullable(),
-  school_level: z.string().optional().nullable(),
-  cbc_category: z.string().optional().nullable(),
-  current_academic_year: z.coerce.number().optional().nullable(),
-  accommodation_status: z.string().optional().nullable(),
-  health_status: z.string().optional().nullable(),
-  height_cm: z.coerce.number().optional().nullable(),
-  weight_kg: z.coerce.number().optional().nullable(),
-  profile_image_url: z.string().optional().nullable(),
-});
+const SCHOOL_LEVELS = [
+  "SNE",
+  "Pre-Primary (Playgroup, PP1 and PP2)",
+  "Lower Primary (Grade 1-3)",
+  "Upper Primary (Grade 4-6)",
+  "Junior School (Grade 7-9)",
+  "Senior School (Grade 10-12)",
+];
+const CBC_CATEGORIES = [
+  "Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3",
+  "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", 
+  "Grade 10", "Grade 11", "Grade 12", "SNE"
+];
+const ACCOMMODATION = ["Boarder", "Day Scholar"];
+const GENDERS = ["Male", "Female"];
+
+type StudentFormInput = {
+  name: string;
+  admission_number: string;
+  dob?: string | null;
+  gender?: string | null;
+  status: string;
+  accommodation_status?: string | null;
+  health_status?: string | null;
+  location?: string | null;
+  description?: string | null;
+  school_level?: string | null;
+  cbc_category?: string | null;
+  current_grade?: string | null;
+  current_academic_year?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  admission_date?: string | null;
+  sponsor_id?: string | null;
+  sponsored_since?: string | null;
+  profile_image_url?: string | null;
+  slug?: string | null;
+};
 
 interface AddEditStudentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student?: any; // The student object if editing, undefined if adding
+  student?: Partial<StudentFormInput>;
   onSubmit: (data: StudentFormInput) => void;
+  isLoading?: boolean;
 }
+
+const STEP_TITLES = ["Basic Info", "Academic Info", "Additional Info"];
 
 export function AddEditStudentModal({
   open,
   onOpenChange,
   student,
   onSubmit,
+  isLoading,
 }: AddEditStudentModalProps) {
-  const [activeTab, setActiveTab] = useState("basic");
-  const isEditing = !!student;
-
-  // Form with validation
-  const form = useForm<z.infer<typeof studentSchema>>({
-    resolver: zodResolver(studentSchema),
-    defaultValues: {
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState<StudentFormInput>(
+    student || {
       name: "",
       admission_number: "",
       dob: "",
-      gender: null,
+      gender: "",
       status: "Active",
-      current_grade: "",
-      admission_date: "",
+      accommodation_status: ACCOMMODATION[0],
+      health_status: "",
       location: "",
       description: "",
       school_level: "",
       cbc_category: "",
-      current_academic_year: new Date().getFullYear(),
-      accommodation_status: "",
-      health_status: "",
+      current_grade: "",
+      current_academic_year: null,
       height_cm: null,
       weight_kg: null,
+      admission_date: "",
+      sponsor_id: "",
+      sponsored_since: "",
       profile_image_url: "",
-    },
-  });
-
-  // Update form values when student data changes
-  useEffect(() => {
-    if (student) {
-      // Format date fields for the form
-      const formattedStudent = {
-        ...student,
-        dob: student.dob ? new Date(student.dob).toISOString().split('T')[0] : null,
-        admission_date: student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : null,
-      };
-      
-      // Reset form with student data
-      form.reset(formattedStudent);
+      slug: "",
     }
-  }, [student, form]);
+  );
+  // Ensure modal has a fixed height for all steps
+  const containerFixedHeight = "h-[500px]";
 
-  const handleFormSubmit = (data: z.infer<typeof studentSchema>) => {
-    onSubmit(data as StudentFormInput);
-    onOpenChange(false);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handlePickGender = (value: string) => setForm(f => ({ ...f, gender: value }));
+
+  const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
+
+  const next = () => setStep((s) => Math.min(2, s + 1));
+  const prev = () => setStep((s) => Math.max(0, s - 1));
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    onSubmit(form);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Student" : "Add New Student"}</DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update the student's information."
-              : "Enter the details of the new student."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="academic">Academic</TabsTrigger>
-                <TabsTrigger value="additional">Additional</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="basic" className="space-y-4 pt-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="admission_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Admission Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. STU001" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                            <SelectItem value="Graduated">Graduated</SelectItem>
-                            <SelectItem value="Transferred">Transferred</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+      <DialogContent className="max-w-lg">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{student ? "Edit Student" : "Add Student"}</DialogTitle>
+            <div className="flex justify-center gap-4 my-2">
+              {STEP_TITLES.map((title, i) => (
+                <span key={i} className={`text-xs font-medium ${i === step ? "text-primary underline" : "text-muted-foreground"}`}>
+                  {title}
+                </span>
+              ))}
+            </div>
+          </DialogHeader>
+          <div className={`overflow-y-auto ${containerFixedHeight} transition-all px-2 pt-2`}>
+            {step === 0 && (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="admission_number">Admission Number</Label>
+                  <Input name="admission_number" value={form.admission_number} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input name="name" value={form.name} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="dob">Date of Birth</Label>
+                  <Input name="dob" type="date" value={form.dob ?? ""} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="gender">Gender</Label>
+                  <Select value={form.gender || ""} onValueChange={handlePickGender}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDERS.map(g => (
+                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="profile_image_url">Profile Image</Label>
+                  <ImageUploadCropper
+                    value={form.profile_image_url || ""}
+                    onChange={handleImageChange}
                   />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="dob"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date of Birth</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              </div>
+            )}
+            {step === 1 && (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="school_level">School Level</Label>
+                  <Select value={form.school_level || ""} onValueChange={v => setForm(f => ({...f, school_level: v}))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SCHOOL_LEVELS.map((l) => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Nairobi, Kenya" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormDescription>
-                        The student's home location or address
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="profile_image_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Profile Image URL</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://example.com/image.jpg" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormDescription>
-                        URL to the student's profile image
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-              
-              <TabsContent value="academic" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="current_grade"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Grade</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Grade 5" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="admission_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Admission Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div>
+                  <Label htmlFor="cbc_category">CBC Category</Label>
+                  <Select value={form.cbc_category || ""} onValueChange={v => setForm(f => ({...f, cbc_category: v}))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select CBC" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CBC_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="school_level"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>School Level</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select school level" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Primary">Primary</SelectItem>
-                            <SelectItem value="Secondary">Secondary</SelectItem>
-                            <SelectItem value="College">College</SelectItem>
-                            <SelectItem value="University">University</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="cbc_category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CBC Category</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select CBC category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="PP1">PP1</SelectItem>
-                            <SelectItem value="PP2">PP2</SelectItem>
-                            <SelectItem value="Grade 1">Grade 1</SelectItem>
-                            <SelectItem value="Grade 2">Grade 2</SelectItem>
-                            <SelectItem value="Grade 3">Grade 3</SelectItem>
-                            <SelectItem value="Grade 4">Grade 4</SelectItem>
-                            <SelectItem value="Grade 5">Grade 5</SelectItem>
-                            <SelectItem value="Grade 6">Grade 6</SelectItem>
-                            <SelectItem value="Junior Secondary">Junior Secondary</SelectItem>
-                            <SelectItem value="Senior Secondary">Senior Secondary</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div>
+                  <Label htmlFor="current_grade">Current Grade</Label>
+                  <Input name="current_grade" value={form.current_grade || ""} onChange={handleChange} />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="current_academic_year"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Academic Year</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="accommodation_status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Accommodation Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select accommodation" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Boarding">Boarding</SelectItem>
-                            <SelectItem value="Day Scholar">Day Scholar</SelectItem>
-                            <SelectItem value="Hostel">Hostel</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div>
+                  <Label htmlFor="admission_date">Admission Date</Label>
+                  <Input name="admission_date" type="date" value={form.admission_date || ""} onChange={handleChange} />
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="additional" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="health_status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Health Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select health status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Healthy">Healthy</SelectItem>
-                            <SelectItem value="Chronic Condition">Chronic Condition</SelectItem>
-                            <SelectItem value="Disability">Disability</SelectItem>
-                            <SelectItem value="Special Needs">Special Needs</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={form.status} onValueChange={v => setForm(f => ({...f, status: v}))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="Graduated">Graduated</SelectItem>
+                      <SelectItem value="Transferred">Transferred</SelectItem>
+                      <SelectItem value="Suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="height_cm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Height (cm)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="weight_kg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Weight (kg)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              </div>
+            )}
+            {step === 2 && (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="accommodation_status">Accommodation</Label>
+                  <Select value={form.accommodation_status || ""} onValueChange={v => setForm(f => ({...f, accommodation_status: v}))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select accommodation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACCOMMODATION.map((a) => (
+                        <SelectItem key={a} value={a}>{a}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter a description of the student..."
-                          className="resize-none h-32"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Provide any additional information about the student
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-            </Tabs>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                <div>
+                  <Label htmlFor="health_status">Health Status</Label>
+                  <Input name="health_status" value={form.health_status || ""} onChange={handleChange} />
+                </div>
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input name="location" value={form.location || ""} onChange={handleChange} />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Input name="description" value={form.description || ""} onChange={handleChange} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="height_cm">Height (cm)</Label>
+                    <Input name="height_cm" type="number" value={form.height_cm || ""} onChange={handleChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="weight_kg">Weight (kg)</Label>
+                    <Input name="weight_kg" type="number" value={form.weight_kg || ""} onChange={handleChange} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {step > 0 && (
+              <Button type="button" variant="outline" onClick={prev}>
+                Previous
               </Button>
-              <Button type="submit">
-                {isEditing ? "Update Student" : "Add Student"}
+            )}
+            {step < 2 && (
+              <Button type="button" onClick={next}>
+                Next
               </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            )}
+            {step === 2 && (
+              <Button type="submit" className="ml-auto" disabled={isLoading}>
+                {isLoading ? "Saving..." : student ? "Update Student" : "Add Student"}
+              </Button>
+            )}
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
