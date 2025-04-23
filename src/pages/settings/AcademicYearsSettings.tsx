@@ -1,9 +1,9 @@
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import type { AcademicYear } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,21 +54,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Edit, Trash2, Star, StarOff, AlertTriangle } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Star, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
-// Types
-interface AcademicYear {
-  id: string;
-  year_name: string;
-  is_current: boolean;
-  start_date: string;
-  end_date: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Form Schema
 const academicYearSchema = z.object({
   year_name: z.string().min(1, { message: "Academic year name is required" }).regex(/^\d{4}-\d{4}$/, {
     message: "Year must be in format YYYY-YYYY (e.g. 2023-2024)",
@@ -94,7 +82,7 @@ export default function AcademicYearsSettings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [yearToSetCurrent, setYearToSetCurrent] = useState<AcademicYear | null>(null);
-  
+
   const form = useForm<AcademicYearFormValues>({
     resolver: zodResolver(academicYearSchema),
     defaultValues: {
@@ -105,12 +93,10 @@ export default function AcademicYearsSettings() {
     },
   });
 
-  // Fetch academic years on component mount
   useEffect(() => {
     fetchAcademicYears();
   }, []);
 
-  // Reset form when dialog is opened or closed
   useEffect(() => {
     if (!isDialogOpen) {
       setEditingYear(null);
@@ -123,7 +109,6 @@ export default function AcademicYearsSettings() {
     }
   }, [isDialogOpen, form]);
 
-  // Set form values when editing an academic year
   useEffect(() => {
     if (editingYear) {
       form.reset({
@@ -138,16 +123,14 @@ export default function AcademicYearsSettings() {
   const fetchAcademicYears = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("academic_years")
-        .select("*")
-        .order("year_name", { ascending: false });
+      const { data: academicYearsData, error } = await supabase
+        .from('academic_years')
+        .select('*')
+        .order('year_name');
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      setAcademicYears(data || []);
+      setAcademicYears(academicYearsData as AcademicYear[]);
     } catch (error: any) {
       console.error("Error fetching academic years:", error);
       toast({
@@ -165,9 +148,8 @@ export default function AcademicYearsSettings() {
       let response;
 
       if (editingYear) {
-        // Update existing academic year
         response = await supabase
-          .from("academic_years")
+          .from('academic_years')
           .update({
             year_name: values.year_name,
             is_current: values.is_current,
@@ -175,11 +157,10 @@ export default function AcademicYearsSettings() {
             end_date: values.end_date,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", editingYear.id);
+          .eq('id', editingYear.id);
       } else {
-        // Create new academic year
         response = await supabase
-          .from("academic_years")
+          .from('academic_years')
           .insert([{
             year_name: values.year_name,
             is_current: values.is_current,
@@ -195,7 +176,6 @@ export default function AcademicYearsSettings() {
         description: `Academic year ${values.year_name} has been ${editingYear ? "updated" : "created"} successfully.`,
       });
 
-      // Refresh academic years list
       await fetchAcademicYears();
       setIsDialogOpen(false);
     } catch (error: any) {
@@ -211,9 +191,9 @@ export default function AcademicYearsSettings() {
   const handleDelete = async (academicYear: AcademicYear) => {
     try {
       const { error } = await supabase
-        .from("academic_years")
+        .from('academic_years')
         .delete()
-        .eq("id", academicYear.id);
+        .eq('id', academicYear.id);
 
       if (error) throw error;
 
@@ -238,9 +218,12 @@ export default function AcademicYearsSettings() {
 
     try {
       const { error } = await supabase
-        .from("academic_years")
-        .update({ is_current: true, updated_at: new Date().toISOString() })
-        .eq("id", yearToSetCurrent.id);
+        .from('academic_years')
+        .update({ 
+          is_current: true,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', yearToSetCurrent.id);
 
       if (error) throw error;
 
@@ -262,8 +245,7 @@ export default function AcademicYearsSettings() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return format(date, "PP");
+    return format(new Date(dateString), 'PP');
   };
 
   return (

@@ -1,4 +1,3 @@
-
 // Type definitions for DHIMS
 
 // User roles type
@@ -166,6 +165,19 @@ export interface ThemeSettings {
   mode: "light" | "dark" | "system";
 }
 
+// Academic year interface
+export interface AcademicYear {
+  id: string;
+  year_name: string;
+  is_current: boolean;
+  start_date: string;
+  end_date: string;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+  updated_by?: string;
+}
+
 // User role with permissions
 export interface UserRoleWithPermissions {
   id: string;
@@ -177,19 +189,6 @@ export interface UserRoleWithPermissions {
     exams?: { read?: boolean; write?: boolean; delete?: boolean; };
     settings?: { read?: boolean; write?: boolean; delete?: boolean; };
   };
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-  updated_by?: string;
-}
-
-// Academic year
-export interface AcademicYear {
-  id: string;
-  year_name: string;
-  is_current: boolean;
-  start_date: string;
-  end_date: string;
   created_at: string;
   updated_at: string;
   created_by?: string;

@@ -17,10 +17,9 @@ export function SettingsLayout() {
         </p>
       </div>
       <Tabs value={currentTab} onValueChange={(value) => navigate(`/settings/${value}`)}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="roles">User Roles</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
         </TabsList>
