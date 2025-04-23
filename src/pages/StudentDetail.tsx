@@ -1,24 +1,9 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  BackpackIcon, 
-  BookOpen, 
-  Calendar, 
-  Download,
-  Edit, 
-  FileText,
-  Mail, 
-  MapPin, 
-  Phone, 
-  User, 
-  Users,
-  PlusCircle
-} from "lucide-react";
+import { Edit, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -30,56 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { StudentFormInput } from "@/types/database";
 
-// Mock exam data for the charts (until we have real data)
-const examData = [
-  { term: 'Term 1', Mathematics: 65, English: 70, Science: 55, SocialStudies: 75 },
-  { term: 'Term 2', Mathematics: 70, English: 75, Science: 60, SocialStudies: 80 },
-  { term: 'Term 3', Mathematics: 75, English: 80, Science: 70, SocialStudies: 85 },
-  { term: 'Term 4', Mathematics: 80, English: 85, Science: 75, SocialStudies: 90 },
-];
-
-const gradeColors = {
-  "A": "#4ade80", // green
-  "A-": "#86efac",
-  "B+": "#a3e635",
-  "B": "#facc15", // yellow
-  "B-": "#fde047",
-  "C+": "#fdba74",
-  "C": "#fb923c", // orange
-  "C-": "#f97316",
-  "D+": "#f87171",
-  "D": "#ef4444", // red
-  "D-": "#dc2626",
-  "E": "#b91c1c", // dark red
-};
-
-// Helper function to calculate grade based on score
-const calculateGrade = (score: number) => {
-  if (score >= 80) return "A";
-  if (score >= 75) return "A-";
-  if (score >= 70) return "B+";
-  if (score >= 65) return "B";
-  if (score >= 60) return "B-";
-  if (score >= 55) return "C+";
-  if (score >= 50) return "C";
-  if (score >= 45) return "C-";
-  if (score >= 40) return "D+";
-  if (score >= 35) return "D";
-  if (score >= 30) return "D-";
-  return "E";
-};
-
-// Helper function to get grade category based on score
-const getGradeCategory = (score: number) => {
-  if (score >= 80) return "Exceeding Expectation";
-  if (score >= 50) return "Meeting Expectation";
-  if (score >= 40) return "Approaching Expectation";
-  return "Below Expectation";
-};
-
+// Import components
 import { StudentProfileSidebar } from "@/components/students/StudentProfileSidebar";
 import { StudentDetailsTab } from "@/components/students/StudentDetailsTab";
 import { StudentExamsTab } from "@/components/students/StudentExamsTab";
@@ -157,7 +95,8 @@ export default function StudentDetail() {
 
   const [photos, setPhotos] = useState(getStudentPhotos());
   
-  useEffect(() => {
+  // Update photos when ID changes
+  React.useEffect(() => {
     setPhotos(getStudentPhotos());
   }, [id]);
 
@@ -265,6 +204,15 @@ export default function StudentDetail() {
     );
   }
 
+  // Ensure student data has the correct types for components
+  const typedStudent = {
+    ...student,
+    // Ensure gender is correctly typed as "Male" or "Female"
+    gender: (student.gender === "Male" || student.gender === "Female") 
+      ? student.gender as "Male" | "Female"
+      : "Male" as const // Default to "Male" if it's not a valid value
+  };
+
   return (
     <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
@@ -296,7 +244,7 @@ export default function StudentDetail() {
             />
           </div>
           
-          <StudentProfilePDF student={student} />
+          <StudentProfilePDF student={typedStudent} />
           
           <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
@@ -307,7 +255,7 @@ export default function StudentDetail() {
 
       <div className="grid gap-6 lg:grid-cols-7">
         {/* Student profile sidebar */}
-        <StudentProfileSidebar student={student} formatDate={formatDate} />
+        <StudentProfileSidebar student={typedStudent} formatDate={formatDate} />
 
         {/* Student details tabs */}
         <div className="lg:col-span-5">
@@ -322,14 +270,14 @@ export default function StudentDetail() {
             </TabsList>
             {/* Tabs */}
             <TabsContent value="details">
-              <StudentDetailsTab student={student} formatDate={formatDate} />
+              <StudentDetailsTab student={typedStudent} formatDate={formatDate} />
             </TabsContent>
             <TabsContent value="exams">
               <StudentExamsTab studentName={student.name} />
             </TabsContent>
             <TabsContent value="sponsor">
               <StudentSponsorTab
-                student={student}
+                student={typedStudent}
                 formatDate={formatDate}
                 navigate={navigate}
                 toast={toast}
@@ -372,8 +320,8 @@ export default function StudentDetail() {
             // Ensure gender is correctly typed as "Male" or "Female"
             gender:
               student.gender === "Male" || student.gender === "Female"
-                ? student.gender
-                : "Male",
+                ? student.gender as "Male" | "Female"
+                : "Male" as const,
           }}
           onSubmit={handleEditStudent}
         />
