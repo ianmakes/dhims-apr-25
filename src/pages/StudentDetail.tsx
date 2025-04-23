@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -96,7 +95,7 @@ export default function StudentDetail() {
   const [photos, setPhotos] = useState(getStudentPhotos());
   
   // Update photos when ID changes
-  React.useEffect(() => {
+  useEffect(() => {
     setPhotos(getStudentPhotos());
   }, [id]);
 
