@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +31,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { StudentFormInput } from "@/types/database";
 
 // Mock exam data for the charts (until we have real data)
 const examData = [
@@ -827,42 +827,9 @@ export default function StudentDetail() {
         <AddEditStudentModal
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
-          student={student}
-          onSubmit={handleEditStudent}
-        />
-      )}
-
-      {/* Add Photo Modal */}
-      <AddPhotoModal
-        open={isAddPhotoModalOpen}
-        onOpenChange={setIsAddPhotoModalOpen}
-        studentId={id || ''}
-        onSuccess={() => {
-          // Update photos list
-          setPhotos(getStudentPhotos());
-        }}
-      />
-
-      {/* Add Letter Modal */}
-      <AddLetterModal
-        open={isAddLetterModalOpen}
-        onOpenChange={setIsAddLetterModalOpen}
-        studentId={id || ''}
-        onSuccess={() => {
-          // Refresh letters
-        }}
-      />
-
-      {/* Add Timeline Event Modal */}
-      <AddTimelineEventModal
-        open={isAddTimelineEventModalOpen}
-        onOpenChange={setIsAddTimelineEventModalOpen}
-        studentId={id || ''}
-        onSuccess={() => {
-          // Refresh timeline events
-          refetchTimeline();
-        }}
-      />
-    </div>
-  );
-}
+          student={{
+            ...student,
+            // Ensure gender is correctly typed as "Male" or "Female"
+            gender: (student.gender === "Male" || student.gender === "Female") 
+              ? student.gender 
+              : "Male" // Default to "Male" if it's not a valid value
