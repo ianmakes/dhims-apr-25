@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +11,7 @@ import {
   Info, 
   Save, 
   Trash2, 
+  Upload,
   User, 
   X,
   Search 
@@ -39,6 +39,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { 
   BarChart, 
   Bar, 
@@ -56,27 +67,29 @@ import {
 } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { ExamWithScores } from "@/types/exam";
+import { ExamWithScores, StudentForExam, ExamGrade } from "@/types/exam";
+import { ImportStudentScoresModal } from "@/components/exams/ImportStudentScoresModal";
 
 // Get grade based on score percentage
-const getGrade = (score: number): string => {
-  if (score >= 80) return "Exceeding Expectation";
-  if (score >= 50) return "Meeting Expectation";
-  if (score >= 40) return "Approaching Expectation";
-  return "Below Expectation";
+const getGrade = (score: number): ExamGrade => {
+  if (score >= 80) return ExamGrade.EXCEEDING;
+  if (score >= 50) return ExamGrade.MEETING;
+  if (score >= 40) return ExamGrade.APPROACHING;
+  return ExamGrade.BELOW;
 };
 
 // Get color based on grade
 const getGradeColor = (grade: string): string => {
   switch (grade) {
-    case "Exceeding Expectation":
+    case ExamGrade.EXCEEDING:
       return "bg-green-100 text-green-800 hover:bg-green-200";
-    case "Meeting Expectation":
+    case ExamGrade.MEETING:
       return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-    case "Approaching Expectation":
+    case ExamGrade.APPROACHING:
       return "bg-amber-100 text-amber-800 hover:bg-amber-200";
-    case "Below Expectation":
+    case ExamGrade.BELOW:
       return "bg-red-100 text-red-800 hover:bg-red-200";
     default:
       return "bg-gray-100 text-gray-800 hover:bg-gray-200";
@@ -90,10 +103,13 @@ export default function ExamDetail() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<{ [key: string]: number }>({});
+  const [editData, setEditData] = useState<{ [key: string]: number | boolean }>({});
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [examData, setExamData] = useState<any>(null);
+  const [examData, setExamData] = useState<ExamWithScores | null>(null);
+  const [allStudents, setAllStudents] = useState<StudentForExam[]>([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Fetch exam details with scores
   const { data: examDataQuery, isLoading: isLoadingExam } = useQuery({
@@ -106,6 +122,7 @@ export default function ExamDetail() {
           student_exam_scores (
             id,
             score,
+            did_not_sit,
             student:students (
               id,
               name,
@@ -121,6 +138,21 @@ export default function ExamDetail() {
     }
   });
 
+  // Fetch all students for the student scores tab
+  const { data: studentsData, isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students-for-exam'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, name, current_grade')
+        .eq('status', 'Active')
+        .order('name');
+
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   // Effect to update local state when query data is available
   useEffect(() => {
     if (examDataQuery) {
@@ -128,17 +160,89 @@ export default function ExamDetail() {
     }
   }, [examDataQuery]);
 
+  // Effect to merge students with their scores
+  useEffect(() => {
+    if (studentsData && examData?.student_exam_scores) {
+      const scoreMap = new Map(
+        examData.student_exam_scores.map(score => [
+          score.student?.id, 
+          { 
+            examScoreId: score.id, 
+            score: score.score,
+            didNotSit: score.did_not_sit || false
+          }
+        ])
+      );
+      
+      const mergedStudents = studentsData.map(student => {
+        const scoreData = scoreMap.get(student.id);
+        return {
+          id: student.id,
+          name: student.name,
+          current_grade: student.current_grade,
+          hasScore: !!scoreData,
+          examScoreId: scoreData?.examScoreId,
+          score: scoreData?.score || null,
+          didNotSit: scoreData?.didNotSit || false
+        };
+      });
+      
+      setAllStudents(mergedStudents);
+      
+      // Initialize edit data with current scores
+      if (isEditing) {
+        const newEditData: { [key: string]: number | boolean } = {};
+        mergedStudents.forEach(student => {
+          if (student.hasScore) {
+            newEditData[`score_${student.id}`] = student.score || 0;
+            newEditData[`dns_${student.id}`] = student.didNotSit || false;
+          }
+        });
+        setEditData(newEditData);
+      }
+    }
+  }, [studentsData, examData, isEditing]);
+
   // Save scores mutation
   const updateScores = useMutation({
-    mutationFn: async (scores: { id: string, score: number }[]) => {
-      const promises = scores.map(({ id, score }) => 
-        supabase
-          .from('student_exam_scores')
-          .update({ score })
-          .eq('id', id)
-      );
+    mutationFn: async (studentScores: Array<{ studentId: string, score: number, didNotSit: boolean }>) => {
+      const scoresToUpsert = studentScores.map(({ studentId, score, didNotSit }) => {
+        const existingScore = allStudents.find(s => s.id === studentId);
+        return {
+          id: existingScore?.examScoreId, // Use existing ID if available, otherwise undefined for insert
+          exam_id: id,
+          student_id: studentId,
+          score,
+          did_not_sit: didNotSit
+        };
+      });
 
-      await Promise.all(promises);
+      // Filter out scores that haven't changed
+      const changedScores = scoresToUpsert.filter(newScore => {
+        const existingStudent = allStudents.find(s => s.id === newScore.student_id);
+        if (!existingStudent?.hasScore) return true; // New score
+        return existingStudent.score !== newScore.score || existingStudent.didNotSit !== newScore.did_not_sit;
+      });
+
+      if (changedScores.length === 0) {
+        return { message: "No changes detected" };
+      }
+
+      // Clean up scores for upsert (remove undefined IDs)
+      const cleanScores = changedScores.map(score => {
+        if (score.id === undefined) {
+          const { id, ...rest } = score;
+          return rest;
+        }
+        return score;
+      });
+
+      const { error } = await supabase
+        .from('student_exam_scores')
+        .upsert(cleanScores);
+
+      if (error) throw error;
+      return { message: `Updated ${changedScores.length} student scores` };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exam', id] });
@@ -214,57 +318,111 @@ export default function ExamDetail() {
     }
   });
 
+  // Export scores to CSV
+  const exportScores = () => {
+    if (!examData || !allStudents.length) return;
+    
+    // Prepare CSV content
+    const headers = ['Student ID', 'Student Name', 'Grade Level', 'Score', 'Status', 'Performance'];
+    const rows = allStudents.map(student => {
+      const hasScore = student.hasScore;
+      const score = student.score;
+      const didNotSit = student.didNotSit;
+      const status = didNotSit ? 'Did Not Sit' : (hasScore ? 'Present' : 'Not Assessed');
+      const performance = didNotSit ? 'N/A' : (hasScore && score !== null ? getGrade(score) : 'N/A');
+      
+      return [
+        student.id,
+        student.name,
+        student.current_grade || 'N/A',
+        didNotSit ? 'DNS' : (score !== null ? score : ''),
+        status,
+        performance
+      ];
+    });
+    
+    // Convert to CSV
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${examData.name.replace(/\s+/g, '_')}_scores.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoadingExam || !examData) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-64">
+      <div className="text-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p>Loading exam details...</p>
+      </div>
+    </div>;
   }
 
-  const students = examData.student_exam_scores.map((score: any) => ({
-    id: score.id,
-    studentId: score.student.id,
-    name: score.student.name,
-    grade: score.student.current_grade,
-    score: score.score,
-    status: getGrade(score.score)
+  // Prepare student data for display
+  const studentsWithScores = allStudents.map(student => ({
+    id: student.id,
+    studentId: student.id,
+    name: student.name,
+    grade: student.current_grade || 'N/A',
+    score: student.score,
+    didNotSit: student.didNotSit,
+    status: student.didNotSit ? 'Did Not Sit' : getGrade(student.score || 0)
   }));
 
   // Calculate statistics
-  const scores = students.map((s: any) => s.score);
-  const averageScore = scores.length > 0 ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0;
+  const scoredStudents = studentsWithScores.filter(s => s.score !== null && !s.didNotSit);
+  const scores = scoredStudents.map((s) => s.score || 0);
+  const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
   const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
   const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
-  const passRate = scores.length > 0 ? (students.filter((s: any) => s.score >= examData.passing_score).length / students.length) * 100 : 0;
+  const passRate = scores.length > 0 ? (scoredStudents.filter((s) => (s.score || 0) >= examData.passing_score).length / scores.length) * 100 : 0;
 
   // Performance distribution data
   const performanceData = [
     {
-      name: "Exceeding Expectation",
-      value: students.filter((s: any) => s.score >= 80).length,
+      name: ExamGrade.EXCEEDING,
+      value: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 80).length,
       color: "#4ade80"
     },
     {
-      name: "Meeting Expectation",
-      value: students.filter((s: any) => s.score >= 50 && s.score < 80).length,
+      name: ExamGrade.MEETING,
+      value: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 50 && (s.score || 0) < 80).length,
       color: "#3b82f6"
     },
     {
-      name: "Approaching Expectation",
-      value: students.filter((s: any) => s.score >= 40 && s.score < 50).length,
+      name: ExamGrade.APPROACHING,
+      value: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 40 && (s.score || 0) < 50).length,
       color: "#f59e0b"
     },
     {
-      name: "Below Expectation",
-      value: students.filter((s: any) => s.score < 40).length,
+      name: ExamGrade.BELOW,
+      value: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) < 40).length,
       color: "#ef4444"
+    },
+    {
+      name: "Did Not Sit",
+      value: studentsWithScores.filter((s) => s.didNotSit).length,
+      color: "#94a3b8"
     }
   ];
 
   // Score distribution data
   const scoreDistribution = [
-    { range: "0-20", count: students.filter((s: any) => s.score >= 0 && s.score <= 20).length },
-    { range: "21-40", count: students.filter((s: any) => s.score > 20 && s.score <= 40).length },
-    { range: "41-60", count: students.filter((s: any) => s.score > 40 && s.score <= 60).length },
-    { range: "61-80", count: students.filter((s: any) => s.score > 60 && s.score <= 80).length },
-    { range: "81-100", count: students.filter((s: any) => s.score > 80 && s.score <= 100).length }
+    { range: "0-20", count: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 0 && (s.score || 0) <= 20).length },
+    { range: "21-40", count: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) > 20 && (s.score || 0) <= 40).length },
+    { range: "41-60", count: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) > 40 && (s.score || 0) <= 60).length },
+    { range: "61-80", count: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) > 60 && (s.score || 0) <= 80).length },
+    { range: "81-100", count: studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) > 80 && (s.score || 0) <= 100).length },
+    { range: "Did Not Sit", count: studentsWithScores.filter((s) => s.didNotSit).length }
   ];
 
   const handleEditExam = (e: React.FormEvent) => {
@@ -284,33 +442,53 @@ export default function ExamDetail() {
     setExamData((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  const handleScoreChange = (id: string, value: string) => {
+  const handleScoreChange = (studentId: string, value: string) => {
     const numValue = parseInt(value, 10) || 0;
     const clampedValue = Math.min(Math.max(numValue, 0), examData.max_score);
-    setEditData((prev) => ({ ...prev, [id]: clampedValue }));
+    setEditData((prev) => ({ 
+      ...prev, 
+      [`score_${studentId}`]: clampedValue,
+      // If score is entered, automatically set didNotSit to false
+      [`dns_${studentId}`]: false
+    }));
+  };
+
+  const handleDidNotSitChange = (studentId: string, checked: boolean) => {
+    setEditData((prev) => ({ 
+      ...prev, 
+      [`dns_${studentId}`]: checked,
+      // If didNotSit is checked, automatically set score to 0
+      [`score_${studentId}`]: checked ? 0 : (prev[`score_${studentId}`] || 0)
+    }));
   };
 
   const saveScores = () => {
-    const scoresToUpdate = Object.entries(editData).map(([studentExamScoreId, score]) => ({
-      id: studentExamScoreId,
-      score: score
-    }));
+    const scoresToUpdate = allStudents.map(student => {
+      const scoreKey = `score_${student.id}`;
+      const dnsKey = `dns_${student.id}`;
+      
+      const score = editData[scoreKey] !== undefined ? Number(editData[scoreKey]) : (student.score || 0);
+      const didNotSit = editData[dnsKey] !== undefined ? Boolean(editData[dnsKey]) : student.didNotSit;
+      
+      return {
+        studentId: student.id,
+        score,
+        didNotSit
+      };
+    });
+    
     updateScores.mutate(scoresToUpdate);
   };
 
   const cancelEditing = () => {
-    // Reset edit data to current scores
-    const resetEditData = students.reduce((acc: any, student: any) => {
-      acc[student.id] = student.score;
-      return acc;
-    }, {} as { [key: string]: number });
-    setEditData(resetEditData);
+    // Reset edit data
+    setEditData({});
     setIsEditing(false);
   };
 
   // Filter students based on search term
-  const filteredStudents = students.filter(
-    (student: any) => student.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStudents = studentsWithScores.filter(
+    (student) => student.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -428,10 +606,33 @@ export default function ExamDetail() {
               </form>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" onClick={() => deleteExam.mutate()}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
+          
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to delete this exam?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the exam "{examData.name}" and all associated student scores.
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => deleteExam.mutate()}
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                >
+                  Delete Exam
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -466,7 +667,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{highestScore}%</div>
                 <p className="text-xs text-muted-foreground">
-                  By {students.find((s: any) => s.score === highestScore)?.name}
+                  By {studentsWithScores.find((s) => s.score === highestScore)?.name || "N/A"}
                 </p>
               </CardContent>
             </Card>
@@ -478,7 +679,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{lowestScore}%</div>
                 <p className="text-xs text-muted-foreground">
-                  By {students.find((s: any) => s.score === lowestScore)?.name}
+                  By {studentsWithScores.find((s) => s.score === lowestScore)?.name || "N/A"}
                 </p>
               </CardContent>
             </Card>
@@ -490,7 +691,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">
-                  {students.filter((s: any) => s.score >= examData.passing_score).length} out of {students.length} students
+                  {studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= examData.passing_score).length} out of {scores.length} students
                 </p>
               </CardContent>
             </Card>
@@ -568,13 +769,22 @@ export default function ExamDetail() {
               <div className="flex gap-2">
                 {isEditing ? (
                   <>
-                    <Button variant="outline" onClick={cancelEditing}>
+                    <Button variant="outline" onClick={cancelEditing} disabled={updateScores.isPending}>
                       <X className="mr-2 h-4 w-4" />
                       Cancel
                     </Button>
-                    <Button onClick={saveScores}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Scores
+                    <Button onClick={saveScores} disabled={updateScores.isPending}>
+                      {updateScores.isPending ? (
+                        <>
+                          <span className="animate-spin mr-2">⚬</span>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Scores
+                        </>
+                      )}
                     </Button>
                   </>
                 ) : (
@@ -586,8 +796,8 @@ export default function ExamDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between mb-4">
-                <div className="relative w-full max-w-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                <div className="relative w-full sm:max-w-sm">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
@@ -597,10 +807,16 @@ export default function ExamDetail() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button variant="outline" onClick={exportScores}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import
+                  </Button>
+                </div>
               </div>
 
               <div className="rounded-md border">
@@ -610,256 +826,28 @@ export default function ExamDetail() {
                       <TableHead>ID</TableHead>
                       <TableHead>Student Name</TableHead>
                       <TableHead>Grade Level</TableHead>
-                      <TableHead className="text-center">Score (out of {examData.max_score})</TableHead>
+                      <TableHead className="text-center">Score</TableHead>
+                      <TableHead className="text-center">Did Not Sit</TableHead>
                       <TableHead className="text-center">Performance</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.length === 0 ? (
+                    {isLoadingStudents ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <div className="flex justify-center items-center">
+                            <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
+                            Loading students...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredStudents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No students found. Try a different search.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredStudents.map((student: any) => (
+                      filteredStudents.map((student) => (
                         <TableRow key={student.id}>
-                          <TableCell>{student.studentId}</TableCell>
-                          <TableCell className="font-medium">{student.name}</TableCell>
-                          <TableCell>{student.grade}</TableCell>
-                          <TableCell className="text-center">
-                            {isEditing ? (
-                              <Input
-                                type="number"
-                                value={editData[student.id] || student.score}
-                                onChange={(e) => handleScoreChange(student.id, e.target.value)}
-                                className="w-20 mx-auto text-center"
-                                min={0}
-                                max={examData.max_score}
-                              />
-                            ) : (
-                              <span>{student.score}</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={getGradeColor(student.status)}>
-                              {student.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Distribution</CardTitle>
-                <CardDescription>
-                  Number of students in each performance category
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={performanceData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="value" name="Students" fill="#3b82f6" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Score Frequency</CardTitle>
-                <CardDescription>
-                  Distribution of student scores across ranges
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={scoreDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="range" />
-                      <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="count" name="Number of Students" stroke="#3b82f6" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Performance Analysis</CardTitle>
-              <CardDescription>
-                Understanding performance distribution and improvement areas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Exceeding Expectation (80-100%)</h3>
-                  <p className="text-2xl font-bold text-green-600">{performanceData[0].value} students</p>
-                  <p className="text-sm text-muted-foreground">
-                    {students.length > 0 ? ((performanceData[0].value / students.length) * 100).toFixed(0) : 0}% of class
-                  </p>
-                </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Meeting Expectation (50-79%)</h3>
-                  <p className="text-2xl font-bold text-blue-600">{performanceData[1].value} students</p>
-                  <p className="text-sm text-muted-foreground">
-                    {students.length > 0 ? ((performanceData[1].value / students.length) * 100).toFixed(0) : 0}% of class
-                  </p>
-                </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Below Expectation (0-49%)</h3>
-                  <p className="text-2xl font-bold text-red-600">{performanceData[2].value + performanceData[3].value} students</p>
-                  <p className="text-sm text-muted-foreground">
-                    {students.length > 0 ? (((performanceData[2].value + performanceData[3].value) / students.length) * 100).toFixed(0) : 0}% of class
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-muted p-4 rounded-lg">
-                <h3 className="font-medium mb-2">Performance Insights</h3>
-                <ul className="space-y-2 list-disc pl-5">
-                  <li>
-                    <span className="font-medium">{students.length > 0 ? ((performanceData[0].value / students.length) * 100).toFixed(0) : 0}% of students</span> achieved excellent results, exceeding expectations for this exam.
-                  </li>
-                  <li>
-                    <span className="font-medium">{students.length > 0 ? ((performanceData[1].value / students.length) * 100).toFixed(0) : 0}% of students</span> met expectations, demonstrating adequate understanding of the material.
-                  </li>
-                  <li>
-                    <span className="font-medium">{students.length > 0 ? (((performanceData[2].value + performanceData[3].value) / students.length) * 100).toFixed(0) : 0}% of students</span> performed below expectations, indicating a need for additional support in specific areas.
-                  </li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Details Tab */}
-        <TabsContent value="details" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Exam Information</CardTitle>
-              <CardDescription>
-                Detailed information about this exam
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Name</h3>
-                  <p>{examData.name}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Academic Year</h3>
-                  <p>{examData.academic_year}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Term</h3>
-                  <p>{examData.term}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Exam Date</h3>
-                  <p>{examData.exam_date}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Maximum Score</h3>
-                  <p>{examData.max_score}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Passing Score</h3>
-                  <p>{examData.passing_score}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Students Taken</h3>
-                  <p>{students.length}</p>
-                </div>
-              </div>
-
-              <Separator />
-              
-              <div>
-                <h3 className="text-sm font-medium mb-2">Performance Categories</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between p-2 bg-green-50 border border-green-100 rounded-md">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                      <span>Exceeding Expectation</span>
-                    </div>
-                    <span>80% - 100%</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-blue-50 border border-blue-100 rounded-md">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                      <span>Meeting Expectation</span>
-                    </div>
-                    <span>50% - 79%</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-amber-50 border border-amber-100 rounded-md">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
-                      <span>Approaching Expectation</span>
-                    </div>
-                    <span>40% - 49%</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-red-50 border border-red-100 rounded-md">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                      <span>Below Expectation</span>
-                    </div>
-                    <span>0% - 39%</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-              
-              <div>
-                <h3 className="text-sm font-medium mb-2">Audit Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Created By</h3>
-                    <p>{examData.created_by || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Created At</h3>
-                    <p>{examData.created_at ? new Date(examData.created_at).toLocaleString() : 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated By</h3>
-                    <p>{examData.updated_by || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated At</h3>
-                    <p>{examData.updated_at ? new Date(examData.updated_at).toLocaleString() : 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+                          <
