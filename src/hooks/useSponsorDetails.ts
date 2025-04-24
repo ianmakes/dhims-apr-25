@@ -6,6 +6,21 @@ import { toast } from "sonner";
 export const useSponsorDetails = (sponsorId: string) => {
   const queryClient = useQueryClient();
 
+  // First get the current academic year
+  const { data: currentAcademicYear } = useQuery({
+    queryKey: ["current-academic-year"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("academic_years")
+        .select("*")
+        .eq("is_current", true)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: sponsor, isLoading: isLoadingSponsor } = useQuery({
     queryKey: ["sponsors", sponsorId],
     queryFn: async () => {
