@@ -1,6 +1,7 @@
+
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSponsorDetails } from "@/hooks/useSponsorDetails";
-import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
+import { AddEditSponsorModal, SponsorFormValues } from "@/components/sponsors/AddEditSponsorModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Edit, Mail, MapPin, Phone, Plus, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Student } from "@/types";
-import { useSponsors } from "@/hooks/useSponsors";
 import { useState } from "react";
+import { useSponsors } from "@/hooks/useSponsors";
 
 export default function SponsorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +19,7 @@ export default function SponsorDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { sponsor, availableStudents, isLoading, assignStudents, removeStudent } = useSponsorDetails(id!);
   const { updateSponsor } = useSponsors();
+  const { toast } = useToast();
 
   const handleEditSponsor = (data: SponsorFormValues) => {
     if (id) {
@@ -60,10 +61,10 @@ export default function SponsorDetail() {
   };
 
   const toggleStudentSelection = (studentId: string, selectedStudentIds: string[], setSelectedStudentIds: (ids: string[]) => void) => {
-    setSelectedStudentIds(prev =>
-      prev.includes(studentId)
-        ? prev.filter(id => id !== studentId)
-        : [...prev, studentId]
+    setSelectedStudentIds(
+      selectedStudentIds.includes(studentId)
+        ? selectedStudentIds.filter(id => id !== studentId)
+        : [...selectedStudentIds, studentId]
     );
   };
 
@@ -73,6 +74,20 @@ export default function SponsorDetail() {
     if (assignTab && 'click' in assignTab) {
       assignTab.click();
     }
+  };
+
+  // Map database fields to form fields
+  const sponsorForForm = {
+    firstName: sponsor.first_name,
+    lastName: sponsor.last_name,
+    email: sponsor.email,
+    email2: sponsor.email2 || "",
+    phone: sponsor.phone || "",
+    address: sponsor.address || "",
+    country: sponsor.country || "",
+    startDate: sponsor.start_date,
+    status: sponsor.status,
+    notes: sponsor.notes || ""
   };
 
   return (
@@ -108,7 +123,6 @@ export default function SponsorDetail() {
         <Card className="lg:col-span-2">
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-24 w-24">
-              <AvatarImage src={sponsor.profileImage} alt={`${sponsor.first_name} ${sponsor.last_name}`} />
               <AvatarFallback className="text-2xl">
                 {sponsor.first_name[0]}{sponsor.last_name[0]}
               </AvatarFallback>
@@ -182,7 +196,6 @@ export default function SponsorDetail() {
             <Separator />
 
             <div className="text-xs text-muted-foreground">
-              {/* Assuming created_at and updated_at are available in sponsor object */}
               <p>Created at: {formatDate(sponsor.created_at)}</p>
               {sponsor.updated_at && (
                 <p>Last updated: {formatDate(sponsor.updated_at)}</p>
@@ -301,8 +314,8 @@ export default function SponsorDetail() {
                                 {student.name}
                               </Link>
                               <div className="text-sm text-muted-foreground">
-                                {/* Assuming grade and sponsorshipDate are available in student object */}
-                                Grade {student.current_grade} • Sponsored since {formatDate(student.sponsored_since)}
+                                {student.current_grade && `Grade ${student.current_grade} • `}
+                                Sponsored since {formatDate(student.sponsored_since)}
                               </div>
                             </div>
                           </div>
@@ -342,26 +355,7 @@ export default function SponsorDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="relative border-l border-border pl-6 ml-4">
-                    {/* Assuming timeline data is available in sponsor object */}
-                    {/*{sponsor.timeline.map((event) => (*/}
-                    {/*  <div key={event.id} className="mb-8 relative">*/}
-                    {/*    <div*/}
-                    {/*      className={`absolute -left-7 h-4 w-4 rounded-full border-2*/}
-                    {/*      ${event.type === "join" ? "bg-blue-500 border-blue-300" :*/}
-                    {/*        event.type === "sponsorship" ? "bg-green-500 border-green-300" :*/}
-                    {/*          event.type === "donation" ? "bg-purple-500 border-purple-300" :*/}
-                    {/*            event.type === "communication" ? "bg-yellow-500 border-yellow-300" :*/}
-                    {/*              "bg-gray-500 border-gray-300"}`}*/}
-                    {/*    />*/}
-                    {/*    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">*/}
-                    {/*      <p className="text-sm text-muted-foreground">*/}
-                    {/*        {formatDate(event.date)}*/}
-                    {/*      </p>*/}
-                    {/*      <h3 className="font-medium">{event.title}</h3>*/}
-                    {/*    </div>*/}
-                    {/*    <p className="mt-1">{event.description}</p>*/}
-                    {/*  </div>*/}
-                    {/*))}*/}
+                    {/* Timeline events will be implemented in the future */}
                   </div>
                   <div className="mt-6 flex justify-center">
                     <Button>
@@ -406,7 +400,7 @@ export default function SponsorDetail() {
       <AddEditSponsorModal
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
-        sponsor={sponsor}
+        sponsor={sponsorForForm}
         onSubmit={handleEditSponsor}
       />
     </div>
@@ -443,7 +437,8 @@ export default function SponsorDetail() {
                     {student.name}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Grade {student.current_grade} • {student.gender.charAt(0).toUpperCase() + student.gender.slice(1)}
+                    {student.current_grade && `Grade ${student.current_grade} • `}
+                    {student.gender && (student.gender.charAt(0).toUpperCase() + student.gender.slice(1))}
                   </div>
                 </div>
               </div>

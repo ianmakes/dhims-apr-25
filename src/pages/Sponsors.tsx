@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -30,28 +31,27 @@ import {
 import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { AddEditSponsorModal, SponsorFormValues } from "@/components/sponsors/AddEditSponsorModal";
 import { useToast } from "@/hooks/use-toast";
-import { Sponsor } from "@/types";
 import { useSponsors } from "@/hooks/useSponsors";
 
 export default function Sponsors() {
-  const { sponsors, isLoading, addSponsor, deleteSponsor } = useSponsors();
+  const { sponsors, isLoading, addSponsor, updateSponsor, deleteSponsor } = useSponsors();
   const [status, setStatus] = useState<string>("all");
   const [country, setCountry] = useState<string>("all");
   const [isAddSponsorModalOpen, setIsAddSponsorModalOpen] = useState(false);
   const [isEditSponsorModalOpen, setIsEditSponsorModalOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [selectedSponsor, setSelectedSponsor] = useState<Sponsor | null>(null);
+  const [selectedSponsor, setSelectedSponsor] = useState<any | null>(null);
   const { toast } = useToast();
 
   // Filter sponsors based on filters
-  const filteredSponsors = sponsors.filter((sponsor) => {
+  const filteredSponsors = sponsors.filter((sponsor: any) => {
     if (status && status !== "all" && sponsor.status !== status) return false;
     if (country && country !== "all" && sponsor.country !== country) return false;
     return true;
   });
 
   // Get unique countries for filter dropdown
-  const uniqueCountries = Array.from(new Set(sponsors.map(sponsor => sponsor.country).filter(Boolean)));
+  const uniqueCountries = Array.from(new Set(sponsors.map((sponsor: any) => sponsor.country).filter(Boolean)));
 
   const handleAddSponsor = (data: SponsorFormValues) => {
     addSponsor(data);
@@ -59,13 +59,10 @@ export default function Sponsors() {
   };
 
   const handleEditSponsor = (data: SponsorFormValues) => {
-    // In a real app, this would be an API call
-    console.log("Editing sponsor:", selectedSponsor?.id, data);
-    toast({
-      title: "Sponsor updated",
-      description: `${data.firstName} ${data.lastName} has been updated successfully.`,
-    });
-    setIsEditSponsorModalOpen(false);
+    if (selectedSponsor) {
+      updateSponsor({ id: selectedSponsor.id, ...data });
+      setIsEditSponsorModalOpen(false);
+    }
   };
 
   const handleDeleteSponsor = () => {
@@ -75,12 +72,25 @@ export default function Sponsors() {
     }
   };
 
-  const handleOpenEditModal = (sponsor: Sponsor) => {
-    setSelectedSponsor(sponsor);
+  const handleOpenEditModal = (sponsor: any) => {
+    // Map database fields to form fields
+    setSelectedSponsor({
+      id: sponsor.id,
+      firstName: sponsor.first_name,
+      lastName: sponsor.last_name,
+      email: sponsor.email,
+      email2: sponsor.email2 || "",
+      phone: sponsor.phone || "",
+      address: sponsor.address || "",
+      country: sponsor.country || "",
+      startDate: sponsor.start_date,
+      status: sponsor.status,
+      notes: sponsor.notes || ""
+    });
     setIsEditSponsorModalOpen(true);
   };
 
-  const handleOpenDeleteAlert = (sponsor: Sponsor) => {
+  const handleOpenDeleteAlert = (sponsor: any) => {
     setSelectedSponsor(sponsor);
     setIsDeleteAlertOpen(true);
   };
@@ -92,23 +102,23 @@ export default function Sponsors() {
       header: "ID",
     },
     {
-      accessorKey: "firstName",
+      accessorKey: "first_name",
       header: "First Name",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         return (
           <Link to={`/sponsors/${row.original.id}`} className="text-primary hover:underline">
-            {row.getValue("firstName")}
+            {row.getValue("first_name")}
           </Link>
         );
       },
     },
     {
-      accessorKey: "lastName",
+      accessorKey: "last_name",
       header: "Last Name",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         return (
           <Link to={`/sponsors/${row.original.id}`} className="text-primary hover:underline">
-            {row.getValue("lastName")}
+            {row.getValue("last_name")}
           </Link>
         );
       },
@@ -120,18 +130,18 @@ export default function Sponsors() {
     {
       accessorKey: "country",
       header: "Country",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const country = row.getValue("country");
         return <div>{country || "—"}</div>;
       },
     },
     {
-      accessorKey: "startDate",
+      accessorKey: "start_date",
       header: "Start Date",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         return (
           <div>
-            {new Date(row.getValue("startDate")).toLocaleDateString()}
+            {new Date(row.getValue("start_date")).toLocaleDateString()}
           </div>
         );
       },
@@ -139,7 +149,7 @@ export default function Sponsors() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const status = row.getValue("status");
         return (
           <div className="capitalize">
@@ -158,7 +168,7 @@ export default function Sponsors() {
     },
     {
       id: "actions",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const sponsor = row.original;
         
         return (
@@ -268,8 +278,8 @@ export default function Sponsors() {
       {/* Sponsors table */}
       <DataTable
         columns={columnsWithActions}
-        data={sponsors}
-        searchColumn="firstName"
+        data={filteredSponsors}
+        searchColumn="first_name"
         searchPlaceholder="Search sponsors..."
         isLoading={isLoading}
       />

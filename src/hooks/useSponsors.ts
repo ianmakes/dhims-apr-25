@@ -22,9 +22,23 @@ export const useSponsors = () => {
 
   const addSponsorMutation = useMutation({
     mutationFn: async (values: SponsorFormValues) => {
+      // Transform form values to match the database schema
+      const sponsorData = {
+        first_name: values.firstName,
+        last_name: values.lastName,
+        email: values.email,
+        email2: values.email2 || null,
+        phone: values.phone || null,
+        address: values.address || null,
+        country: values.country || null,
+        start_date: values.startDate,
+        status: values.status,
+        notes: values.notes || null
+      };
+
       const { data, error } = await supabase
         .from("sponsors")
-        .insert([values])
+        .insert([sponsorData])
         .select()
         .single();
 
@@ -42,9 +56,23 @@ export const useSponsors = () => {
 
   const updateSponsorMutation = useMutation({
     mutationFn: async ({ id, ...values }: SponsorFormValues & { id: string }) => {
+      // Transform form values to match the database schema
+      const sponsorData = {
+        first_name: values.firstName,
+        last_name: values.lastName,
+        email: values.email,
+        email2: values.email2 || null,
+        phone: values.phone || null,
+        address: values.address || null,
+        country: values.country || null,
+        start_date: values.startDate,
+        status: values.status,
+        notes: values.notes || null
+      };
+
       const { data, error } = await supabase
         .from("sponsors")
-        .update(values)
+        .update(sponsorData)
         .eq("id", id)
         .select()
         .single();
