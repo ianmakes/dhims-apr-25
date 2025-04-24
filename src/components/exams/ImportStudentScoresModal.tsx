@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +38,7 @@ export function ImportStudentScoresModal({ open, onOpenChange, examId }: ImportS
   const [isValid, setIsValid] = useState(false);
 
   // Reset state when modal is opened/closed
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       setFile(null);
       setParseError(null);

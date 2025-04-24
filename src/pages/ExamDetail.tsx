@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -923,17 +922,9 @@ export default function ExamDetail() {
           
           {/* Import Modal */}
           <ImportStudentScoresModal
-            isOpen={isImportModalOpen}
-            onClose={() => setIsImportModalOpen(false)}
+            open={isImportModalOpen}
+            onOpenChange={(open) => setIsImportModalOpen(open)}
             examId={id || ''}
-            onImportSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['exam', id] });
-              toast({
-                title: "Import Successful",
-                description: "Student scores have been imported successfully.",
-              });
-            }}
-            maxScore={examData.max_score}
           />
         </TabsContent>
 
