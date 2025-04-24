@@ -57,6 +57,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { ExamWithScores } from "@/types/exam";
 
 // Get grade based on score percentage
 const getGrade = (score: number): string => {
@@ -94,7 +95,7 @@ export default function ExamDetail() {
   const [searchTerm, setSearchTerm] = useState("");
   const [examData, setExamData] = useState<any>(null);
 
-  // Fetch exam details with scores
+  // Fetch exam details with scores - fixed the useQuery hook
   const { data: examDataQuery, isLoading: isLoadingExam } = useQuery({
     queryKey: ['exam', id],
     queryFn: async () => {
