@@ -2,7 +2,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { SponsorFormValues } from "@/components/sponsors/AddEditSponsorModal";
+
+// Define the SponsorFormValues type here to match what we need for the form
+export interface SponsorFormValues {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  email2?: string;
+  phone?: string;
+  address?: string;
+  country?: string;
+  startDate: string;
+  status: "active" | "inactive";
+  notes?: string;
+}
 
 export const useSponsors = () => {
   const queryClient = useQueryClient();

@@ -1,7 +1,7 @@
 
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSponsorDetails } from "@/hooks/useSponsorDetails";
-import { AddEditSponsorModal, SponsorFormValues } from "@/components/sponsors/AddEditSponsorModal";
+import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Edit, Mail, MapPin, Phone, Plus, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { useSponsors } from "@/hooks/useSponsors";
+import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
 
 export default function SponsorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -77,7 +77,8 @@ export default function SponsorDetail() {
   };
 
   // Map database fields to form fields
-  const sponsorForForm = {
+  const sponsorForForm: SponsorFormValues = {
+    id: sponsor.id,
     firstName: sponsor.first_name,
     lastName: sponsor.last_name,
     email: sponsor.email,
@@ -86,7 +87,7 @@ export default function SponsorDetail() {
     address: sponsor.address || "",
     country: sponsor.country || "",
     startDate: sponsor.start_date,
-    status: sponsor.status,
+    status: sponsor.status as "active" | "inactive",
     notes: sponsor.notes || ""
   };
 
