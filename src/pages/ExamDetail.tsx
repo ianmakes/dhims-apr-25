@@ -463,7 +463,7 @@ export default function ExamDetail() {
     setEditData((prev) => ({ 
       ...prev, 
       [`dns_${studentId}`]: checked,
-      // Convert to string when used with didNotSit to avoid type error
+      // Use a number value for the score, not a boolean
       [`score_${studentId}`]: checked ? 0 : (prev[`score_${studentId}`] || 0)
     }));
   };
@@ -473,6 +473,7 @@ export default function ExamDetail() {
       const scoreKey = `score_${student.id}`;
       const dnsKey = `dns_${student.id}`;
       
+      // Explicitly ensure we're using the correct types
       const score = editData[scoreKey] !== undefined ? Number(editData[scoreKey]) : (student.score || 0);
       const didNotSit = editData[dnsKey] !== undefined ? Boolean(editData[dnsKey]) : student.didNotSit;
       
