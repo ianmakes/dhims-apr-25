@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -116,26 +115,31 @@ export default function ExamDetail() {
   const { data: examDataQuery, isLoading: isLoadingExam } = useQuery({
     queryKey: ['exam', id],
     queryFn: async () => {
-      const { data: exam, error } = await supabase
-        .from('exams')
-        .select(`
-          *,
-          student_exam_scores (
-            id,
-            score,
-            did_not_sit,
-            student:students (
+      try {
+        const { data: exam, error } = await supabase
+          .from('exams')
+          .select(`
+            *,
+            student_exam_scores (
               id,
-              name,
-              current_grade
+              score,
+              did_not_sit,
+              student:students (
+                id,
+                name,
+                current_grade
+              )
             )
-          )
-        `)
-        .eq('id', id)
-        .single();
+          `)
+          .eq('id', id)
+          .single();
 
-      if (error) throw error;
-      return exam;
+        if (error) throw error;
+        return exam;
+      } catch (error) {
+        console.error("Error fetching exam data:", error);
+        throw error;
+      }
     }
   });
 
@@ -847,135 +851,3 @@ export default function ExamDetail() {
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No students found. Try a different search.
                         </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredStudents.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-mono text-xs">{student.studentId}</TableCell>
-                          <TableCell className="font-medium">{student.name}</TableCell>
-                          <TableCell>{student.grade}</TableCell>
-                          <TableCell className="text-center">
-                            {isEditing ? (
-                              <Input
-                                type="number"
-                                min="0"
-                                max={examData.max_score}
-                                value={editData[`score_${student.id}`] !== undefined ? editData[`score_${student.id}`] : (student.score || 0)}
-                                onChange={(e) => handleScoreChange(student.id, e.target.value)}
-                                className="w-20 mx-auto text-center"
-                                disabled={editData[`dns_${student.id}`] || student.didNotSit}
-                              />
-                            ) : student.didNotSit ? (
-                              <span className="text-muted-foreground">DNS</span>
-                            ) : (
-                              <span>{student.score !== null ? student.score : '-'}</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {isEditing ? (
-                              <div className="flex justify-center">
-                                <Checkbox
-                                  checked={editData[`dns_${student.id}`] !== undefined ? Boolean(editData[`dns_${student.id}`]) : student.didNotSit}
-                                  onCheckedChange={(checked) => handleDidNotSitChange(student.id, checked === true)}
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex justify-center">
-                                {student.didNotSit && <Check className="h-4 w-4" />}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {student.didNotSit ? (
-                              <span className="text-muted-foreground">N/A</span>
-                            ) : (
-                              <Badge className={getGradeColor(student.status)}>
-                                {student.status}
-                              </Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics</CardTitle>
-              <CardDescription>
-                Detailed analytics for this exam will be available soon.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                <Info className="h-8 w-8 mr-2" />
-                <span>Analytics features coming soon</span>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Details Tab */}
-        <TabsContent value="details">
-          <Card>
-            <CardHeader>
-              <CardTitle>Exam Details</CardTitle>
-              <CardDescription>
-                Information about this exam
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Name</h3>
-                  <p>{examData.name}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Academic Year</h3>
-                  <p>{examData.academic_year}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Term</h3>
-                  <p>{examData.term}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Exam Date</h3>
-                  <p>{new Date(examData.exam_date).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Maximum Score</h3>
-                  <p>{examData.max_score}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Passing Score</h3>
-                  <p>{examData.passing_score} ({(examData.passing_score / examData.max_score * 100).toFixed(0)}%)</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Created</h3>
-                  <p>{new Date(examData.created_at).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Last Modified</h3>
-                  <p>{new Date(examData.updated_at).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      <ImportStudentScoresModal 
-        open={isImportModalOpen} 
-        onOpenChange={setIsImportModalOpen} 
-        examId={id || ''} 
-      />
-    </div>
-  );
-}
