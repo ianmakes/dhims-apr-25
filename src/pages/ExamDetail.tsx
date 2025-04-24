@@ -462,8 +462,8 @@ export default function ExamDetail() {
     setEditData((prev) => ({ 
       ...prev, 
       [`dns_${studentId}`]: checked,
-      // Change this line to ensure a string or number is used
-      [`score_${studentId}`]: checked ? '0' : (prev[`score_${studentId}`] || '0')
+      // Convert to string when used with didNotSit to avoid type error
+      [`score_${studentId}`]: checked ? 0 : (prev[`score_${studentId}`] || 0)
     }));
   };
 
@@ -849,4 +849,4 @@ export default function ExamDetail() {
                     ) : filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No students found. Try a different search
+                          No students found. Try a different
