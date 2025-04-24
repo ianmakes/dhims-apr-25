@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -95,7 +95,7 @@ export default function ExamDetail() {
   const [searchTerm, setSearchTerm] = useState("");
   const [examData, setExamData] = useState<any>(null);
 
-  // Fetch exam details with scores - fixed the useQuery hook
+  // Fetch exam details with scores
   const { data: examDataQuery, isLoading: isLoadingExam } = useQuery({
     queryKey: ['exam', id],
     queryFn: async () => {
@@ -118,11 +118,15 @@ export default function ExamDetail() {
 
       if (error) throw error;
       return exam;
-    },
-    onSuccess: (data) => {
-      setExamData(data);
     }
   });
+
+  // Effect to update local state when query data is available
+  useEffect(() => {
+    if (examDataQuery) {
+      setExamData(examDataQuery);
+    }
+  }, [examDataQuery]);
 
   // Save scores mutation
   const updateScores = useMutation({
