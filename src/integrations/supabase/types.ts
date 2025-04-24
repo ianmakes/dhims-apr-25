@@ -114,6 +114,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sponsors: {
+        Row: {
+          address: string | null
+          country: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string
+          email2: string | null
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string | null
+          start_date: string
+          status: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email: string
+          email2?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string
+          email2?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       student_exam_scores: {
         Row: {
           created_at: string | null
@@ -285,7 +339,15 @@ export type Database = {
           updated_by?: string | null
           weight_kg?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "students_sponsor_id_fkey"
+            columns: ["sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "sponsors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       timeline_events: {
         Row: {
