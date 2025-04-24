@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -161,7 +162,7 @@ export default function ExamDetail() {
   // Effect to update local state when query data is available
   useEffect(() => {
     if (examDataQuery) {
-      setExamData(examDataQuery);
+      setExamData(examDataQuery as ExamWithScores);
     }
   }, [examDataQuery]);
 
@@ -281,7 +282,7 @@ export default function ExamDetail() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['exam', id] });
-      setExamData(data);
+      setExamData(data as ExamWithScores);
       setIsEditExamOpen(false);
       toast({
         title: "Exam Updated",
@@ -851,3 +852,269 @@ export default function ExamDetail() {
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No students found. Try a different search.
                         </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-mono text-sm">{student.id.slice(-8)}</TableCell>
+                          <TableCell>{student.name}</TableCell>
+                          <TableCell>{student.grade}</TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                value={
+                                  editData[`score_${student.id}`] !== undefined 
+                                    ? editData[`score_${student.id}`] 
+                                    : student.score || 0
+                                }
+                                onChange={(e) => handleScoreChange(student.id, e.target.value)}
+                                min={0}
+                                max={examData.max_score}
+                                className="w-20 mx-auto text-center"
+                                disabled={editData[`dns_${student.id}`] === true || student.didNotSit}
+                              />
+                            ) : (
+                              student.didNotSit ? (
+                                <span className="text-muted-foreground">DNS</span>
+                              ) : (
+                                <span>{student.score || '-'}</span>
+                              )
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={
+                                    editData[`dns_${student.id}`] !== undefined 
+                                      ? Boolean(editData[`dns_${student.id}`]) 
+                                      : student.didNotSit
+                                  }
+                                  onCheckedChange={(checked) => 
+                                    handleDidNotSitChange(student.id, checked as boolean)
+                                  }
+                                />
+                              </div>
+                            ) : (
+                              student.didNotSit && <Check className="h-4 w-4 mx-auto" />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {student.didNotSit ? (
+                              <Badge variant="outline" className="bg-gray-100">Did Not Sit</Badge>
+                            ) : (
+                              <Badge 
+                                variant="outline" 
+                                className={getGradeColor(student.status)}
+                              >
+                                {student.status}
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Import Modal */}
+          <ImportStudentScoresModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            examId={id || ''}
+            onImportSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['exam', id] });
+              toast({
+                title: "Import Successful",
+                description: "Student scores have been imported successfully.",
+              });
+            }}
+            maxScore={examData.max_score}
+          />
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Analysis</CardTitle>
+              <CardDescription>
+                Detailed analysis of student performance in this exam
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div>
+                <h3 className="text-lg font-medium mb-4">Score Distribution</h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={scoreDistribution}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="range" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="count" name="Number of Students" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-4">Performance Categories</h3>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={performanceData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {performanceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div>
+                    <div className="space-y-4">
+                      {performanceData.map((category) => (
+                        <div key={category.name} className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div 
+                              className="w-4 h-4 rounded-full mr-2" 
+                              style={{ backgroundColor: category.color }}
+                            ></div>
+                            <span>{category.name}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="mr-4">{category.value} students</span>
+                            <span className="font-medium">
+                              {scoredStudents.length > 0 
+                                ? ((category.value / studentsWithScores.length) * 100).toFixed(1) + '%' 
+                                : '0%'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-8 p-4 bg-muted rounded-md">
+                      <h4 className="font-medium mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Total Students: <span className="font-medium">{studentsWithScores.length}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Attended: <span className="font-medium">{scoredStudents.length}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Did Not Sit: <span className="font-medium">
+                          {studentsWithScores.filter(s => s.didNotSit).length}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Details Tab */}
+        <TabsContent value="details" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Exam Details</CardTitle>
+              <CardDescription>
+                View detailed information about this exam
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Exam Name</h3>
+                    <p className="text-base">{examData.name}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Academic Year</h3>
+                    <p className="text-base">{examData.academic_year}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Term</h3>
+                    <p className="text-base">{examData.term}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Exam Date</h3>
+                    <p className="text-base">{new Date(examData.exam_date).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Maximum Score</h3>
+                    <p className="text-base">{examData.max_score}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Passing Score</h3>
+                    <p className="text-base">{examData.passing_score} ({((examData.passing_score / examData.max_score) * 100).toFixed(1)}%)</p>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Score Statistics</h3>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="p-4 border rounded-md">
+                      <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
+                      <p className="text-sm text-muted-foreground">Average Score</p>
+                    </div>
+                    <div className="p-4 border rounded-md">
+                      <div className="text-2xl font-bold">{highestScore}%</div>
+                      <p className="text-sm text-muted-foreground">Highest Score</p>
+                    </div>
+                    <div className="p-4 border rounded-md">
+                      <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
+                      <p className="text-sm text-muted-foreground">Pass Rate</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Student Participation</h3>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="p-4 border rounded-md">
+                      <div className="text-2xl font-bold">{studentsWithScores.length}</div>
+                      <p className="text-sm text-muted-foreground">Total Students</p>
+                    </div>
+                    <div className="p-4 border rounded-md">
+                      <div className="text-2xl font-bold">{scoredStudents.length}</div>
+                      <p className="text-sm text-muted-foreground">Attended</p>
+                    </div>
+                    <div className="p-4 border rounded-md">
+                      <div className="text-2xl font-bold">{studentsWithScores.filter(s => s.didNotSit).length}</div>
+                      <p className="text-sm text-muted-foreground">Did Not Sit</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
