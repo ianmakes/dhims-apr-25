@@ -1,4 +1,3 @@
-
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSponsorDetails } from "@/hooks/useSponsorDetails";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
@@ -77,7 +76,7 @@ export default function SponsorDetail() {
   };
 
   // Map database fields to form fields
-  const sponsorForForm: SponsorFormValues = {
+  const sponsorForForm: SponsorFormValues = sponsor ? {
     id: sponsor.id,
     firstName: sponsor.first_name,
     lastName: sponsor.last_name,
@@ -89,7 +88,7 @@ export default function SponsorDetail() {
     startDate: sponsor.start_date,
     status: sponsor.status as "active" | "inactive",
     notes: sponsor.notes || ""
-  };
+  } : {} as SponsorFormValues;
 
   return (
     <div className="space-y-6 fade-in">

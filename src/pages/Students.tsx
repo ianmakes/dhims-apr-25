@@ -267,8 +267,6 @@ export default function Students() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const handleAddStudent = (data: any) => {
-    // Attach academic year id to save record in current academic year
-    data.academic_year_id = null; // set this to the currentYear id if available, can be updated on settings integration
     addStudentMutation.mutate(data);
     setIsAddStudentModalOpen(false);
   };
