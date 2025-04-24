@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -849,4 +850,159 @@ export default function ExamDetail() {
                     ) : filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No students found. Try a different
+                          No students found. Try a different search term.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {student.id.substring(0, 8)}...
+                          </TableCell>
+                          <TableCell>{student.name}</TableCell>
+                          <TableCell>{student.grade}</TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                min="0"
+                                max={examData.max_score}
+                                value={editData[`score_${student.id}`] !== undefined ? editData[`score_${student.id}`] : student.score || 0}
+                                onChange={(e) => handleScoreChange(student.id, e.target.value)}
+                                disabled={editData[`dns_${student.id}`] || student.didNotSit}
+                                className="max-w-20 mx-auto text-center"
+                              />
+                            ) : student.didNotSit ? (
+                              <span className="text-muted-foreground">-</span>
+                            ) : (
+                              <span>{student.score}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <Checkbox
+                                checked={editData[`dns_${student.id}`] !== undefined ? Boolean(editData[`dns_${student.id}`]) : student.didNotSit}
+                                onCheckedChange={(checked) => handleDidNotSitChange(student.id, Boolean(checked))}
+                                className="mx-auto"
+                              />
+                            ) : student.didNotSit ? (
+                              <Check className="h-4 w-4 mx-auto text-muted-foreground" />
+                            ) : (
+                              <X className="h-4 w-4 mx-auto text-muted-foreground" />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              className={`${getGradeColor(student.status)} ${student.didNotSit ? "bg-gray-100" : ""}`}
+                            >
+                              {student.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Exam Analytics</CardTitle>
+              <CardDescription>
+                Detailed analysis of student performance on this exam
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center text-muted-foreground">
+                Analytics features coming soon...
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Details Tab */}
+        <TabsContent value="details" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Exam Details</CardTitle>
+              <CardDescription>
+                View detailed information about this exam
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Exam ID</h3>
+                  <p className="font-mono text-xs">{id}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Created At</h3>
+                  <p>{new Date(examData.created_at).toLocaleString()}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Maximum Score</h3>
+                  <p>{examData.max_score}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Passing Score</h3>
+                  <p>{examData.passing_score} ({((examData.passing_score / examData.max_score) * 100).toFixed(1)}%)</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Students Assessed</h3>
+                  <p>{scoredStudents.length} / {allStudents.length}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Did Not Sit</h3>
+                  <p>{allStudents.filter(s => s.didNotSit).length} students</p>
+                </div>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2">Performance Summary</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="rounded-md bg-green-100 p-3">
+                    <div className="text-lg font-bold text-green-800">
+                      {studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 80).length}
+                    </div>
+                    <div className="text-sm text-green-700">{ExamGrade.EXCEEDING}</div>
+                  </div>
+                  <div className="rounded-md bg-blue-100 p-3">
+                    <div className="text-lg font-bold text-blue-800">
+                      {studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 50 && (s.score || 0) < 80).length}
+                    </div>
+                    <div className="text-sm text-blue-700">{ExamGrade.MEETING}</div>
+                  </div>
+                  <div className="rounded-md bg-amber-100 p-3">
+                    <div className="text-lg font-bold text-amber-800">
+                      {studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) >= 40 && (s.score || 0) < 50).length}
+                    </div>
+                    <div className="text-sm text-amber-700">{ExamGrade.APPROACHING}</div>
+                  </div>
+                  <div className="rounded-md bg-red-100 p-3">
+                    <div className="text-lg font-bold text-red-800">
+                      {studentsWithScores.filter((s) => !s.didNotSit && (s.score || 0) < 40).length}
+                    </div>
+                    <div className="text-sm text-red-700">{ExamGrade.BELOW}</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <ImportStudentScoresModal 
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
+        examId={id || ''}
+      />
+    </div>
+  );
+}
