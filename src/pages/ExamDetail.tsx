@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -91,9 +92,10 @@ export default function ExamDetail() {
   const [editData, setEditData] = useState<{ [key: string]: number }>({});
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [examData, setExamData] = useState<any>(null);
 
   // Fetch exam details with scores
-  const { data: examData, isLoading: isLoadingExam } = useQuery({
+  const { data: examDataQuery, isLoading: isLoadingExam } = useQuery({
     queryKey: ['exam', id],
     queryFn: async () => {
       const { data: exam, error } = await supabase
@@ -115,6 +117,9 @@ export default function ExamDetail() {
 
       if (error) throw error;
       return exam;
+    },
+    onSuccess: (data) => {
+      setExamData(data);
     }
   });
 
@@ -149,10 +154,10 @@ export default function ExamDetail() {
 
   // Update exam mutation
   const updateExam = useMutation({
-    mutationFn: async (examData: any) => {
+    mutationFn: async (examUpdateData: any) => {
       const { data, error } = await supabase
         .from('exams')
-        .update(examData)
+        .update(examUpdateData)
         .eq('id', id)
         .select()
         .single();
@@ -160,8 +165,9 @@ export default function ExamDetail() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['exam', id] });
+      setExamData(data);
       setIsEditExamOpen(false);
       toast({
         title: "Exam Updated",
@@ -203,12 +209,8 @@ export default function ExamDetail() {
     }
   });
 
-  if (isLoadingExam) {
+  if (isLoadingExam || !examData) {
     return <div>Loading...</div>;
-  }
-
-  if (!examData) {
-    return <div>Exam not found</div>;
   }
 
   const students = examData.student_exam_scores.map((score: any) => ({
@@ -221,43 +223,43 @@ export default function ExamDetail() {
   }));
 
   // Calculate statistics
-  const scores = students.map(s => s.score);
-  const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const highestScore = Math.max(...scores);
-  const lowestScore = Math.min(...scores);
-  const passRate = (students.filter(s => s.score >= examData.passing_score).length / students.length) * 100;
+  const scores = students.map((s: any) => s.score);
+  const averageScore = scores.length > 0 ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0;
+  const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
+  const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
+  const passRate = scores.length > 0 ? (students.filter((s: any) => s.score >= examData.passing_score).length / students.length) * 100 : 0;
 
   // Performance distribution data
   const performanceData = [
     {
       name: "Exceeding Expectation",
-      value: students.filter(s => s.score >= 80).length,
+      value: students.filter((s: any) => s.score >= 80).length,
       color: "#4ade80"
     },
     {
       name: "Meeting Expectation",
-      value: students.filter(s => s.score >= 50 && s.score < 80).length,
+      value: students.filter((s: any) => s.score >= 50 && s.score < 80).length,
       color: "#3b82f6"
     },
     {
       name: "Approaching Expectation",
-      value: students.filter(s => s.score >= 40 && s.score < 50).length,
+      value: students.filter((s: any) => s.score >= 40 && s.score < 50).length,
       color: "#f59e0b"
     },
     {
       name: "Below Expectation",
-      value: students.filter(s => s.score < 40).length,
+      value: students.filter((s: any) => s.score < 40).length,
       color: "#ef4444"
     }
   ];
 
   // Score distribution data
   const scoreDistribution = [
-    { range: "0-20", count: students.filter(s => s.score >= 0 && s.score <= 20).length },
-    { range: "21-40", count: students.filter(s => s.score > 20 && s.score <= 40).length },
-    { range: "41-60", count: students.filter(s => s.score > 40 && s.score <= 60).length },
-    { range: "61-80", count: students.filter(s => s.score > 60 && s.score <= 80).length },
-    { range: "81-100", count: students.filter(s => s.score > 80 && s.score <= 100).length }
+    { range: "0-20", count: students.filter((s: any) => s.score >= 0 && s.score <= 20).length },
+    { range: "21-40", count: students.filter((s: any) => s.score > 20 && s.score <= 40).length },
+    { range: "41-60", count: students.filter((s: any) => s.score > 40 && s.score <= 60).length },
+    { range: "61-80", count: students.filter((s: any) => s.score > 60 && s.score <= 80).length },
+    { range: "81-100", count: students.filter((s: any) => s.score > 80 && s.score <= 100).length }
   ];
 
   const handleEditExam = (e: React.FormEvent) => {
@@ -293,7 +295,7 @@ export default function ExamDetail() {
 
   const cancelEditing = () => {
     // Reset edit data to current scores
-    const resetEditData = students.reduce((acc, student) => {
+    const resetEditData = students.reduce((acc: any, student: any) => {
       acc[student.id] = student.score;
       return acc;
     }, {} as { [key: string]: number });
@@ -303,7 +305,7 @@ export default function ExamDetail() {
 
   // Filter students based on search term
   const filteredStudents = students.filter(
-    (student) => student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (student: any) => student.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -315,7 +317,7 @@ export default function ExamDetail() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{examData.name}</h1>
-            <p className="text-muted-foreground">{examData.subject} • {examData.term} • {examData.academic_year}</p>
+            <p className="text-muted-foreground">{examData.term} • {examData.academic_year}</p>
           </div>
         </div>
         <div className="flex gap-2 mt-2 sm:mt-0">
@@ -343,17 +345,6 @@ export default function ExamDetail() {
                       value={examData.name}
                       onChange={handleInputChange}
                       required
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input
-                      id="subject"
-                      name="subject"
-                      value={examData.subject}
-                      onChange={handleInputChange}
-                      required
-                      disabled
                     />
                   </div>
                   <div className="col-span-1">
@@ -470,7 +461,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{highestScore}%</div>
                 <p className="text-xs text-muted-foreground">
-                  By {students.find(s => s.score === highestScore)?.name}
+                  By {students.find((s: any) => s.score === highestScore)?.name}
                 </p>
               </CardContent>
             </Card>
@@ -482,7 +473,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{lowestScore}%</div>
                 <p className="text-xs text-muted-foreground">
-                  By {students.find(s => s.score === lowestScore)?.name}
+                  By {students.find((s: any) => s.score === lowestScore)?.name}
                 </p>
               </CardContent>
             </Card>
@@ -494,7 +485,7 @@ export default function ExamDetail() {
               <CardContent>
                 <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">
-                  {students.filter(s => s.score >= examData.passing_score).length} out of {students.length} students
+                  {students.filter((s: any) => s.score >= examData.passing_score).length} out of {students.length} students
                 </p>
               </CardContent>
             </Card>
@@ -540,7 +531,7 @@ export default function ExamDetail() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -626,7 +617,7 @@ export default function ExamDetail() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredStudents.map((student) => (
+                      filteredStudents.map((student: any) => (
                         <TableRow key={student.id}>
                           <TableCell>{student.studentId}</TableCell>
                           <TableCell className="font-medium">{student.name}</TableCell>
@@ -635,7 +626,7 @@ export default function ExamDetail() {
                             {isEditing ? (
                               <Input
                                 type="number"
-                                value={editData[student.id] || 0}
+                                value={editData[student.id] || student.score}
                                 onChange={(e) => handleScoreChange(student.id, e.target.value)}
                                 className="w-20 mx-auto text-center"
                                 min={0}
@@ -723,21 +714,21 @@ export default function ExamDetail() {
                   <h3 className="font-medium mb-2">Exceeding Expectation (80-100%)</h3>
                   <p className="text-2xl font-bold text-green-600">{performanceData[0].value} students</p>
                   <p className="text-sm text-muted-foreground">
-                    {((performanceData[0].value / students.length) * 100).toFixed(0)}% of class
+                    {students.length > 0 ? ((performanceData[0].value / students.length) * 100).toFixed(0) : 0}% of class
                   </p>
                 </div>
                 <div className="border rounded-lg p-4">
                   <h3 className="font-medium mb-2">Meeting Expectation (50-79%)</h3>
                   <p className="text-2xl font-bold text-blue-600">{performanceData[1].value} students</p>
                   <p className="text-sm text-muted-foreground">
-                    {((performanceData[1].value / students.length) * 100).toFixed(0)}% of class
+                    {students.length > 0 ? ((performanceData[1].value / students.length) * 100).toFixed(0) : 0}% of class
                   </p>
                 </div>
                 <div className="border rounded-lg p-4">
                   <h3 className="font-medium mb-2">Below Expectation (0-49%)</h3>
                   <p className="text-2xl font-bold text-red-600">{performanceData[2].value + performanceData[3].value} students</p>
                   <p className="text-sm text-muted-foreground">
-                    {(((performanceData[2].value + performanceData[3].value) / students.length) * 100).toFixed(0)}% of class
+                    {students.length > 0 ? (((performanceData[2].value + performanceData[3].value) / students.length) * 100).toFixed(0) : 0}% of class
                   </p>
                 </div>
               </div>
@@ -746,13 +737,13 @@ export default function ExamDetail() {
                 <h3 className="font-medium mb-2">Performance Insights</h3>
                 <ul className="space-y-2 list-disc pl-5">
                   <li>
-                    <span className="font-medium">{((performanceData[0].value / students.length) * 100).toFixed(0)}% of students</span> achieved excellent results, exceeding expectations for this exam.
+                    <span className="font-medium">{students.length > 0 ? ((performanceData[0].value / students.length) * 100).toFixed(0) : 0}% of students</span> achieved excellent results, exceeding expectations for this exam.
                   </li>
                   <li>
-                    <span className="font-medium">{((performanceData[1].value / students.length) * 100).toFixed(0)}% of students</span> met expectations, demonstrating adequate understanding of the material.
+                    <span className="font-medium">{students.length > 0 ? ((performanceData[1].value / students.length) * 100).toFixed(0) : 0}% of students</span> met expectations, demonstrating adequate understanding of the material.
                   </li>
                   <li>
-                    <span className="font-medium">{(((performanceData[2].value + performanceData[3].value) / students.length) * 100).toFixed(0)}% of students</span> performed below expectations, indicating a need for additional support in specific areas.
+                    <span className="font-medium">{students.length > 0 ? (((performanceData[2].value + performanceData[3].value) / students.length) * 100).toFixed(0) : 0}% of students</span> performed below expectations, indicating a need for additional support in specific areas.
                   </li>
                 </ul>
               </div>
@@ -774,10 +765,6 @@ export default function ExamDetail() {
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Name</h3>
                   <p>{examData.name}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Subject</h3>
-                  <p>{examData.subject}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Academic Year</h3>
@@ -848,15 +835,26 @@ export default function ExamDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Created By</h3>
-                    <p>{examData.created_by}</p>
+                    <p>{examData.created_by || 'N/A'}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Created At</h3>
-                    <p>{examData.created_at}</p>
+                    <p>{examData.created_at ? new Date(examData.created_at).toLocaleString() : 'N/A'}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated By</h3>
-                    <p>{examData.updated_by}</p>
+                    <p>{examData.updated_by || 'N/A'}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Updated At</h3>
+                    <p>{examData.updated_at ? new Date(examData.updated_at).toLocaleString() : 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
