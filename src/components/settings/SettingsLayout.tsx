@@ -17,7 +17,7 @@ export function SettingsLayout() {
         </p>
       </div>
       <Tabs value={currentTab} onValueChange={(value) => navigate(`/settings/${value}`)}>
-        <TabsList className="inline-flex h-10">
+        <TabsList className="flex h-10 w-fit">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>

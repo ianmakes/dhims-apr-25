@@ -29,9 +29,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import { AddEditSponsorModal, SponsorFormValues } from "@/components/sponsors/AddEditSponsorModal";
+import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
 import { useToast } from "@/hooks/use-toast";
-import { useSponsors } from "@/hooks/useSponsors";
+import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
 
 export default function Sponsors() {
   const { sponsors, isLoading, addSponsor, updateSponsor, deleteSponsor } = useSponsors();
@@ -40,7 +40,7 @@ export default function Sponsors() {
   const [isAddSponsorModalOpen, setIsAddSponsorModalOpen] = useState(false);
   const [isEditSponsorModalOpen, setIsEditSponsorModalOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [selectedSponsor, setSelectedSponsor] = useState<any | null>(null);
+  const [selectedSponsor, setSelectedSponsor] = useState<SponsorFormValues | null>(null);
   const { toast } = useToast();
 
   // Filter sponsors based on filters
@@ -59,7 +59,7 @@ export default function Sponsors() {
   };
 
   const handleEditSponsor = (data: SponsorFormValues) => {
-    if (selectedSponsor) {
+    if (selectedSponsor && selectedSponsor.id) {
       updateSponsor({ id: selectedSponsor.id, ...data });
       setIsEditSponsorModalOpen(false);
     }

@@ -75,7 +75,7 @@ export default function SponsorDetail() {
     }
   };
 
-  // Map database fields to form fields
+  // Map database fields to form fields for the modal
   const sponsorForForm: SponsorFormValues = sponsor ? {
     id: sponsor.id,
     firstName: sponsor.first_name,
