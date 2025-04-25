@@ -41,7 +41,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { SponsorFormValues } from "@/hooks/useSponsors";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ImageUploadCropper } from "@/components/students/ImageUploadCropper";
+import ImageUploadCropper from "@/components/students/ImageUploadCropper";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 

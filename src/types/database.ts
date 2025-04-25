@@ -22,6 +22,19 @@ export type StudentExamScore = Database['public']['Tables']['student_exam_scores
   };
 };
 
+// Define sponsor-related types
+export type SponsorTimelineEvent = {
+  id: string;
+  sponsor_id: string;
+  title: string;
+  description?: string | null;
+  type: string;
+  student_id?: string | null;
+  date: string;
+  created_at: string;
+  updated_at: string;
+};
+
 // Define the SponsorRelative type
 export type SponsorRelative = {
   id: string;

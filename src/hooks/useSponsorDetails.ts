@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sponsor } from "@/hooks/useSponsors";
-import { SponsorRelative } from "@/types/database";
+import { SponsorRelative, SponsorTimelineEvent } from "@/types/database";
 
 // Interface for the student removal reason form
 export interface StudentRemovalForm {
@@ -63,6 +63,7 @@ export const useSponsorDetails = (sponsorId: string) => {
   const { data: sponsorRelatives = [], isLoading: isLoadingRelatives } = useQuery({
     queryKey: ["sponsor-relatives", sponsorId],
     queryFn: async () => {
+      // Using a raw query with the from method since sponsor_relatives doesn't seem to be in the generated types
       const { data, error } = await supabase
         .from("sponsor_relatives")
         .select("*")
@@ -79,6 +80,7 @@ export const useSponsorDetails = (sponsorId: string) => {
   const { data: timelineEvents = [], isLoading: isLoadingTimeline } = useQuery({
     queryKey: ["sponsor-timeline", sponsorId],
     queryFn: async () => {
+      // Using a raw query with the from method since sponsor_timeline_events doesn't seem to be in the generated types
       const { data, error } = await supabase
         .from("sponsor_timeline_events")
         .select("*")
@@ -86,7 +88,7 @@ export const useSponsorDetails = (sponsorId: string) => {
         .order("date", { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as SponsorTimelineEvent[];
     },
     enabled: !!sponsorId,
   });
@@ -180,7 +182,7 @@ export const useSponsorDetails = (sponsorId: string) => {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as SponsorRelative;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -202,7 +204,7 @@ export const useSponsorDetails = (sponsorId: string) => {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as SponsorRelative;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -248,7 +250,7 @@ export const useSponsorDetails = (sponsorId: string) => {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as SponsorTimelineEvent;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-timeline", sponsorId] });

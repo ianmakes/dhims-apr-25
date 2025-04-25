@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { SponsorRelative } from "@/types/database";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ImageUploadCropper } from "@/components/students/ImageUploadCropper";
+import ImageUploadCropper from "@/components/students/ImageUploadCropper";
 import { supabase } from "@/integrations/supabase/client";
 import { Pencil, Plus, Trash2, User, X } from "lucide-react";
 import {
