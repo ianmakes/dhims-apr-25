@@ -1,5 +1,6 @@
+
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useSponsorDetails } from "@/hooks/useSponsorDetails";
+import { useSponsorDetails, StudentRemovalForm } from "@/hooks/useSponsorDetails";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -7,16 +8,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Edit, Mail, MapPin, Phone, Plus, Users } from "lucide-react";
+import { Calendar, Edit, Mail, MapPin, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
+import { SponsorRelativesSection } from "@/components/sponsors/SponsorRelativesSection";
+import { SponsorTimelineTab } from "@/components/sponsors/SponsorTimelineTab";
+import { RemoveStudentDialog } from "@/components/sponsors/RemoveStudentDialog";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function SponsorDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { sponsor, availableStudents, isLoading, assignStudents, removeStudent } = useSponsorDetails(id!);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [currentStudentToRemove, setCurrentStudentToRemove] = useState<{id: string; name: string} | null>(null);
+  
+  const {
+    sponsor,
+    availableStudents,
+    sponsorRelatives,
+    timelineEvents,
+    isLoading,
+    isLoadingRelatives,
+    isLoadingTimeline,
+    assignStudents,
+    removeStudent,
+    addSponsorRelative,
+    updateSponsorRelative,
+    deleteSponsorRelative,
+    addTimelineEvent,
+  } = useSponsorDetails(id!);
+  
   const { updateSponsor } = useSponsors();
   const { toast } = useToast();
 
@@ -51,15 +78,28 @@ export default function SponsorDetail() {
     }).format(dateObj);
   };
 
-  const handleRemoveStudent = (studentId: string) => {
-    removeStudent(studentId);
+  const handleOpenRemoveDialog = (studentId: string, studentName: string) => {
+    setCurrentStudentToRemove({ id: studentId, name: studentName });
+    setIsRemoveDialogOpen(true);
   };
 
-  const handleAssignStudents = (studentIds: string[]) => {
-    assignStudents(studentIds);
+  const handleRemoveStudent = (data: StudentRemovalForm) => {
+    removeStudent(data);
+    setIsRemoveDialogOpen(false);
+    setCurrentStudentToRemove(null);
   };
 
-  const toggleStudentSelection = (studentId: string, selectedStudentIds: string[], setSelectedStudentIds: (ids: string[]) => void) => {
+  const handleAssignStudents = () => {
+    if (selectedStudentIds.length === 0) {
+      toast.error("Please select at least one student to assign");
+      return;
+    }
+    
+    assignStudents(selectedStudentIds);
+    setSelectedStudentIds([]);
+  };
+
+  const toggleStudentSelection = (studentId: string) => {
     setSelectedStudentIds(
       selectedStudentIds.includes(studentId)
         ? selectedStudentIds.filter(id => id !== studentId)
@@ -67,13 +107,17 @@ export default function SponsorDetail() {
     );
   };
 
-  const navigateToAssignTab = () => {
-    // Safely navigate to the assign tab
-    const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement | null;
-    if (assignTab && 'click' in assignTab) {
-      assignTab.click();
-    }
-  };
+  // Filter available students based on search query
+  const filteredAvailableStudents = availableStudents.filter(student => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      student.name.toLowerCase().includes(query) ||
+      student.admission_number.toLowerCase().includes(query) ||
+      (student.current_grade && student.current_grade.toLowerCase().includes(query))
+    );
+  });
 
   // Map database fields to form fields for the modal
   const sponsorForForm: SponsorFormValues = sponsor ? {
@@ -87,7 +131,9 @@ export default function SponsorDetail() {
     country: sponsor.country || "",
     startDate: sponsor.start_date,
     status: sponsor.status as "active" | "inactive",
-    notes: sponsor.notes || ""
+    notes: sponsor.notes || "",
+    profileImageUrl: sponsor.profile_image_url || "",
+    primaryEmailForUpdates: sponsor.primary_email_for_updates || ""
   } : {} as SponsorFormValues;
 
   return (
@@ -123,9 +169,13 @@ export default function SponsorDetail() {
         <Card className="lg:col-span-2">
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-24 w-24">
-              <AvatarFallback className="text-2xl">
-                {sponsor.first_name[0]}{sponsor.last_name[0]}
-              </AvatarFallback>
+              {sponsor.profile_image_url ? (
+                <AvatarImage src={sponsor.profile_image_url} alt={`${sponsor.first_name} ${sponsor.last_name}`} />
+              ) : (
+                <AvatarFallback className="text-2xl">
+                  {sponsor.first_name[0]}{sponsor.last_name[0]}
+                </AvatarFallback>
+              )}
             </Avatar>
             <CardTitle className="mt-2">
               {sponsor.first_name} {sponsor.last_name}
@@ -251,6 +301,16 @@ export default function SponsorDetail() {
                       <p>{sponsor.country}</p>
                     </div>
                   )}
+                  {sponsor.primary_email_for_updates && (
+                    <div>
+                      <h3 className="font-medium">Email for Updates</h3>
+                      <p>
+                        {sponsor.primary_email_for_updates === "both" 
+                          ? "Both emails" 
+                          : sponsor.primary_email_for_updates}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -275,6 +335,16 @@ export default function SponsorDetail() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Sponsor Relatives Section */}
+              <SponsorRelativesSection
+                sponsorId={id!}
+                relatives={sponsorRelatives}
+                isLoading={isLoadingRelatives}
+                onAddRelative={addSponsorRelative}
+                onUpdateRelative={updateSponsorRelative}
+                onDeleteRelative={deleteSponsorRelative}
+              />
             </TabsContent>
 
             {/* Sponsored Students Tab */}
@@ -293,52 +363,76 @@ export default function SponsorDetail() {
                       <Button
                         variant="outline"
                         className="mt-4"
-                        onClick={navigateToAssignTab}
+                        onClick={() => {
+                          const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement;
+                          if (assignTab) assignTab.click();
+                        }}
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Assign Students
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {sponsor.students?.map((student: any) => (
-                        <div key={student.id} className="flex justify-between items-center p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarFallback>
-                                {student.name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <Link to={`/students/${student.id}`} className="font-medium text-primary hover:underline">
-                                {student.name}
-                              </Link>
-                              <div className="text-sm text-muted-foreground">
-                                {student.current_grade && `Grade ${student.current_grade} • `}
-                                Sponsored since {formatDate(student.sponsored_since)}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Grade</TableHead>
+                          <TableHead>Admission #</TableHead>
+                          <TableHead>Sponsored Since</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sponsor.students?.map((student: any) => (
+                          <TableRow key={student.id}>
+                            <TableCell>
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="h-8 w-8">
+                                  {student.profile_image_url ? (
+                                    <AvatarImage src={student.profile_image_url} alt={student.name} />
+                                  ) : (
+                                    <AvatarFallback>
+                                      {student.name[0]}
+                                    </AvatarFallback>
+                                  )}
+                                </Avatar>
+                                <div>
+                                  <Link
+                                    to={`/students/${student.id}`}
+                                    className="font-medium text-primary hover:underline"
+                                  >
+                                    {student.name}
+                                  </Link>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/students/${student.id}`)}
-                            >
-                              View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => handleRemoveStudent(student.id)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            </TableCell>
+                            <TableCell>{student.current_grade || "—"}</TableCell>
+                            <TableCell>{student.admission_number}</TableCell>
+                            <TableCell>{formatDate(student.sponsored_since)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/students/${student.id}`)}
+                                >
+                                  View
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleOpenRemoveDialog(student.id, student.name)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>
@@ -346,24 +440,11 @@ export default function SponsorDetail() {
 
             {/* Timeline Tab */}
             <TabsContent value="timeline" className="py-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sponsor Timeline</CardTitle>
-                  <CardDescription>
-                    A history of {sponsor.first_name}'s interactions and activities
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative border-l border-border pl-6 ml-4">
-                    {/* Timeline events will be implemented in the future */}
-                  </div>
-                  <div className="mt-6 flex justify-center">
-                    <Button>
-                      Add Timeline Event
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <SponsorTimelineTab 
+                timelineEvents={timelineEvents}
+                isLoading={isLoadingTimeline}
+                onAddTimelineEvent={addTimelineEvent}
+              />
             </TabsContent>
 
             {/* Assign Students Tab */}
@@ -381,13 +462,110 @@ export default function SponsorDetail() {
                       <p className="text-muted-foreground">There are no unsponsored students available at this time.</p>
                     </div>
                   ) : (
-                    <>
-                      <StudentList
-                        students={availableStudents}
-                        sponsor={sponsor}
-                        onAssignStudents={handleAssignStudents}
-                      />
-                    </>
+                    <div className="space-y-4">
+                      {/* Search input */}
+                      <div className="flex items-center space-x-2">
+                        <Search className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search students by name, admission number, or grade..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+
+                      {/* Students table */}
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">
+                                <Checkbox
+                                  checked={
+                                    filteredAvailableStudents.length > 0 &&
+                                    filteredAvailableStudents.every(student => 
+                                      selectedStudentIds.includes(student.id)
+                                    )
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedStudentIds(filteredAvailableStudents.map(s => s.id));
+                                    } else {
+                                      setSelectedStudentIds([]);
+                                    }
+                                  }}
+                                  aria-label="Select all students"
+                                />
+                              </TableHead>
+                              <TableHead>Student</TableHead>
+                              <TableHead>Admission #</TableHead>
+                              <TableHead>Grade</TableHead>
+                              <TableHead>Gender</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredAvailableStudents.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center h-24">
+                                  No students match your search criteria
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredAvailableStudents.map((student) => (
+                                <TableRow key={student.id}>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedStudentIds.includes(student.id)}
+                                      onCheckedChange={() => toggleStudentSelection(student.id)}
+                                      aria-label={`Select ${student.name}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center space-x-3">
+                                      <Avatar className="h-8 w-8">
+                                        {student.profile_image_url ? (
+                                          <AvatarImage src={student.profile_image_url} alt={student.name} />
+                                        ) : (
+                                          <AvatarFallback>
+                                            {student.name[0]}
+                                          </AvatarFallback>
+                                        )}
+                                      </Avatar>
+                                      <div className="font-medium">{student.name}</div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{student.admission_number}</TableCell>
+                                  <TableCell>{student.current_grade || "—"}</TableCell>
+                                  <TableCell>{student.gender}</TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => navigate(`/students/${student.id}`)}
+                                    >
+                                      View
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4">
+                        <p className="text-sm text-muted-foreground">
+                          {selectedStudentIds.length} students selected
+                        </p>
+                        <Button
+                          onClick={handleAssignStudents}
+                          disabled={selectedStudentIds.length === 0}
+                        >
+                          Assign Selected Students
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -403,73 +581,17 @@ export default function SponsorDetail() {
         sponsor={sponsorForForm}
         onSubmit={handleEditSponsor}
       />
+
+      {/* Remove Student Dialog */}
+      {currentStudentToRemove && (
+        <RemoveStudentDialog
+          open={isRemoveDialogOpen}
+          onOpenChange={setIsRemoveDialogOpen}
+          onConfirm={handleRemoveStudent}
+          studentId={currentStudentToRemove.id}
+          studentName={currentStudentToRemove.name}
+        />
+      )}
     </div>
   );
-
-  function StudentList({ students, sponsor, onAssignStudents }: { students: any[], sponsor: any, onAssignStudents: (studentIds: string[]) => void }) {
-    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-
-    return (
-      <>
-        <div className="space-y-4 mb-6">
-          {students.map((student: any) => (
-            <div
-              key={student.id}
-              className={`flex justify-between items-center p-4 border rounded-lg cursor-pointer
-                              ${selectedStudentIds.includes(student.id) ? 'bg-primary/10 border-primary' : ''}`}
-              onClick={() => toggleStudentSelection(student.id, selectedStudentIds, setSelectedStudentIds)}
-            >
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedStudentIds.includes(student.id)}
-                  onChange={() => toggleStudentSelection(student.id, selectedStudentIds, setSelectedStudentIds)}
-                  className="h-4 w-4"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <Avatar>
-                  <AvatarFallback>
-                    {student.name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium">
-                    {student.name}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {student.current_grade && `Grade ${student.current_grade} • `}
-                    {student.gender && (student.gender.charAt(0).toUpperCase() + student.gender.slice(1))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/students/${student.id}`);
-                  }}
-                >
-                  View Profile
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            {selectedStudentIds.length} students selected
-          </p>
-          <Button
-            onClick={() => onAssignStudents(selectedStudentIds)}
-            disabled={selectedStudentIds.length === 0}
-          >
-            Assign Selected Students
-          </Button>
-        </div>
-      </>
-    );
-  }
 }

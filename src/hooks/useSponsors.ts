@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,7 +18,9 @@ export interface Sponsor {
   notes?: string;
   created_at: string;
   updated_at: string;
+  profile_image_url?: string | null;
   students?: any[];
+  primary_email_for_updates?: string;
 }
 
 // Form values for Sponsor (used in forms)
@@ -33,6 +36,8 @@ export interface SponsorFormValues {
   startDate: string;
   status: "active" | "inactive";
   notes?: string;
+  profileImageUrl?: string | null;
+  primaryEmailForUpdates?: string;
 }
 
 export const useSponsors = () => {
@@ -64,7 +69,9 @@ export const useSponsors = () => {
         country: values.country || null,
         start_date: values.startDate,
         status: values.status,
-        notes: values.notes || null
+        notes: values.notes || null,
+        profile_image_url: values.profileImageUrl || null,
+        primary_email_for_updates: values.primaryEmailForUpdates || null
       };
 
       const { data, error } = await supabase
@@ -98,7 +105,9 @@ export const useSponsors = () => {
         country: values.country || null,
         start_date: values.startDate,
         status: values.status,
-        notes: values.notes || null
+        notes: values.notes || null,
+        profile_image_url: values.profileImageUrl || null,
+        primary_email_for_updates: values.primaryEmailForUpdates || null
       };
 
       const { data, error } = await supabase

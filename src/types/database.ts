@@ -11,7 +11,7 @@ export type StudentRelative = Database['public']['Tables']['student_relatives'][
 
 // Define the StudentExamScore type with proper exam property
 export type StudentExamScore = Database['public']['Tables']['student_exam_scores']['Row'] & {
-  exam?: {
+  exam: {
     id: string;
     name: string;
     term: string;
@@ -20,6 +20,19 @@ export type StudentExamScore = Database['public']['Tables']['student_exam_scores
     max_score: number;
     passing_score: number;
   };
+};
+
+// Define the SponsorRelative type
+export type SponsorRelative = {
+  id: string;
+  sponsor_id: string;
+  name: string;
+  relationship: string;
+  email: string;
+  phone_number?: string | null;
+  photo_url?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 // New student form input type

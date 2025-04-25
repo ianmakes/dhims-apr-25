@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -85,7 +84,9 @@ export default function Sponsors() {
       country: sponsor.country || "",
       startDate: sponsor.start_date,
       status: sponsor.status,
-      notes: sponsor.notes || ""
+      notes: sponsor.notes || "",
+      profileImageUrl: sponsor.profile_image_url || "",
+      primaryEmailForUpdates: sponsor.primary_email_for_updates || ""
     });
     setIsEditSponsorModalOpen(true);
   };
@@ -95,12 +96,8 @@ export default function Sponsors() {
     setIsDeleteAlertOpen(true);
   };
 
-  // Updated columns with edit/delete actions
+  // Updated columns without the ID column
   const columnsWithActions = [
-    {
-      accessorKey: "id",
-      header: "ID",
-    },
     {
       accessorKey: "first_name",
       header: "First Name",
