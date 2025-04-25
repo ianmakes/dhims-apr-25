@@ -23,7 +23,7 @@ export type StudentExamScore = Database['public']['Tables']['student_exam_scores
   };
 };
 
-// Define sponsor-related types for tables that don't exist in the database schema yet
+// Define sponsor-related types for tables
 export type SponsorTimelineEvent = {
   id: string;
   sponsor_id: string;

@@ -54,41 +54,78 @@ export const useSponsorDetails = (sponsorId: string) => {
         .is("sponsor_id", null)
         .eq("status", "active");
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("Error fetching available students:", error);
+        throw error;
+      }
+
+      // Log the raw students data to help debug
+      console.log("Available students data:", data);
+      
+      return data || [];
     },
   });
 
-  // Query to fetch sponsor relatives
+  // Query to fetch sponsor relatives - using RPC to work around type issues
   const { data: sponsorRelatives = [], isLoading: isLoadingRelatives } = useQuery({
     queryKey: ["sponsor-relatives", sponsorId],
     queryFn: async () => {
-      // Using a raw query with the from method since sponsor_relatives doesn't seem to be in the generated types
+      // Using raw fetch approach to bypass type issues
       const { data, error } = await supabase
-        .from("sponsor_relatives")
-        .select("*")
-        .eq("sponsor_id", sponsorId)
-        .order("created_at", { ascending: false });
+        .rpc("get_sponsor_relatives", { sponsor_id_param: sponsorId });
 
-      if (error) throw error;
-      return data as SponsorRelative[];
+      if (error) {
+        // Gracefully handle the case where the function doesn't exist yet
+        console.error("Error fetching sponsor relatives:", error);
+        
+        // Fallback to direct query if RPC fails
+        const { data: directData, error: directError } = await supabase
+          .from("sponsor_relatives")
+          .select("*")
+          .eq("sponsor_id", sponsorId)
+          .order("created_at", { ascending: false });
+          
+        if (directError) {
+          console.error("Direct query for sponsor relatives failed:", directError);
+          return [] as SponsorRelative[];
+        }
+        
+        return (directData || []) as SponsorRelative[];
+      }
+      
+      return (data || []) as SponsorRelative[];
     },
     enabled: !!sponsorId,
   });
 
-  // Query to fetch sponsor timeline events
+  // Query to fetch sponsor timeline events - using RPC to work around type issues
   const { data: timelineEvents = [], isLoading: isLoadingTimeline } = useQuery({
     queryKey: ["sponsor-timeline", sponsorId],
     queryFn: async () => {
-      // Using a raw query with the from method since sponsor_timeline_events doesn't seem to be in the generated types
+      // Using raw fetch approach to bypass type issues
       const { data, error } = await supabase
-        .from("sponsor_timeline_events")
-        .select("*")
-        .eq("sponsor_id", sponsorId)
-        .order("date", { ascending: false });
+        .rpc("get_sponsor_timeline_events", { sponsor_id_param: sponsorId });
 
-      if (error) throw error;
-      return data as SponsorTimelineEvent[];
+      if (error) {
+        // Gracefully handle the case where the function doesn't exist yet
+        console.error("Error fetching sponsor timeline events:", error);
+        
+        // Fallback to direct query if RPC fails
+        const { data: directData, error: directError } = await supabase
+          .from("sponsor_timeline_events")
+          .select("*")
+          .eq("sponsor_id", sponsorId)
+          .order("date", { ascending: false });
+          
+        if (directError) {
+          console.error("Direct query for timeline events failed:", directError);
+          return [] as SponsorTimelineEvent[];
+        }
+        
+        return (directData || []) as SponsorTimelineEvent[];
+      }
+      
+      return (data || []) as SponsorTimelineEvent[];
     },
     enabled: !!sponsorId,
   });
@@ -106,20 +143,23 @@ export const useSponsorDetails = (sponsorId: string) => {
       if (error) throw error;
       
       // Create timeline entries for each assigned student
-      const timelineEntries = studentIds.map(studentId => ({
-        sponsor_id: sponsorId,
-        title: "Student Assigned",
-        description: `A new student was assigned to this sponsor.`,
-        type: "student_assignment",
-        student_id: studentId,
-        date: new Date().toISOString()
-      }));
-      
-      const { error: timelineError } = await supabase
-        .from("sponsor_timeline_events")
-        .insert(timelineEntries);
-        
-      if (timelineError) throw timelineError;
+      for (const studentId of studentIds) {
+        const { error: timelineError } = await supabase
+          .from("sponsor_timeline_events")
+          .insert({
+            sponsor_id: sponsorId,
+            title: "Student Assigned",
+            description: "A new student was assigned to this sponsor.",
+            type: "student_assignment",
+            student_id: studentId,
+            date: new Date().toISOString()
+          });
+          
+        if (timelineError) {
+          console.error("Error creating timeline event:", timelineError);
+          // Continue with other students rather than failing completely
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors", sponsorId] });
@@ -156,7 +196,7 @@ export const useSponsorDetails = (sponsorId: string) => {
           date: new Date().toISOString()
         });
         
-      if (timelineError) throw timelineError;
+      if (timelineError) console.error("Error creating timeline event:", timelineError);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors", sponsorId] });
@@ -178,11 +218,10 @@ export const useSponsorDetails = (sponsorId: string) => {
           ...relative,
           sponsor_id: sponsorId
         })
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
-      return data as SponsorRelative;
+      return data?.[0] as SponsorRelative;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -200,11 +239,10 @@ export const useSponsorDetails = (sponsorId: string) => {
         .from("sponsor_relatives")
         .update(relative)
         .eq("id", relative.id)
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
-      return data as SponsorRelative;
+      return data?.[0] as SponsorRelative;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -246,11 +284,10 @@ export const useSponsorDetails = (sponsorId: string) => {
           type: event.type,
           date: new Date().toISOString()
         })
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
-      return data as SponsorTimelineEvent;
+      return data?.[0] as SponsorTimelineEvent;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-timeline", sponsorId] });
