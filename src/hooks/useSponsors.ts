@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Database model for Sponsor
 export interface Sponsor {
   id: string;
   first_name: string;
@@ -19,6 +20,7 @@ export interface Sponsor {
   students?: any[];
 }
 
+// Form values for Sponsor (used in forms)
 export interface SponsorFormValues {
   id?: string;
   firstName: string;
@@ -45,7 +47,7 @@ export const useSponsors = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as Sponsor[];
     },
   });
 

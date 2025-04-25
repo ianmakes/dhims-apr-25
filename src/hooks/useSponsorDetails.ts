@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Sponsor } from "@/hooks/useSponsors";
 
 export const useSponsorDetails = (sponsorId: string) => {
   const queryClient = useQueryClient();
@@ -31,7 +32,7 @@ export const useSponsorDetails = (sponsorId: string) => {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Sponsor;
     },
     enabled: !!sponsorId,
   });

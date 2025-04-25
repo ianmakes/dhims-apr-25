@@ -37,8 +37,8 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { Sponsor } from "@/types";
 import { cn } from "@/lib/utils";
+import { SponsorFormValues } from "@/hooks/useSponsors";
 
 // Define form schema
 const sponsorFormSchema = z.object({
@@ -60,12 +60,10 @@ const sponsorFormSchema = z.object({
   notes: z.string().optional().or(z.literal("")),
 });
 
-export type SponsorFormValues = z.infer<typeof sponsorFormSchema>;
-
 interface AddEditSponsorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  sponsor?: Sponsor;
+  sponsor?: SponsorFormValues;
   onSubmit: (data: SponsorFormValues) => void;
 }
 
