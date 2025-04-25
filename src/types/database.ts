@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 
 // Export specific table types for easier usage
@@ -6,6 +5,20 @@ export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Student = Database['public']['Tables']['students']['Row'];
 export type TimelineEvent = Database['public']['Tables']['timeline_events']['Row'];
 export type StudentLetter = Database['public']['Tables']['student_letters']['Row'];
+export type StudentPhoto = Database['public']['Tables']['student_photos']['Row'];
+export type StudentRelative = Database['public']['Tables']['student_relatives']['Row'];
+
+export interface StudentExamScore extends Database['public']['Tables']['student_exam_scores']['Row'] {
+  exam?: {
+    id: string;
+    name: string;
+    term: string;
+    academic_year: string;
+    exam_date: string;
+    max_score: number;
+    passing_score: number;
+  };
+}
 
 // New student form input type
 export interface StudentFormInput {
@@ -29,4 +42,7 @@ export interface StudentFormInput {
   sponsored_since?: string | null;
   profile_image_url?: string | null;
   slug?: string | null;
+  students?: Student[]; // Add this to resolve type issues
+  createdAt?: string;   // Add this to resolve type issues
+  updatedAt?: string;   // Add this to resolve type issues
 }

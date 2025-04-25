@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -11,16 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface PhotoType {
-  id: string;
-  url: string;
-  caption: string;
-  date: string;
-  location?: string;
-  student_id: string;
-  created_at: string;
-}
+import { StudentPhoto } from "@/types/database";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StudentPhotosTabProps {
   studentName: string;
@@ -29,9 +20,10 @@ interface StudentPhotosTabProps {
 }
 
 export function StudentPhotosTab({ studentName, studentId, formatDate }: StudentPhotosTabProps) {
-  const [viewPhoto, setViewPhoto] = useState<PhotoType | null>(null);
+  const [viewPhoto, setViewPhoto] = useState<StudentPhoto | null>(null);
   const [isAddPhotoModalOpen, setIsAddPhotoModalOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const [newPhoto, setNewPhoto] = useState({
     caption: "",
     date: new Date().toISOString().slice(0, 10),
@@ -41,7 +33,11 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Fetch photos from Supabase
-  const { data: photos = [], refetch: refetchPhotos, isLoading: loadingPhotos } = useQuery({
+  const { 
+    data: photos = [], 
+    refetch: refetchPhotos, 
+    isLoading: loadingPhotos 
+  } = useQuery<StudentPhoto[]>({
     queryKey: ['student-photos', studentId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -51,7 +47,7 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
         .order('date', { ascending: false });
       
       if (error) throw error;
-      return data as PhotoType[];
+      return data || [];
     },
     enabled: !!studentId
   });

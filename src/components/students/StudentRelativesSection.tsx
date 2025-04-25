@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,16 +10,8 @@ import { PlusCircle, Phone, UserCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ImageUploadCropper from "./ImageUploadCropper";
 import { useQuery } from "@tanstack/react-query";
-
-interface RelativeType {
-  id: string;
-  student_id: string;
-  name: string;
-  relationship: string;
-  phone_number: string;
-  photo_url?: string | null;
-  created_at?: string;
-}
+import { StudentRelative } from "@/types/database";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RELATIONSHIPS = [
   "Father", "Mother", "Grandfather", "Grandmother", "Brother", "Sister", 
@@ -35,6 +26,7 @@ interface StudentRelativesSectionProps {
 export function StudentRelativesSection({ studentId, studentName }: StudentRelativesSectionProps) {
   const [isAddRelativeModalOpen, setIsAddRelativeModalOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [newRelative, setNewRelative] = useState({
@@ -44,7 +36,10 @@ export function StudentRelativesSection({ studentId, studentName }: StudentRelat
     photo_url: "",
   });
   
-  const { data: relatives = [], refetch } = useQuery({
+  const { 
+    data: relatives = [], 
+    refetch 
+  } = useQuery<StudentRelative[]>({
     queryKey: ['student-relatives', studentId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,7 +49,7 @@ export function StudentRelativesSection({ studentId, studentName }: StudentRelat
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as RelativeType[];
+      return data || [];
     }
   });
 

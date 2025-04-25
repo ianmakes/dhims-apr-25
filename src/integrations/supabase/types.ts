@@ -257,6 +257,88 @@ export type Database = {
           },
         ]
       }
+      student_photos: {
+        Row: {
+          caption: string
+          created_at: string
+          date: string
+          id: string
+          location: string | null
+          student_id: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          caption: string
+          created_at?: string
+          date?: string
+          id?: string
+          location?: string | null
+          student_id?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          caption?: string
+          created_at?: string
+          date?: string
+          id?: string
+          location?: string | null
+          student_id?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_photos_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_relatives: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone_number: string | null
+          photo_url: string | null
+          relationship: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone_number?: string | null
+          photo_url?: string | null
+          relationship: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone_number?: string | null
+          photo_url?: string | null
+          relationship?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_relatives_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           accommodation_status: string | null

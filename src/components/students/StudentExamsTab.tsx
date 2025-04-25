@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
@@ -9,6 +8,7 @@ import { Download, Filter } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StudentExamScore } from "@/types/database";
 
 const gradeColors = {
   "A": "#4ade80",
@@ -47,24 +47,6 @@ const getGradeCategory = (score: number) => {
   return "Below Expectation";
 };
 
-interface StudentExamScore {
-  id: string;
-  student_id: string;
-  exam_id: string;
-  score: number;
-  did_not_sit: boolean;
-  created_at: string;
-  exam: {
-    id: string;
-    name: string;
-    term: string;
-    academic_year: string;
-    exam_date: string;
-    max_score: number;
-    passing_score: number;
-  }
-}
-
 interface StudentExamsTabProps {
   studentName: string;
   studentId: string;
@@ -75,18 +57,18 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
   const { data: academicYears = [], isLoading: loadingYears } = useQuery({
     queryKey: ['academic-years'],
     queryFn: async () => {
-      const { data: examData } = await supabase
+      const { data } = await supabase
         .from('student_exam_scores')
         .select('exam(academic_year)')
-        .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+        .eq('student_id', studentId);
       
-      if (!examData?.length) return ["2024"];
-      
-      // Get unique academic years
-      const uniqueYears = Array.from(new Set(examData.map(item => 
-        item.exam?.academic_year
-      ).filter(Boolean))).sort().reverse();
+      const uniqueYears = Array.from(
+        new Set(
+          data
+            ?.map(item => item.exam?.academic_year)
+            .filter(Boolean) || []
+        )
+      ).sort().reverse();
       
       return uniqueYears.length ? uniqueYears : ["2024"];
     }
@@ -95,12 +77,14 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
   const [selectedYear, setSelectedYear] = useState<string>("");
   
   // Set initial selected year once data is loaded
-  if (academicYears.length > 0 && !selectedYear) {
-    setSelectedYear(academicYears[0]);
-  }
+  useEffect(() => {
+    if (academicYears.length > 0 && !selectedYear) {
+      setSelectedYear(academicYears[0]);
+    }
+  }, [academicYears]);
   
   // Get student exam scores
-  const { data: examScores = [], isLoading: loadingScores } = useQuery({
+  const { data: examScores = [], isLoading: loadingScores } = useQuery<StudentExamScore[]>({
     queryKey: ['student-exams', studentId, selectedYear],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -116,12 +100,10 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
       
       if (error) throw error;
       
-      const typedData = data as StudentExamScore[];
-      
       // Filter by selected academic year if one is selected
       return selectedYear 
-        ? typedData.filter(score => score.exam?.academic_year === selectedYear)
-        : typedData;
+        ? (data as StudentExamScore[]).filter(score => score.exam?.academic_year === selectedYear)
+        : (data as StudentExamScore[]);
     },
     enabled: !!studentId
   });
