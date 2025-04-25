@@ -1,5 +1,6 @@
 
 import { Database } from "@/integrations/supabase/types";
+import { Json } from "@/integrations/supabase/types";
 
 // Export specific table types for easier usage
 export type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -22,7 +23,7 @@ export type StudentExamScore = Database['public']['Tables']['student_exam_scores
   };
 };
 
-// Define sponsor-related types
+// Define sponsor-related types for tables that don't exist in the database schema yet
 export type SponsorTimelineEvent = {
   id: string;
   sponsor_id: string;
@@ -32,7 +33,7 @@ export type SponsorTimelineEvent = {
   student_id?: string | null;
   date: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string | null;
 };
 
 // Define the SponsorRelative type
@@ -45,7 +46,7 @@ export type SponsorRelative = {
   phone_number?: string | null;
   photo_url?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string | null;
 };
 
 // New student form input type

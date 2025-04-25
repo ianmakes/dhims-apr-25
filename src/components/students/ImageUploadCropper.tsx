@@ -26,7 +26,10 @@ async function cropImageToBlob(imageSrc: string, crop: any, zoom: number): Promi
 
 interface ImageUploadCropperProps {
   value?: string | null;
-  onChange: (url: string) => void;
+  onChange?: (url: string) => void;
+  onImageCropped?: (blob: Blob) => Promise<void>;
+  onCancel?: () => void;
+  isUploading?: boolean;
   label?: string;
   aspectRatio?: number;
 }
@@ -34,7 +37,10 @@ interface ImageUploadCropperProps {
 export default function ImageUploadCropper({ 
   value, 
   onChange, 
-  label="Profile Image",
+  onImageCropped,
+  onCancel,
+  isUploading = false,
+  label = "Profile Image",
   aspectRatio = 1 
 }: ImageUploadCropperProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -76,25 +82,31 @@ export default function ImageUploadCropper({
       
       const blob = await cropImageToBlob(imageSrc, croppedAreaPixels, zoom);
 
-      // Upload to Supabase storage
-      const filePath = `students/${Date.now()}.png`;
-      const { supabase } = await import("@/integrations/supabase/client");
-      
-      const { data, error } = await supabase.storage.from("profile-images").upload(filePath, blob, {
-        cacheControl: "3600",
-        upsert: true,
-        contentType: "image/png",
-      });
-      
-      if (error) {
-        console.error("Storage upload error:", error);
-        toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-        throw error;
+      if (onImageCropped) {
+        // Use the callback prop if provided
+        await onImageCropped(blob);
+      } else if (onChange) {
+        // Default upload to Supabase storage
+        const filePath = `students/${Date.now()}.png`;
+        const { supabase } = await import("@/integrations/supabase/client");
+        
+        const { data, error } = await supabase.storage.from("profile-images").upload(filePath, blob, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: "image/png",
+        });
+        
+        if (error) {
+          console.error("Storage upload error:", error);
+          toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+          throw error;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage.from("profile-images").getPublicUrl(filePath);
+        onChange(urlData?.publicUrl || "");
       }
 
-      // Get public URL
-      const { data: urlData } = supabase.storage.from("profile-images").getPublicUrl(filePath);
-      onChange(urlData?.publicUrl || "");
       setImageSrc(null);
       toast({ title: "Success", description: "Image uploaded successfully" });
     } catch (err: any) {
@@ -110,10 +122,79 @@ export default function ImageUploadCropper({
   };
 
   const handleRemove = () => {
-    onChange("");
+    if (onChange) onChange("");
     setImageSrc(null);
   };
 
+  const handleCancel = () => {
+    setImageSrc(null);
+    if (onCancel) onCancel();
+  };
+
+  // If using external control mode (onImageCropped & onCancel provided)
+  if (onImageCropped && onCancel && !value) {
+    return (
+      <div className="fixed z-50 inset-0 bg-black/70 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-lg shadow-xl w-[90%] max-w-md flex flex-col">
+          <h3 className="text-lg font-medium mb-4">Crop Image</h3>
+          {!imageSrc ? (
+            <div className="flex flex-col items-center gap-4">
+              <Button type="button" onClick={open}>Select Image</Button>
+              <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+            </div>
+          ) : (
+            <>
+              <div className="relative w-full h-64 bg-gray-100 rounded-md overflow-hidden">
+                <Cropper
+                  image={imageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={aspectRatio}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={handleCropComplete}
+                />
+              </div>
+              
+              <div className="mt-4 space-y-2">
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-sm">Zoom</span>
+                    <span className="text-sm text-gray-500">{zoom.toFixed(1)}x</span>
+                  </div>
+                  <Slider
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    value={[zoom]}
+                    onValueChange={(value) => setZoom(value[0])}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-4 mt-6 justify-end">
+                <Button type="button" variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleCrop} disabled={isUploading || cropping}>
+                  {isUploading || cropping ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={onFileChange}
+        />
+      </div>
+    );
+  }
+
+  // Normal mode with internal state
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
