@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import ImageUploadCropper from "./ImageUploadCropper";
 import { StudentFormInput } from "@/types/database";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 
 const SCHOOL_LEVELS = [
   "SNE",
@@ -32,8 +34,6 @@ interface AddEditStudentModalProps {
   isLoading?: boolean;
 }
 
-const STEP_TITLES = ["Basic Info", "Academic Info", "Additional Info"];
-
 export function AddEditStudentModal({
   open,
   onOpenChange,
@@ -41,7 +41,6 @@ export function AddEditStudentModal({
   onSubmit,
   isLoading,
 }: AddEditStudentModalProps) {
-  const [step, setStep] = useState(0);
   const [form, setForm] = useState<StudentFormInput>(
     student ? {
       name: student.name || "",
@@ -60,8 +59,8 @@ export function AddEditStudentModal({
       height_cm: student.height_cm || null,
       weight_kg: student.weight_kg || null,
       admission_date: student.admission_date || "",
-      sponsor_id: student.sponsor_id || "",
-      sponsored_since: student.sponsored_since || "",
+      sponsor_id: student.sponsor_id || null,
+      sponsored_since: student.sponsored_since || null,
       profile_image_url: student.profile_image_url || "",
       slug: student.slug || "",
     } : {
@@ -81,8 +80,8 @@ export function AddEditStudentModal({
       height_cm: null,
       weight_kg: null,
       admission_date: "",
-      sponsor_id: "",
-      sponsored_since: "",
+      sponsor_id: null,
+      sponsored_since: null,
       profile_image_url: "",
       slug: "",
     }
@@ -102,9 +101,6 @@ export function AddEditStudentModal({
 
   const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
 
-  const next = () => setStep((s) => Math.min(2, s + 1));
-  const prev = () => setStep((s) => Math.max(0, s - 1));
-
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     onSubmit(form);
@@ -113,163 +109,159 @@ export function AddEditStudentModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{student ? "Edit Student" : "Add Student"}</DialogTitle>
-            <div className="flex justify-center gap-4 my-2">
-              {STEP_TITLES.map((title, i) => (
-                <span key={i} className={`text-xs font-medium ${i === step ? "text-primary underline" : "text-muted-foreground"}`}>
-                  {title}
-                </span>
-              ))}
+        <DialogHeader>
+          <DialogTitle className="text-xl">{student ? "Edit Student" : "Add Student"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid grid-cols-3 mb-4">
+              <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="academic">Academic Info</TabsTrigger>
+              <TabsTrigger value="additional">Additional Info</TabsTrigger>
+            </TabsList>
+            <div className={`overflow-y-auto ${containerFixedHeight} transition-all px-2 pt-2`}>
+              <TabsContent value="basic">
+                <Card className="p-4 border rounded-lg shadow-sm">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="admission_number">Admission Number</Label>
+                      <Input name="admission_number" value={form.admission_number} onChange={handleChange} required className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input name="name" value={form.name} onChange={handleChange} required className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="dob">Date of Birth</Label>
+                      <Input name="dob" type="date" value={form.dob ?? ""} onChange={handleChange} required className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="gender">Gender</Label>
+                      <Select value={form.gender || ""} onValueChange={handlePickGender}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GENDERS.map(g => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="profile_image_url">Profile Image</Label>
+                      <div className="mt-2">
+                        <ImageUploadCropper
+                          value={form.profile_image_url || ""}
+                          onChange={handleImageChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+              <TabsContent value="academic">
+                <Card className="p-4 border rounded-lg shadow-sm">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="school_level">School Level</Label>
+                      <Select value={form.school_level || ""} onValueChange={v => setForm(f => ({...f, school_level: v}))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SCHOOL_LEVELS.map((l) => (
+                            <SelectItem key={l} value={l}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="cbc_category">CBC Category</Label>
+                      <Select value={form.cbc_category || ""} onValueChange={v => setForm(f => ({...f, cbc_category: v}))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select CBC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CBC_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="current_grade">Current Grade</Label>
+                      <Input name="current_grade" value={form.current_grade || ""} onChange={handleChange} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="admission_date">Admission Date</Label>
+                      <Input name="admission_date" type="date" value={form.admission_date || ""} onChange={handleChange} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={form.status} onValueChange={v => setForm(f => ({...f, status: v}))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Active">Active</SelectItem>
+                          <SelectItem value="Inactive">Inactive</SelectItem>
+                          <SelectItem value="Graduated">Graduated</SelectItem>
+                          <SelectItem value="Transferred">Transferred</SelectItem>
+                          <SelectItem value="Suspended">Suspended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+              <TabsContent value="additional">
+                <Card className="p-4 border rounded-lg shadow-sm">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="accommodation_status">Accommodation</Label>
+                      <Select value={form.accommodation_status || ""} onValueChange={v => setForm(f => ({...f, accommodation_status: v}))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select accommodation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACCOMMODATION.map((a) => (
+                            <SelectItem key={a} value={a}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="health_status">Health Status</Label>
+                      <Input name="health_status" value={form.health_status || ""} onChange={handleChange} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="location">Location</Label>
+                      <Input name="location" value={form.location || ""} onChange={handleChange} className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Input name="description" value={form.description || ""} onChange={handleChange} className="mt-1" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="height_cm">Height (cm)</Label>
+                        <Input name="height_cm" type="number" value={form.height_cm || ""} onChange={handleChange} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label htmlFor="weight_kg">Weight (kg)</Label>
+                        <Input name="weight_kg" type="number" value={form.weight_kg || ""} onChange={handleChange} className="mt-1" />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
             </div>
-          </DialogHeader>
-          <div className={`overflow-y-auto ${containerFixedHeight} transition-all px-2 pt-2`}>
-            {step === 0 && (
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label htmlFor="admission_number">Admission Number</Label>
-                  <Input name="admission_number" value={form.admission_number} onChange={handleChange} required />
-                </div>
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input name="name" value={form.name} onChange={handleChange} required />
-                </div>
-                <div>
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input name="dob" type="date" value={form.dob ?? ""} onChange={handleChange} required />
-                </div>
-                <div>
-                  <Label htmlFor="gender">Gender</Label>
-                  <Select value={form.gender || ""} onValueChange={handlePickGender}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GENDERS.map(g => (
-                        <SelectItem key={g} value={g}>{g}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="profile_image_url">Profile Image</Label>
-                  <ImageUploadCropper
-                    value={form.profile_image_url || ""}
-                    onChange={handleImageChange}
-                  />
-                </div>
-              </div>
-            )}
-            {step === 1 && (
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label htmlFor="school_level">School Level</Label>
-                  <Select value={form.school_level || ""} onValueChange={v => setForm(f => ({...f, school_level: v}))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SCHOOL_LEVELS.map((l) => (
-                        <SelectItem key={l} value={l}>{l}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="cbc_category">CBC Category</Label>
-                  <Select value={form.cbc_category || ""} onValueChange={v => setForm(f => ({...f, cbc_category: v}))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select CBC" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CBC_CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="current_grade">Current Grade</Label>
-                  <Input name="current_grade" value={form.current_grade || ""} onChange={handleChange} />
-                </div>
-                <div>
-                  <Label htmlFor="admission_date">Admission Date</Label>
-                  <Input name="admission_date" type="date" value={form.admission_date || ""} onChange={handleChange} />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={form.status} onValueChange={v => setForm(f => ({...f, status: v}))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
-                      <SelectItem value="Graduated">Graduated</SelectItem>
-                      <SelectItem value="Transferred">Transferred</SelectItem>
-                      <SelectItem value="Suspended">Suspended</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-            {step === 2 && (
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label htmlFor="accommodation_status">Accommodation</Label>
-                  <Select value={form.accommodation_status || ""} onValueChange={v => setForm(f => ({...f, accommodation_status: v}))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select accommodation" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ACCOMMODATION.map((a) => (
-                        <SelectItem key={a} value={a}>{a}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="health_status">Health Status</Label>
-                  <Input name="health_status" value={form.health_status || ""} onChange={handleChange} />
-                </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input name="location" value={form.location || ""} onChange={handleChange} />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Input name="description" value={form.description || ""} onChange={handleChange} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="height_cm">Height (cm)</Label>
-                    <Input name="height_cm" type="number" value={form.height_cm || ""} onChange={handleChange} />
-                  </div>
-                  <div>
-                    <Label htmlFor="weight_kg">Weight (kg)</Label>
-                    <Input name="weight_kg" type="number" value={form.weight_kg || ""} onChange={handleChange} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          </Tabs>
           <DialogFooter>
-            {step > 0 && (
-              <Button type="button" variant="outline" onClick={prev}>
-                Previous
-              </Button>
-            )}
-            {step < 2 && (
-              <Button type="button" onClick={next}>
-                Next
-              </Button>
-            )}
-            {step === 2 && (
-              <Button type="submit" className="ml-auto" disabled={isLoading}>
-                {isLoading ? "Saving..." : student ? "Update Student" : "Add Student"}
-              </Button>
-            )}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Saving..." : student ? "Update Student" : "Add Student"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
