@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import ImageUploadCropper from "./ImageUploadCropper";
 import { StudentFormInput } from "@/types/database";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 
 const SCHOOL_LEVELS = [
   "SNE",
@@ -25,6 +26,7 @@ const CBC_CATEGORIES = [
 ];
 const ACCOMMODATION = ["Boarder", "Day Scholar"];
 const GENDERS = ["Male", "Female"];
+const HEALTH_STATUS = ["Healthy", "Disabled", "Cognitive Disorder"];
 
 interface AddEditStudentModalProps {
   open: boolean;
@@ -49,7 +51,7 @@ export function AddEditStudentModal({
       gender: (student.gender as "Male" | "Female") || "Male",
       status: student.status || "Active",
       accommodation_status: student.accommodation_status || ACCOMMODATION[0],
-      health_status: student.health_status || "",
+      health_status: student.health_status || "Healthy",
       location: student.location || "",
       description: student.description || "",
       school_level: student.school_level || "",
@@ -70,7 +72,7 @@ export function AddEditStudentModal({
       gender: "Male",
       status: "Active",
       accommodation_status: ACCOMMODATION[0],
-      health_status: "",
+      health_status: "Healthy",
       location: "",
       description: "",
       school_level: "",
@@ -86,7 +88,10 @@ export function AddEditStudentModal({
       slug: "",
     }
   );
-  // Ensure modal has a fixed height for all steps
+  
+  const [currentStep, setCurrentStep] = useState(0);
+  const steps = ["Basic Info", "Academic Info", "Additional Info"];
+  
   const containerFixedHeight = "h-[500px]";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -98,7 +103,7 @@ export function AddEditStudentModal({
   };
 
   const handlePickGender = (value: "Male" | "Female") => setForm(f => ({ ...f, gender: value }));
-
+  const handlePickHealthStatus = (value: string) => setForm(f => ({ ...f, health_status: value }));
   const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -106,6 +111,9 @@ export function AddEditStudentModal({
     onSubmit(form);
   };
 
+  const nextStep = () => setCurrentStep((current) => Math.min(current + 1, steps.length - 1));
+  const prevStep = () => setCurrentStep((current) => Math.max(current - 1, 0));
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -113,14 +121,31 @@ export function AddEditStudentModal({
           <DialogTitle className="text-xl">{student ? "Edit Student" : "Add Student"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid grid-cols-3 mb-4">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="academic">Academic Info</TabsTrigger>
-              <TabsTrigger value="additional">Additional Info</TabsTrigger>
-            </TabsList>
-            <div className={`overflow-y-auto ${containerFixedHeight} transition-all px-2 pt-2`}>
-              <TabsContent value="basic">
+          <div className="flex items-center justify-between mb-6">
+            <div className="space-x-1">
+              {steps.map((step, index) => (
+                <React.Fragment key={step}>
+                  <Button 
+                    type="button"
+                    variant={currentStep === index ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentStep(index)}
+                    className={`rounded-full px-3 ${currentStep === index ? "" : "text-gray-400"}`}
+                  >
+                    {index + 1}
+                  </Button>
+                  {index < steps.length - 1 && (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="text-sm font-medium">{steps[currentStep]}</div>
+          </div>
+          
+          <Tabs value={steps[currentStep].toLowerCase().replace(/\s+/g, '-')} className="w-full">
+            <div className={`overflow-y-auto ${containerFixedHeight}`}>
+              <TabsContent value="basic-info" className={currentStep === 0 ? "block" : "hidden"}>
                 <Card className="p-4 border rounded-lg shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
@@ -160,7 +185,8 @@ export function AddEditStudentModal({
                   </div>
                 </Card>
               </TabsContent>
-              <TabsContent value="academic">
+              
+              <TabsContent value="academic-info" className={currentStep === 1 ? "block" : "hidden"}>
                 <Card className="p-4 border rounded-lg shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
@@ -215,7 +241,8 @@ export function AddEditStudentModal({
                   </div>
                 </Card>
               </TabsContent>
-              <TabsContent value="additional">
+              
+              <TabsContent value="additional-info" className={currentStep === 2 ? "block" : "hidden"}>
                 <Card className="p-4 border rounded-lg shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
@@ -233,7 +260,16 @@ export function AddEditStudentModal({
                     </div>
                     <div>
                       <Label htmlFor="health_status">Health Status</Label>
-                      <Input name="health_status" value={form.health_status || ""} onChange={handleChange} className="mt-1" />
+                      <Select value={form.health_status || "Healthy"} onValueChange={handlePickHealthStatus}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select health status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HEALTH_STATUS.map((status) => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="location">Location</Label>
@@ -258,11 +294,41 @@ export function AddEditStudentModal({
               </TabsContent>
             </div>
           </Tabs>
-          <DialogFooter>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : student ? "Update Student" : "Add Student"}
+          
+          <div className="flex justify-between mt-6">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={prevStep} 
+              disabled={currentStep === 0}
+              className="flex items-center"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Back
             </Button>
-          </DialogFooter>
+            
+            {currentStep < steps.length - 1 ? (
+              <Button 
+                type="button" 
+                onClick={nextStep}
+                className="flex items-center"
+              >
+                Next <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="flex items-center"
+              >
+                {isLoading ? "Saving..." : (
+                  <>
+                    <Save className="w-4 h-4 mr-1" /> 
+                    {student ? "Update Student" : "Add Student"}
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </form>
       </DialogContent>
     </Dialog>

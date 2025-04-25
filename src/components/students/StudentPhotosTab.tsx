@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -7,6 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, X, Maximize, Calendar, MapPin, Info } from "lucide-react";
 import ImageUploadCropper from "./ImageUploadCropper";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PhotoType {
   id: string;
@@ -14,18 +18,20 @@ interface PhotoType {
   caption: string;
   date: string;
   location?: string;
+  student_id: string;
+  created_at: string;
 }
 
 interface StudentPhotosTabProps {
   studentName: string;
-  photos: PhotoType[];
-  onAddPhoto: () => void;
+  studentId: string;
   formatDate: (date: string | Date | null | undefined) => string;
 }
 
-export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }: StudentPhotosTabProps) {
+export function StudentPhotosTab({ studentName, studentId, formatDate }: StudentPhotosTabProps) {
   const [viewPhoto, setViewPhoto] = useState<PhotoType | null>(null);
   const [isAddPhotoModalOpen, setIsAddPhotoModalOpen] = useState(false);
+  const { toast } = useToast();
   const [newPhoto, setNewPhoto] = useState({
     caption: "",
     date: new Date().toISOString().slice(0, 10),
@@ -33,6 +39,22 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
     url: ""
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Fetch photos from Supabase
+  const { data: photos = [], refetch: refetchPhotos, isLoading: loadingPhotos } = useQuery({
+    queryKey: ['student-photos', studentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('student_photos')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      return data as PhotoType[];
+    },
+    enabled: !!studentId
+  });
 
   const handleImageChange = (url: string) => {
     setNewPhoto(prev => ({ ...prev, url }));
@@ -45,26 +67,32 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
 
   const handleAddPhoto = async () => {
     if (!newPhoto.url || !newPhoto.caption) {
-      alert("Please provide an image and caption");
+      toast({
+        title: "Missing information",
+        description: "Please provide an image and caption",
+        variant: "destructive"
+      });
       return;
     }
 
     setUploadingPhoto(true);
     try {
-      // For now just adding to mock data
-      const photoData = {
-        id: Date.now().toString(),
-        url: newPhoto.url,
-        caption: newPhoto.caption,
-        date: newPhoto.date,
-        location: newPhoto.location
-      };
+      const { error } = await supabase
+        .from('student_photos')
+        .insert({
+          student_id: studentId,
+          url: newPhoto.url,
+          caption: newPhoto.caption,
+          date: newPhoto.date,
+          location: newPhoto.location || null
+        });
 
-      // Get existing photos from localStorage
-      const studentId = "current-student-id"; // Replace with actual student ID
-      const existingPhotos = JSON.parse(localStorage.getItem(`student_photos_${studentId}`) || '[]');
-      existingPhotos.push(photoData);
-      localStorage.setItem(`student_photos_${studentId}`, JSON.stringify(existingPhotos));
+      if (error) throw error;
+      
+      toast({
+        title: "Photo added",
+        description: "Photo has been added successfully"
+      });
 
       // Reset form and close modal
       setNewPhoto({
@@ -75,13 +103,66 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
       });
       setIsAddPhotoModalOpen(false);
       
-      // This would refresh the photos in a real implementation
-      onAddPhoto();
-    } catch (error) {
+      // Refresh photos list
+      refetchPhotos();
+    } catch (error: any) {
       console.error("Error adding photo:", error);
-      alert("Failed to add photo");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add photo",
+        variant: "destructive"
+      });
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    try {
+      // Get photo url to delete from storage
+      const { data: photoData } = await supabase
+        .from('student_photos')
+        .select('url')
+        .eq('id', photoId)
+        .single();
+      
+      if (photoData?.url) {
+        // Extract file path from the URL
+        const urlParts = photoData.url.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const folderName = urlParts[urlParts.length - 2];
+        const filePath = `${folderName}/${fileName}`;
+        
+        // First delete from storage
+        await supabase.storage.from('student-photos').remove([filePath]);
+      }
+
+      // Then delete record from database
+      const { error } = await supabase
+        .from('student_photos')
+        .delete()
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Photo deleted",
+        description: "Photo has been deleted successfully"
+      });
+      
+      // Close view dialog if it's the deleted photo
+      if (viewPhoto?.id === photoId) {
+        setViewPhoto(null);
+      }
+      
+      refetchPhotos();
+    } catch (error: any) {
+      console.error("Error deleting photo:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete photo",
+        variant: "destructive"
+      });
     }
   };
 
@@ -99,7 +180,17 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
           </Button>
         </CardHeader>
         <CardContent>
-          {photos.length > 0 ? (
+          {loadingPhotos ? (
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : photos.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {photos.map((photo) => (
                 <div key={photo.id} className="overflow-hidden rounded-lg border group relative">
@@ -108,8 +199,11 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
                       src={photo.url} 
                       alt={photo.caption} 
                       className="h-full w-full object-cover transition-transform group-hover:scale-105" 
+                      onError={() => {
+                        console.error("Failed to load image:", photo.url);
+                      }}
                     />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <Button 
                         variant="secondary" 
                         size="sm" 
@@ -117,6 +211,14 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
                         onClick={() => setViewPhoto(photo)}
                       >
                         <Maximize className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="rounded-full" 
+                        onClick={() => handleDeletePhoto(photo.id)}
+                      >
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -132,6 +234,10 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
                         <span className="truncate">{photo.location}</span>
                       </div>
                     )}
+                    <div className="flex items-center text-muted-foreground text-xs">
+                      <Info className="h-3 w-3 mr-1" />
+                      <span>{formatDate(photo.created_at)}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -189,7 +295,7 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
               <Input
                 id="location"
                 name="location"
-                value={newPhoto.location}
+                value={newPhoto.location || ""}
                 onChange={handleInputChange}
                 placeholder="Where was this photo taken?"
               />
@@ -233,6 +339,10 @@ export function StudentPhotosTab({ studentName, photos, onAddPhoto, formatDate }
                     <span>{viewPhoto.location}</span>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <span>Added: {formatDate(viewPhoto.created_at)}</span>
+                </div>
               </div>
             </div>
           </DialogContent>

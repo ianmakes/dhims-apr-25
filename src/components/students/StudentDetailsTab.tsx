@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StudentFormInput } from "@/types/database";
+import { StudentRelativesSection } from "./StudentRelativesSection";
 
 interface StudentDetailsTabProps {
   student: StudentFormInput & { [key: string]: any };
@@ -104,6 +105,9 @@ export function StudentDetailsTab({ student, formatDate }: StudentDetailsTabProp
           </p>
         </CardContent>
       </Card>
+      
+      {/* Relatives Section */}
+      <StudentRelativesSection studentId={student.id} studentName={student.name} />
     </div>
   );
 }

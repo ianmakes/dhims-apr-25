@@ -272,7 +272,7 @@ export default function StudentDetail() {
               <StudentDetailsTab student={typedStudent} formatDate={formatDate} />
             </TabsContent>
             <TabsContent value="exams">
-              <StudentExamsTab studentName={student.name} />
+              <StudentExamsTab studentName={student.name} studentId={student.id} />
             </TabsContent>
             <TabsContent value="sponsor">
               <StudentSponsorTab
@@ -285,8 +285,7 @@ export default function StudentDetail() {
             <TabsContent value="photos">
               <StudentPhotosTab
                 studentName={student.name}
-                photos={photos}
-                onAddPhoto={() => setIsAddPhotoModalOpen(true)}
+                studentId={student.id}
                 formatDate={formatDate}
               />
             </TabsContent>

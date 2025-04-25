@@ -6,7 +6,7 @@ import type { Area } from "react-easy-crop";
  */
 export default function getCroppedImg(imageSrc: string, croppedAreaPixels: Area, zoom: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const image = new window.Image();
+    const image = new Image();
     image.src = imageSrc;
     image.onload = () => {
       const canvas = document.createElement("canvas");
@@ -14,6 +14,8 @@ export default function getCroppedImg(imageSrc: string, croppedAreaPixels: Area,
       canvas.height = croppedAreaPixels.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject("Could not get context");
+      
+      // Draw the cropped image onto the canvas
       ctx.drawImage(
         image,
         croppedAreaPixels.x,
@@ -25,8 +27,15 @@ export default function getCroppedImg(imageSrc: string, croppedAreaPixels: Area,
         croppedAreaPixels.width,
         croppedAreaPixels.height
       );
-      resolve(canvas.toDataURL("image/png"));
+      
+      // Convert canvas to base64 string
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        resolve(dataUrl);
+      } catch (e) {
+        reject(`Error converting canvas to data URL: ${e}`);
+      }
     };
-    image.onerror = (e) => reject(e);
+    image.onerror = (e) => reject(`Error loading image: ${e}`);
   });
 }

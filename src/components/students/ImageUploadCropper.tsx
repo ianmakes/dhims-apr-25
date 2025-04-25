@@ -5,19 +5,23 @@ import getCroppedImg from "@/lib/cropImage";
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Helper to convert cropped area to blob
  */
 async function cropImageToBlob(imageSrc: string, crop: any, zoom: number): Promise<Blob> {
-  const croppedImage = await getCroppedImg(imageSrc, crop, zoom);
-  const bstr = atob(croppedImage.split(",")[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while(n--){
-    u8arr[n] = bstr.charCodeAt(n);
+  try {
+    const croppedImage = await getCroppedImg(imageSrc, crop, zoom);
+    const response = await fetch(croppedImage);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch cropped image: ${response.status}`);
+    }
+    return await response.blob();
+  } catch (error) {
+    console.error("Error in cropImageToBlob:", error);
+    throw error;
   }
-  return new Blob([u8arr], {type:'image/png'});
 }
 
 interface ImageUploadCropperProps {
@@ -39,6 +43,7 @@ export default function ImageUploadCropper({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [cropping, setCropping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const open = useCallback(() => fileInputRef.current?.click(), []);
 
@@ -46,7 +51,12 @@ export default function ImageUploadCropper({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const reader = new FileReader();
-      reader.addEventListener('load', () => setImageSrc(reader.result as string));
+      
+      reader.addEventListener('load', () => {
+        // Set the image source to trigger the cropper
+        setImageSrc(reader.result as string);
+      });
+      
       reader.readAsDataURL(file);
     }
     e.target.value = ""; // Reset input value
@@ -59,26 +69,41 @@ export default function ImageUploadCropper({
   const handleCrop = async () => {
     setCropping(true);
     try {
-      if (!imageSrc || !croppedAreaPixels) return;
+      if (!imageSrc || !croppedAreaPixels) {
+        toast({ title: "Error", description: "No image to crop", variant: "destructive" });
+        return;
+      }
+      
       const blob = await cropImageToBlob(imageSrc, croppedAreaPixels, zoom);
 
       // Upload to Supabase storage
       const filePath = `students/${Date.now()}.png`;
       const { supabase } = await import("@/integrations/supabase/client");
+      
       const { data, error } = await supabase.storage.from("profile-images").upload(filePath, blob, {
         cacheControl: "3600",
         upsert: true,
         contentType: "image/png",
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Storage upload error:", error);
+        toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+        throw error;
+      }
 
       // Get public URL
       const { data: urlData } = supabase.storage.from("profile-images").getPublicUrl(filePath);
       onChange(urlData?.publicUrl || "");
       setImageSrc(null);
-    } catch (err) {
+      toast({ title: "Success", description: "Image uploaded successfully" });
+    } catch (err: any) {
       console.error("Failed to upload/crop image:", err);
-      alert("Failed to upload/crop image");
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to upload/crop image", 
+        variant: "destructive" 
+      });
     } finally {
       setCropping(false);
     }
@@ -94,7 +119,19 @@ export default function ImageUploadCropper({
       <div className="flex items-center gap-2">
         {value ? (
           <div className="relative group">
-            <img src={value} alt="profile" className="rounded-md w-24 h-24 object-cover" />
+            <img 
+              src={value} 
+              alt="profile" 
+              className="rounded-md w-24 h-24 object-cover" 
+              onError={() => {
+                console.error("Failed to load image:", value);
+                toast({
+                  title: "Image Error",
+                  description: "Failed to load image",
+                  variant: "destructive"
+                });
+              }}
+            />
             <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
               <button 
                 type="button" 
@@ -108,10 +145,16 @@ export default function ImageUploadCropper({
           </div>
         ) : (
           <Button type="button" variant="outline" size="sm" onClick={open} className="flex items-center gap-2">
-            <Upload className="w-4 h-4" /> Upload Image
+            <Upload className="w-4 h-4" /> Upload {label}
           </Button>
         )}
-        <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} />
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={onFileChange}
+        />
       </div>
       
       {imageSrc && (
