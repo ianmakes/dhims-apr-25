@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 
 // Export specific table types for easier usage
@@ -8,7 +9,8 @@ export type StudentLetter = Database['public']['Tables']['student_letters']['Row
 export type StudentPhoto = Database['public']['Tables']['student_photos']['Row'];
 export type StudentRelative = Database['public']['Tables']['student_relatives']['Row'];
 
-export interface StudentExamScore extends Database['public']['Tables']['student_exam_scores']['Row'] {
+// Define the StudentExamScore type with proper exam property
+export type StudentExamScore = Database['public']['Tables']['student_exam_scores']['Row'] & {
   exam?: {
     id: string;
     name: string;
@@ -18,7 +20,7 @@ export interface StudentExamScore extends Database['public']['Tables']['student_
     max_score: number;
     passing_score: number;
   };
-}
+};
 
 // New student form input type
 export interface StudentFormInput {

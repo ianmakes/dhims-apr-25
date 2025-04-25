@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentExamScore } from "@/types/database";
+import { useToast } from "@/hooks/use-toast";
 
 const gradeColors = {
   "A": "#4ade80",
@@ -53,19 +55,42 @@ interface StudentExamsTabProps {
 }
 
 export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps) {
+  const { toast } = useToast();
+  
   // Get available academic years
   const { data: academicYears = [], isLoading: loadingYears } = useQuery({
     queryKey: ['academic-years'],
     queryFn: async () => {
-      const { data } = await supabase
+      // First, get the exams the student has taken
+      const { data: examScores, error } = await supabase
         .from('student_exam_scores')
-        .select('exam(academic_year)')
+        .select('exam_id')
         .eq('student_id', studentId);
+      
+      if (error) throw error;
+      
+      if (!examScores || examScores.length === 0) {
+        return ["2024"];
+      }
+      
+      // Then get details about those exams
+      const examIds = examScores.map(score => score.exam_id).filter(Boolean);
+      
+      if (examIds.length === 0) {
+        return ["2024"];
+      }
+      
+      const { data: exams, error: examsError } = await supabase
+        .from('exams')
+        .select('academic_year')
+        .in('id', examIds);
+      
+      if (examsError) throw examsError;
       
       const uniqueYears = Array.from(
         new Set(
-          data
-            ?.map(item => item.exam?.academic_year)
+          exams
+            ?.map(exam => exam.academic_year)
             .filter(Boolean) || []
         )
       ).sort().reverse();
@@ -87,29 +112,55 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
   const { data: examScores = [], isLoading: loadingScores } = useQuery<StudentExamScore[]>({
     queryKey: ['student-exams', studentId, selectedYear],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('student_exam_scores')
-        .select(`
-          *,
-          exam (
-            id, name, term, academic_year, exam_date, max_score, passing_score
-          )
-        `)
-        .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+      if (!studentId) throw new Error('Student ID is required');
       
-      if (error) throw error;
+      // First, get exam scores for this student
+      const { data: scores, error: scoresError } = await supabase
+        .from('student_exam_scores')
+        .select('*')
+        .eq('student_id', studentId);
+        
+      if (scoresError) throw scoresError;
+      
+      if (!scores || scores.length === 0) {
+        return [];
+      }
+
+      // Get exam details for each score
+      const examIds = scores.map(score => score.exam_id).filter(Boolean);
+      
+      if (examIds.length === 0) {
+        return scores as StudentExamScore[];
+      }
+      
+      const { data: exams, error: examsError } = await supabase
+        .from('exams')
+        .select('*')
+        .in('id', examIds);
+      
+      if (examsError) throw examsError;
+      
+      // Join exam details with scores
+      const enrichedScores = scores.map(score => {
+        const examDetails = exams?.find(exam => exam.id === score.exam_id);
+        return {
+          ...score,
+          exam: examDetails
+        } as StudentExamScore;
+      });
       
       // Filter by selected academic year if one is selected
       return selectedYear 
-        ? (data as StudentExamScore[]).filter(score => score.exam?.academic_year === selectedYear)
-        : (data as StudentExamScore[]);
+        ? enrichedScores.filter(score => score.exam?.academic_year === selectedYear)
+        : enrichedScores;
     },
     enabled: !!studentId
   });
   
   // Process exam data for charts
-  const processedData = examScores.map(score => {
+  const processedData = examScores
+    .filter(score => score.exam) // Only include scores that have exam data
+    .map(score => {
     // Calculate percentage 
     const percentage = score.exam?.max_score 
       ? Math.round((score.score / score.exam.max_score) * 100) 
@@ -212,6 +263,11 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {examScores.map((score, idx) => {
+                      // Only render if we have exam data
+                      if (!score.exam) {
+                        return null;
+                      }
+                      
                       // Calculate percentage 
                       const percentage = score.exam?.max_score 
                         ? Math.round((score.score / score.exam.max_score) * 100) 
