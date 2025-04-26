@@ -2,8 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Sponsor } from "@/hooks/useSponsors";
-import { SponsorRelative, SponsorTimelineEvent } from "@/types/database";
+import { Sponsor, SponsorRelative, SponsorTimelineEvent } from "@/types/database";
 
 // Interface for the student removal reason form
 export interface StudentRemovalForm {
@@ -48,84 +47,59 @@ export const useSponsorDetails = (sponsorId: string) => {
   const { data: availableStudents = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ["available-students"],
     queryFn: async () => {
+      // Get all active students without a sponsor
       const { data, error } = await supabase
         .from("students")
         .select("*")
         .is("sponsor_id", null)
-        .eq("status", "active");
+        .eq("status", "Active");
 
       if (error) {
         console.error("Error fetching available students:", error);
         throw error;
       }
-
-      // Log the raw students data to help debug
-      console.log("Available students data:", data);
       
       return data || [];
     },
   });
 
-  // Query to fetch sponsor relatives - using RPC to work around type issues
+  // Query to fetch sponsor relatives using a direct SQL query
   const { data: sponsorRelatives = [], isLoading: isLoadingRelatives } = useQuery({
     queryKey: ["sponsor-relatives", sponsorId],
     queryFn: async () => {
-      // Using raw fetch approach to bypass type issues
+      // Using executeQuery to avoid type issues
       const { data, error } = await supabase
-        .rpc("get_sponsor_relatives", { sponsor_id_param: sponsorId });
-
+        .from('sponsor_relatives')
+        .select('*')
+        .eq('sponsor_id', sponsorId)
+        .order('created_at', { ascending: false });
+      
       if (error) {
-        // Gracefully handle the case where the function doesn't exist yet
         console.error("Error fetching sponsor relatives:", error);
-        
-        // Fallback to direct query if RPC fails
-        const { data: directData, error: directError } = await supabase
-          .from("sponsor_relatives")
-          .select("*")
-          .eq("sponsor_id", sponsorId)
-          .order("created_at", { ascending: false });
-          
-        if (directError) {
-          console.error("Direct query for sponsor relatives failed:", directError);
-          return [] as SponsorRelative[];
-        }
-        
-        return (directData || []) as SponsorRelative[];
+        return [] as SponsorRelative[];
       }
       
-      return (data || []) as SponsorRelative[];
+      return data as SponsorRelative[];
     },
     enabled: !!sponsorId,
   });
 
-  // Query to fetch sponsor timeline events - using RPC to work around type issues
+  // Query to fetch sponsor timeline events using a direct SQL query
   const { data: timelineEvents = [], isLoading: isLoadingTimeline } = useQuery({
     queryKey: ["sponsor-timeline", sponsorId],
     queryFn: async () => {
-      // Using raw fetch approach to bypass type issues
       const { data, error } = await supabase
-        .rpc("get_sponsor_timeline_events", { sponsor_id_param: sponsorId });
-
+        .from('sponsor_timeline_events')
+        .select('*')
+        .eq('sponsor_id', sponsorId)
+        .order('date', { ascending: false });
+      
       if (error) {
-        // Gracefully handle the case where the function doesn't exist yet
         console.error("Error fetching sponsor timeline events:", error);
-        
-        // Fallback to direct query if RPC fails
-        const { data: directData, error: directError } = await supabase
-          .from("sponsor_timeline_events")
-          .select("*")
-          .eq("sponsor_id", sponsorId)
-          .order("date", { ascending: false });
-          
-        if (directError) {
-          console.error("Direct query for timeline events failed:", directError);
-          return [] as SponsorTimelineEvent[];
-        }
-        
-        return (directData || []) as SponsorTimelineEvent[];
+        return [] as SponsorTimelineEvent[];
       }
       
-      return (data || []) as SponsorTimelineEvent[];
+      return data as SponsorTimelineEvent[];
     },
     enabled: !!sponsorId,
   });

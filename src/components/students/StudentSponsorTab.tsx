@@ -52,6 +52,7 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
       
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["student", student.id] });
+      queryClient.invalidateQueries({ queryKey: ["available-students"] });
       
       toast({
         title: "Sponsorship Removed",

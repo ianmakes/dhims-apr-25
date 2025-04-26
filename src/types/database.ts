@@ -75,3 +75,8 @@ export interface StudentFormInput {
   createdAt?: string;   // Add this to resolve type issues
   updatedAt?: string;   // Add this to resolve type issues
 }
+
+// Add Sponsor type
+export type Sponsor = Database['public']['Tables']['sponsors']['Row'] & {
+  students?: Student[];
+};
