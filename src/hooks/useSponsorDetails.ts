@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sponsor, SponsorRelative, SponsorTimelineEvent } from "@/types/database";
+import { SUPABASE_URL, getAuthHeaders } from "@/utils/supabaseHelpers";
 
 // Interface for the student removal reason form
 export interface StudentRemovalForm {
@@ -63,19 +64,14 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Query to fetch sponsor relatives using the REST API directly
+  // Query to fetch sponsor relatives using the REST API directly with our helper utility
   const { data: sponsorRelatives = [], isLoading: isLoadingRelatives } = useQuery({
     queryKey: ["sponsor-relatives", sponsorId],
     queryFn: async () => {
-      // Using the REST API directly to work around type limitations
       const response = await fetch(
-        `${supabase.supabaseUrl}/rest/v1/sponsor_relatives?sponsor_id=eq.${sponsorId}&order=created_at.desc`,
+        `${SUPABASE_URL}/rest/v1/sponsor_relatives?sponsor_id=eq.${sponsorId}&order=created_at.desc`,
         {
-          headers: {
-            'apikey': supabase.supabaseKey,
-            'Authorization': `Bearer ${supabase.supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
+          headers: getAuthHeaders(),
         }
       );
       
@@ -89,19 +85,14 @@ export const useSponsorDetails = (sponsorId: string) => {
     enabled: !!sponsorId,
   });
 
-  // Query to fetch sponsor timeline events using the REST API directly
+  // Query to fetch sponsor timeline events using the REST API directly with our helper utility
   const { data: timelineEvents = [], isLoading: isLoadingTimeline } = useQuery({
     queryKey: ["sponsor-timeline", sponsorId],
     queryFn: async () => {
-      // Using the REST API directly to work around type limitations
       const response = await fetch(
-        `${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events?sponsor_id=eq.${sponsorId}&order=date.desc`,
+        `${SUPABASE_URL}/rest/v1/sponsor_timeline_events?sponsor_id=eq.${sponsorId}&order=date.desc`,
         {
-          headers: {
-            'apikey': supabase.supabaseKey,
-            'Authorization': `Bearer ${supabase.supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
+          headers: getAuthHeaders(),
         }
       );
       
@@ -127,14 +118,12 @@ export const useSponsorDetails = (sponsorId: string) => {
 
       if (error) throw error;
       
-      // Create timeline entries for each assigned student using REST API directly
+      // Create timeline entries for each assigned student using REST API directly with our helper utility
       for (const studentId of studentIds) {
-        const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_timeline_events`, {
           method: 'POST',
           headers: {
-            'apikey': supabase.supabaseKey,
-            'Authorization': `Bearer ${supabase.supabaseKey}`,
-            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
             'Prefer': 'return=minimal',
           },
           body: JSON.stringify({
@@ -175,13 +164,11 @@ export const useSponsorDetails = (sponsorId: string) => {
 
       if (error) throw error;
       
-      // Create a timeline entry for the removal using REST API
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+      // Create a timeline entry for the removal using REST API with our helper utility
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_timeline_events`, {
         method: 'POST',
         headers: {
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
           'Prefer': 'return=minimal',
         },
         body: JSON.stringify({
@@ -209,15 +196,13 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to add a sponsor relative using REST API
+  // Mutation to add a sponsor relative using REST API with our helper utility
   const addSponsorRelativeMutation = useMutation({
     mutationFn: async (relative: Omit<SponsorRelative, 'id' | 'created_at' | 'updated_at'>) => {
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_relatives`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_relatives`, {
         method: 'POST',
         headers: {
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
           'Prefer': 'return=representation',
         },
         body: JSON.stringify({
@@ -242,15 +227,13 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to update a sponsor relative using REST API
+  // Mutation to update a sponsor relative using REST API with our helper utility
   const updateSponsorRelativeMutation = useMutation({
     mutationFn: async (relative: Partial<SponsorRelative> & { id: string }) => {
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_relatives?id=eq.${relative.id}`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_relatives?id=eq.${relative.id}`, {
         method: 'PATCH',
         headers: {
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
           'Prefer': 'return=representation',
         },
         body: JSON.stringify(relative),
@@ -272,16 +255,12 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to delete a sponsor relative using REST API
+  // Mutation to delete a sponsor relative using REST API with our helper utility
   const deleteSponsorRelativeMutation = useMutation({
     mutationFn: async (relativeId: string) => {
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_relatives?id=eq.${relativeId}`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_relatives?id=eq.${relativeId}`, {
         method: 'DELETE',
-        headers: {
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
       
       if (!response.ok) {
@@ -297,15 +276,13 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to add a timeline event using REST API
+  // Mutation to add a timeline event using REST API with our helper utility
   const addTimelineEventMutation = useMutation({
     mutationFn: async (event: { title: string; description?: string; type: string }) => {
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_timeline_events`, {
         method: 'POST',
         headers: {
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
           'Prefer': 'return=representation',
         },
         body: JSON.stringify({

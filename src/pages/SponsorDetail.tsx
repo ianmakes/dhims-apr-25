@@ -1,4 +1,3 @@
-
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSponsorDetails, StudentRemovalForm } from "@/hooks/useSponsorDetails";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
@@ -91,7 +90,11 @@ export default function SponsorDetail() {
 
   const handleAssignStudents = () => {
     if (selectedStudentIds.length === 0) {
-      toast.error("Please select at least one student to assign");
+      toast({
+        title: "Error",
+        description: "Please select at least one student to assign",
+        variant: "destructive"
+      });
       return;
     }
     

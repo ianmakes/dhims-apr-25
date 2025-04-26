@@ -6,6 +6,7 @@ import { AlertTriangle, Users } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { SUPABASE_URL, getAuthHeaders } from "@/utils/supabaseHelpers";
 
 interface StudentSponsorTabProps {
   student: { [key: string]: any };
@@ -36,13 +37,11 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
       
       // Add timeline event if sponsor_id exists
       if (student.sponsor_id) {
-        // Using REST API directly
-        const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+        // Using REST API directly with our helper utility
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_timeline_events`, {
           method: 'POST',
           headers: {
-            'apikey': supabase.supabaseKey,
-            'Authorization': `Bearer ${supabase.supabaseKey}`,
-            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
             'Prefer': 'return=minimal',
           },
           body: JSON.stringify({
