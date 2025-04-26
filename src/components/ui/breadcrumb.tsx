@@ -1,8 +1,9 @@
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { ChevronRight, MoreHorizontal } from "lucide-react"
-
 import { cn } from "@/lib/utils"
+import { Link } from "react-router-dom"
 
 const Breadcrumb = React.forwardRef<
   HTMLElement,
@@ -19,7 +20,7 @@ const BreadcrumbList = React.forwardRef<
   <ol
     ref={ref}
     className={cn(
-      "flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground sm:gap-2.5",
+      "flex flex-wrap items-center gap-1.5 break-words text-sm text-wp-text-secondary sm:gap-2.5",
       className
     )}
     {...props}
@@ -50,7 +51,7 @@ const BreadcrumbLink = React.forwardRef<
   return (
     <Comp
       ref={ref}
-      className={cn("transition-colors hover:text-foreground", className)}
+      className={cn("transition-colors hover:text-wp-primary", className)}
       {...props}
     />
   )
@@ -66,7 +67,7 @@ const BreadcrumbPage = React.forwardRef<
     role="link"
     aria-disabled="true"
     aria-current="page"
-    className={cn("font-normal text-foreground", className)}
+    className={cn("font-medium text-wp-text-primary", className)}
     {...props}
   />
 ))
@@ -80,7 +81,7 @@ const BreadcrumbSeparator = ({
   <li
     role="presentation"
     aria-hidden="true"
-    className={cn("[&>svg]:size-3.5", className)}
+    className={cn("[&>svg]:size-3.5 text-wp-gray-500", className)}
     {...props}
   >
     {children ?? <ChevronRight />}
@@ -104,6 +105,32 @@ const BreadcrumbEllipsis = ({
 )
 BreadcrumbEllipsis.displayName = "BreadcrumbElipssis"
 
+// WordPress-style Breadcrumbs
+const WpBreadcrumbs = ({ 
+  items 
+}: { 
+  items: {name: string; href: string; current?: boolean}[] 
+}) => (
+  <Breadcrumb className="mb-3">
+    <BreadcrumbList>
+      {items.map((item, i) => (
+        <React.Fragment key={item.href}>
+          {i > 0 && <BreadcrumbSeparator />}
+          <BreadcrumbItem>
+            {item.current ? (
+              <BreadcrumbPage>{item.name}</BreadcrumbPage>
+            ) : (
+              <BreadcrumbLink asChild>
+                <Link to={item.href}>{item.name}</Link>
+              </BreadcrumbLink>
+            )}
+          </BreadcrumbItem>
+        </React.Fragment>
+      ))}
+    </BreadcrumbList>
+  </Breadcrumb>
+)
+
 export {
   Breadcrumb,
   BreadcrumbList,
@@ -112,4 +139,5 @@ export {
   BreadcrumbPage,
   BreadcrumbSeparator,
   BreadcrumbEllipsis,
+  WpBreadcrumbs
 }

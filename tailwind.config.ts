@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,6 +19,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', 'sans-serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -62,16 +66,30 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-                // Custom colors for DHIMS
-                dhims: {
-                    primary: '#4361ee',
-                    secondary: '#3f37c9',
-                    accent: '#4895ef',
-                    muted: '#f8f9fa',
-                    success: '#4cc9f0',
-                    warning: '#f72585',
-                    error: '#e63946',
-                    dark: '#1a1f2c',
+                // WordPress-inspired colors
+                wp: {
+                    primary: '#2271b1',
+                    secondary: '#f0f0f1',
+                    border: '#c3c4c7',
+                    text: {
+                        primary: '#1d2327',
+                        secondary: '#50575e',
+                    },
+                    success: '#00a32a',
+                    warning: '#dba617',
+                    error: '#d63638',
+                    gray: {
+                        50: '#f6f7f7',
+                        100: '#f0f0f1',
+                        200: '#dcdcde',
+                        300: '#c3c4c7',
+                        400: '#a7aaad',
+                        500: '#8c8f94',
+                        600: '#646970',
+                        700: '#3c434a',
+                        800: '#2c3338',
+                        900: '#1d2327',
+                    }
                 }
 			},
 			borderRadius: {

@@ -82,29 +82,29 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
   if (student.sponsor_id) {
     return (
       <div className="py-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Sponsor Information</CardTitle>
-            <CardDescription>
+        <Card className="wp-card">
+          <CardHeader className="border-b border-wp-gray-200">
+            <CardTitle className="text-lg text-wp-text-primary">Sponsor Information</CardTitle>
+            <CardDescription className="text-wp-text-secondary">
               Details about {student.name}'s sponsor
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 p-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-16 w-16 border-2 border-wp-gray-100">
                 {student.sponsor?.profile_image_url ? (
                   <AvatarImage src={student.sponsor.profile_image_url} alt="Sponsor" />
                 ) : (
-                  <AvatarFallback className="text-xl">SP</AvatarFallback>
+                  <AvatarFallback className="bg-wp-gray-200 text-wp-gray-600 text-xl">SP</AvatarFallback>
                 )}
               </Avatar>
               <div>
-                <h3 className="text-xl font-medium">
+                <h3 className="text-xl font-medium text-wp-text-primary">
                   {student.sponsor ? 
                     `${student.sponsor.first_name} ${student.sponsor.last_name}` : 
                     `Sponsor #${student.sponsor_id}`}
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-sm text-wp-text-secondary mt-1">
                   Sponsoring since {formatDate(student.sponsored_since)}
                 </p>
               </div>
@@ -112,15 +112,16 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
             <div className="flex justify-between">
               <Button
                 variant="outline"
-                className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="text-wp-error border-wp-gray-300 hover:border-wp-error hover:bg-wp-error/5"
                 onClick={handleRemoveSponsor}
                 disabled={isLoading}
               >
                 Remove Sponsorship
               </Button>
               <Button 
-                variant="outline" 
+                variant="secondary" 
                 onClick={() => navigate(`/sponsors/${student.sponsor_id}`)}
+                className="bg-wp-gray-100 hover:bg-wp-gray-200 text-wp-text-primary"
               >
                 <Users className="mr-2 h-4 w-4" />
                 View Sponsor Profile
@@ -134,16 +135,22 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
 
   return (
     <div className="py-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>No Sponsor Assigned</CardTitle>
-          <CardDescription>
+      <Card className="wp-card">
+        <CardHeader className="border-b border-wp-gray-200">
+          <div className="flex items-center">
+            <AlertTriangle className="h-4 w-4 text-wp-warning mr-2" />
+            <CardTitle className="text-lg text-wp-text-primary">No Sponsor Assigned</CardTitle>
+          </div>
+          <CardDescription className="text-wp-text-secondary pl-6">
             This student currently does not have a sponsor
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5">
           <div className="flex justify-center py-6">
-            <Button onClick={() => navigate('/sponsors')}>
+            <Button 
+              onClick={() => navigate('/sponsors')}
+              className="bg-wp-primary hover:bg-wp-primary/90 text-white"
+            >
               <Users className="mr-2 h-4 w-4" />
               Assign Sponsor
             </Button>

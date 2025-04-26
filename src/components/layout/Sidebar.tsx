@@ -9,8 +9,8 @@ import {
   BookOpen, 
   Settings, 
   User, 
-  Menu, 
-  X, 
+  ChevronLeft, 
+  ChevronRight, 
   LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,56 +59,61 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "h-screen bg-sidebar border-r border-border relative transition-all-medium",
-        collapsed ? "w-16" : "w-64"
+        "h-screen flex-shrink-0 bg-sidebar border-r border-border transition-all duration-300 ease-in-out",
+        collapsed ? "w-12 md:w-14" : "w-60"
       )}
     >
       <div className="flex flex-col h-full">
         {/* Sidebar Header */}
-        <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
+        <div className="flex items-center h-14 px-3 border-b border-sidebar-border">
           {!collapsed && (
-            <div className="flex items-center space-x-2">
-              <BookOpen className="h-6 w-6 text-sidebar-foreground" />
-              <h1 className="font-bold text-xl text-sidebar-foreground">DHIMS</h1>
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <BookOpen className="h-6 w-6 text-sidebar-foreground flex-shrink-0" />
+              <h1 className="font-medium text-base text-sidebar-foreground truncate">DHIMS</h1>
             </div>
           )}
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={() => setCollapsed(!collapsed)}
-            className="ml-auto text-sidebar-foreground hover:bg-sidebar-accent"
+            className={cn(
+              "ml-auto p-1 text-sidebar-foreground hover:bg-sidebar-accent rounded-full h-7 w-7 flex items-center justify-center",
+              collapsed && "mx-auto"
+            )}
           >
-            {collapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
 
         {/* Sidebar Content */}
-        <div className="flex-1 py-4 overflow-y-auto">
+        <div className="flex-1 py-2 overflow-y-auto">
           <nav className="space-y-1 px-2">
             {sidebarItems.map((item) => (
-              <div key={item.title} className="space-y-1">
-                <Link to={item.path}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full flex justify-start text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
-                      isActiveRoute(item.path) && "bg-sidebar-accent"
-                    )}
-                  >
-                    {item.icon}
-                    {!collapsed && <span className="ml-3">{item.title}</span>}
-                  </Button>
-                </Link>
-              </div>
+              <Link key={item.title} to={item.path}>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full flex justify-start text-sidebar-foreground hover:bg-sidebar-accent transition-colors h-10 px-3 py-2",
+                    collapsed ? "justify-center p-2" : "",
+                    isActiveRoute(item.path) ? "bg-sidebar-accent font-medium" : ""
+                  )}
+                >
+                  {item.icon}
+                  {!collapsed && <span className="ml-3 truncate">{item.title}</span>}
+                </Button>
+              </Link>
             ))}
           </nav>
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-2 border-t border-sidebar-border">
           <Button
             variant="ghost"
-            className="w-full flex justify-start text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+            className={cn(
+              "w-full flex justify-start text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+              collapsed && "justify-center p-2"
+            )}
           >
             <LogOut className="h-5 w-5" />
             {!collapsed && <span className="ml-3">Logout</span>}

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { cn } from "@/lib/utils";
-import { Bell, User } from "lucide-react";
+import { Bell, User, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AppHeader } from "./AppHeader";
 
 export function AppLayout() {
   // For future implementation of dark mode toggle
@@ -23,18 +24,18 @@ export function AppLayout() {
     <div className="flex h-screen w-full bg-background">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="border-b border-border bg-background py-3 px-6">
+        <header className="bg-white border-b border-wp-border py-2 px-4 md:px-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">
+            <h1 className="text-lg font-medium text-wp-text-primary">
               David's Hope International Management System
             </h1>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-dhims-warning" />
+                  <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
+                    <Bell className="h-4 w-4 text-wp-text-secondary" />
+                    <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-wp-error" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
@@ -65,7 +66,7 @@ export function AppLayout() {
                     </DropdownMenuItem>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer justify-center text-primary">
+                  <DropdownMenuItem className="cursor-pointer justify-center text-wp-primary">
                     View all notifications
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -74,16 +75,18 @@ export function AppLayout() {
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative p-0 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="relative p-0 h-8 flex items-center space-x-1 text-wp-text-secondary rounded hover:text-wp-text-primary focus:outline-none">
+                    <Avatar className="h-7 w-7">
                       <AvatarImage src="" alt="User" />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        <User className="h-4 w-4" />
+                      <AvatarFallback className="bg-wp-gray-300 text-wp-gray-700">
+                        <User className="h-3.5 w-3.5" />
                       </AvatarFallback>
                     </Avatar>
+                    <span className="text-sm hidden md:inline">Admin</span>
+                    <ChevronDown className="h-3.5 w-3.5 hidden md:inline" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
@@ -95,7 +98,7 @@ export function AppLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto bg-wp-gray-50 p-4 md:p-6">
           <Outlet />
         </main>
       </div>
