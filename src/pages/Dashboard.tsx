@@ -104,7 +104,7 @@ export default function Dashboard() {
           value={studentCount}
           description="Students in the system"
           icon={<Users className="h-5 w-5 text-wp-primary" />}
-          trend={{ value: 12, label: "from last month" }}
+          trend={{ value: 12, isPositive: true, label: "from last month" }}
         />
         <StatsCard
           title="Total Sponsors"

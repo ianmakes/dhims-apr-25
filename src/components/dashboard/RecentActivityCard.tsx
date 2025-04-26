@@ -18,11 +18,55 @@ interface Activity {
 }
 
 interface RecentActivityCardProps {
-  activities: Activity[];
+  activities?: Activity[];
   className?: string;
 }
 
 export function RecentActivityCard({ activities, className }: RecentActivityCardProps) {
+  // Provide mock data if activities are not provided
+  const displayActivities = activities || [
+    {
+      id: "1",
+      type: "student",
+      title: "New student registered",
+      description: "John Doe has been registered as a new student",
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      user: {
+        name: "Admin User",
+      },
+    },
+    {
+      id: "2",
+      type: "sponsor",
+      title: "New sponsor added",
+      description: "Jane Smith has been added as a new sponsor",
+      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+      user: {
+        name: "Admin User",
+      },
+    },
+    {
+      id: "3",
+      type: "exam",
+      title: "Exam results updated",
+      description: "Term 2 exam results have been added to the system",
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      user: {
+        name: "Teacher User",
+      },
+    },
+    {
+      id: "4",
+      type: "system",
+      title: "System maintenance",
+      description: "System was updated to the latest version",
+      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      user: {
+        name: "System",
+      },
+    },
+  ];
+
   const getActivityIcon = (type: ActivityType) => {
     switch (type) {
       case "student":
@@ -70,7 +114,7 @@ export function RecentActivityCard({ activities, className }: RecentActivityCard
       </CardHeader>
       <CardContent className="overflow-auto max-h-[400px]">
         <div className="space-y-5">
-          {activities.map((activity) => (
+          {displayActivities.map((activity) => (
             <div key={activity.id} className="flex items-start space-x-3">
               <div
                 className={cn(
