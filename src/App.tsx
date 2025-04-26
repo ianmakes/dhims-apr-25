@@ -68,7 +68,9 @@ const App = () => (
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/settings/general" replace />} />
                 <Route path="general" element={<Settings />} />
-                <Route path="account" element={<Profile />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="smtp" element={<div>Email and SMTP Settings</div>} />
+                <Route path="audit" element={<div>Audit Logs</div>} />
                 <Route path="roles" element={<UserRolesSettings />} />
                 <Route path="academic" element={<AcademicYearsSettings />} />
               </Route>
