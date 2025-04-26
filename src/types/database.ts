@@ -79,4 +79,6 @@ export interface StudentFormInput {
 // Add Sponsor type
 export type Sponsor = Database['public']['Tables']['sponsors']['Row'] & {
   students?: Student[];
+  profile_image_url?: string | null;
+  primary_email_for_updates?: string | null;
 };

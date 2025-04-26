@@ -36,18 +36,28 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
       
       // Add timeline event if sponsor_id exists
       if (student.sponsor_id) {
-        const { error: timelineError } = await supabase
-          .from("sponsor_timeline_events")
-          .insert({
+        // Using REST API directly
+        const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabase.supabaseKey,
+            'Authorization': `Bearer ${supabase.supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
             sponsor_id: student.sponsor_id,
             title: "Student Removed",
             description: `Student ${student.name} was removed from sponsorship via student profile.`,
             type: "student_removal",
             student_id: student.id,
             date: new Date().toISOString()
-          });
-          
-        if (timelineError) console.error("Error creating timeline event:", timelineError);
+          }),
+        });
+        
+        if (!response.ok) {
+          console.error("Error creating timeline event:", response.statusText);
+        }
       }
       
       // Invalidate queries to refresh data

@@ -63,42 +63,53 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Query to fetch sponsor relatives using a direct SQL query
+  // Query to fetch sponsor relatives using the REST API directly
   const { data: sponsorRelatives = [], isLoading: isLoadingRelatives } = useQuery({
     queryKey: ["sponsor-relatives", sponsorId],
     queryFn: async () => {
-      // Using executeQuery to avoid type issues
-      const { data, error } = await supabase
-        .from('sponsor_relatives')
-        .select('*')
-        .eq('sponsor_id', sponsorId)
-        .order('created_at', { ascending: false });
+      // Using the REST API directly to work around type limitations
+      const response = await fetch(
+        `${supabase.supabaseUrl}/rest/v1/sponsor_relatives?sponsor_id=eq.${sponsorId}&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': supabase.supabaseKey,
+            'Authorization': `Bearer ${supabase.supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
       
-      if (error) {
-        console.error("Error fetching sponsor relatives:", error);
-        return [] as SponsorRelative[];
+      if (!response.ok) {
+        throw new Error(`Error fetching sponsor relatives: ${response.statusText}`);
       }
       
+      const data = await response.json();
       return data as SponsorRelative[];
     },
     enabled: !!sponsorId,
   });
 
-  // Query to fetch sponsor timeline events using a direct SQL query
+  // Query to fetch sponsor timeline events using the REST API directly
   const { data: timelineEvents = [], isLoading: isLoadingTimeline } = useQuery({
     queryKey: ["sponsor-timeline", sponsorId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sponsor_timeline_events')
-        .select('*')
-        .eq('sponsor_id', sponsorId)
-        .order('date', { ascending: false });
+      // Using the REST API directly to work around type limitations
+      const response = await fetch(
+        `${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events?sponsor_id=eq.${sponsorId}&order=date.desc`,
+        {
+          headers: {
+            'apikey': supabase.supabaseKey,
+            'Authorization': `Bearer ${supabase.supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
       
-      if (error) {
-        console.error("Error fetching sponsor timeline events:", error);
-        return [] as SponsorTimelineEvent[];
+      if (!response.ok) {
+        throw new Error(`Error fetching sponsor timeline events: ${response.statusText}`);
       }
       
+      const data = await response.json();
       return data as SponsorTimelineEvent[];
     },
     enabled: !!sponsorId,
@@ -116,22 +127,28 @@ export const useSponsorDetails = (sponsorId: string) => {
 
       if (error) throw error;
       
-      // Create timeline entries for each assigned student
+      // Create timeline entries for each assigned student using REST API directly
       for (const studentId of studentIds) {
-        const { error: timelineError } = await supabase
-          .from("sponsor_timeline_events")
-          .insert({
+        const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabase.supabaseKey,
+            'Authorization': `Bearer ${supabase.supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
             sponsor_id: sponsorId,
             title: "Student Assigned",
             description: "A new student was assigned to this sponsor.",
             type: "student_assignment",
             student_id: studentId,
             date: new Date().toISOString()
-          });
-          
-        if (timelineError) {
-          console.error("Error creating timeline event:", timelineError);
-          // Continue with other students rather than failing completely
+          }),
+        });
+        
+        if (!response.ok) {
+          console.error("Error creating timeline event:", response.statusText);
         }
       }
     },
@@ -158,19 +175,28 @@ export const useSponsorDetails = (sponsorId: string) => {
 
       if (error) throw error;
       
-      // Create a timeline entry for the removal
-      const { error: timelineError } = await supabase
-        .from("sponsor_timeline_events")
-        .insert({
+      // Create a timeline entry for the removal using REST API
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
           sponsor_id: sponsorId,
           title: "Student Removed",
           description: `Student was removed. Reason: ${reason}${notes ? `. Notes: ${notes}` : ''}`,
           type: "student_removal",
           student_id: studentId,
           date: new Date().toISOString()
-        });
-        
-      if (timelineError) console.error("Error creating timeline event:", timelineError);
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error("Error creating timeline event:", response.statusText);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors", sponsorId] });
@@ -183,19 +209,29 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to add a sponsor relative
+  // Mutation to add a sponsor relative using REST API
   const addSponsorRelativeMutation = useMutation({
     mutationFn: async (relative: Omit<SponsorRelative, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from("sponsor_relatives")
-        .insert({
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_relatives`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({
           ...relative,
           sponsor_id: sponsorId
-        })
-        .select();
-
-      if (error) throw error;
-      return data?.[0] as SponsorRelative;
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to add relative: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data[0] as SponsorRelative;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -206,17 +242,26 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to update a sponsor relative
+  // Mutation to update a sponsor relative using REST API
   const updateSponsorRelativeMutation = useMutation({
     mutationFn: async (relative: Partial<SponsorRelative> & { id: string }) => {
-      const { data, error } = await supabase
-        .from("sponsor_relatives")
-        .update(relative)
-        .eq("id", relative.id)
-        .select();
-
-      if (error) throw error;
-      return data?.[0] as SponsorRelative;
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_relatives?id=eq.${relative.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(relative),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update relative: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data[0] as SponsorRelative;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -227,15 +272,21 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to delete a sponsor relative
+  // Mutation to delete a sponsor relative using REST API
   const deleteSponsorRelativeMutation = useMutation({
     mutationFn: async (relativeId: string) => {
-      const { error } = await supabase
-        .from("sponsor_relatives")
-        .delete()
-        .eq("id", relativeId);
-
-      if (error) throw error;
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_relatives?id=eq.${relativeId}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete relative: ${response.statusText}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
@@ -246,22 +297,32 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
-  // Mutation to add a timeline event
+  // Mutation to add a timeline event using REST API
   const addTimelineEventMutation = useMutation({
     mutationFn: async (event: { title: string; description?: string; type: string }) => {
-      const { data, error } = await supabase
-        .from("sponsor_timeline_events")
-        .insert({
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/sponsor_timeline_events`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({
           sponsor_id: sponsorId,
           title: event.title,
           description: event.description || null,
           type: event.type,
           date: new Date().toISOString()
-        })
-        .select();
-
-      if (error) throw error;
-      return data?.[0] as SponsorTimelineEvent;
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to add timeline event: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data[0] as SponsorTimelineEvent;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsor-timeline", sponsorId] });
