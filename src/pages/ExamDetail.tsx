@@ -848,8 +848,8 @@ export default function ExamDetail() {
         <TabsContent value="details" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Exam Details</CardTitle>
-              <CardDescription>Basic information about this assessment</CardDescription>
+              <CardTitle className="text-left">Exam Details</CardTitle>
+              <CardDescription className="text-left">Basic information about this assessment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-6">
