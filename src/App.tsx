@@ -1,7 +1,7 @@
 
+import React from "react";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { AcademicYearProvider } from "@/contexts/AcademicYearContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
+// Import pages
 import Dashboard from "@/pages/Dashboard";
 import Students from "@/pages/Students";
 import Sponsors from "@/pages/Sponsors";
@@ -63,17 +64,18 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="wp-theme">
-        <AuthProvider>
-          <AcademicYearProvider>
-            <RouterProvider router={router} />
-          </AcademicYearProvider>
-        </AuthProvider>
-        <Toaster />
-      </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="wp-theme">
+          <AuthProvider>
+            <AcademicYearProvider>
+              <RouterProvider router={router} />
+            </AcademicYearProvider>
+          </AuthProvider>
+          <Toaster />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 }
 
