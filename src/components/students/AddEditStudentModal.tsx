@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,22 +11,33 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 
-const CBC_CATEGORIES = [
-  "Pre-Primary",
-  "Lower Primary",
-  "Upper Primary", 
-  "Junior Secondary",
-  "Senior Secondary",
-  "Special Needs Education (SNE)",
+const ALL_CBC_GRADES = [
+  "Playgroup", "PP1", "PP2",                      // Pre-Primary
+  "Grade 1", "Grade 2", "Grade 3",                // Lower Primary
+  "Grade 4", "Grade 5", "Grade 6",                // Upper Primary
+  "Grade 7", "Grade 8", "Grade 9",                // Junior Secondary
+  "Grade 10", "Grade 11", "Grade 12",             // Senior Secondary
+  "SNE"                                           // Special Needs Education
 ];
 
-const CBC_GRADES = {
-  "Pre-Primary": ["Playgroup", "PP1", "PP2"],
-  "Lower Primary": ["Grade 1", "Grade 2", "Grade 3"],
-  "Upper Primary": ["Grade 4", "Grade 5", "Grade 6"],
-  "Junior Secondary": ["Grade 7", "Grade 8", "Grade 9"],
-  "Senior Secondary": ["Grade 10", "Grade 11", "Grade 12"],
-  "Special Needs Education (SNE)": ["SNE"]
+// Map from grade to category
+const GRADE_TO_CATEGORY = {
+  "Playgroup": "Pre-Primary",
+  "PP1": "Pre-Primary",
+  "PP2": "Pre-Primary",
+  "Grade 1": "Lower Primary",
+  "Grade 2": "Lower Primary",
+  "Grade 3": "Lower Primary",
+  "Grade 4": "Upper Primary",
+  "Grade 5": "Upper Primary",
+  "Grade 6": "Upper Primary",
+  "Grade 7": "Junior Secondary",
+  "Grade 8": "Junior Secondary",
+  "Grade 9": "Junior Secondary",
+  "Grade 10": "Senior Secondary",
+  "Grade 11": "Senior Secondary",
+  "Grade 12": "Senior Secondary",
+  "SNE": "Special Needs Education (SNE)"
 };
 
 const ACCOMMODATION = ["Boarder", "Day Scholar"];
@@ -100,6 +111,19 @@ export function AddEditStudentModal({
   
   const containerFixedHeight = "h-[500px]";
 
+  // Effect to set category when grade changes
+  useEffect(() => {
+    if (form.cbc_category) {
+      const category = GRADE_TO_CATEGORY[form.cbc_category as keyof typeof GRADE_TO_CATEGORY];
+      if (category) {
+        setForm(prev => ({
+          ...prev,
+          school_level: category
+        }));
+      }
+    }
+  }, [form.cbc_category]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -119,26 +143,14 @@ export function AddEditStudentModal({
       onSubmit(form);
     }
   };
-
-  const handleCbcCategoryChange = (category: string) => {
-    setForm(f => {
-      // When selecting a category, default to the first grade in that category
-      const grades = CBC_GRADES[category as keyof typeof CBC_GRADES] || [];
-      const defaultGrade = grades.length > 0 ? grades[0] : "";
-      
-      return {
-        ...f,
-        school_level: category,
-        cbc_category: defaultGrade,
-        current_grade: defaultGrade // For backward compatibility
-      };
-    });
-  };
   
   const handleCbcGradeChange = (grade: string) => {
+    const category = GRADE_TO_CATEGORY[grade as keyof typeof GRADE_TO_CATEGORY] || "";
+    
     setForm(f => ({
       ...f,
       cbc_category: grade,
+      school_level: category, // Automatically set school_level (CBC category) based on grade
       current_grade: grade // For backward compatibility
     }));
   };
@@ -148,7 +160,7 @@ export function AddEditStudentModal({
       case 0:
         return !!form.name && !!form.admission_number && !!form.dob && !!form.gender;
       case 1:
-        return !!form.school_level && !!form.cbc_category && !!form.admission_date;
+        return !!form.cbc_category && !!form.admission_date;
       case 2:
         return true; // Additional info can be optional
       default:
@@ -240,39 +252,30 @@ export function AddEditStudentModal({
                 <Card className="p-4 border rounded-lg shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <Label htmlFor="school_level">CBC Category</Label>
+                      <Label htmlFor="cbc_category">CBC Grade</Label>
                       <Select 
-                        value={form.school_level || ""} 
-                        onValueChange={handleCbcCategoryChange}
+                        value={form.cbc_category || ""} 
+                        onValueChange={handleCbcGradeChange}
                       >
                         <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select CBC category" />
+                          <SelectValue placeholder="Select CBC Grade" />
                         </SelectTrigger>
                         <SelectContent>
-                          {CBC_CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category}>{category}</SelectItem>
+                          {ALL_CBC_GRADES.map((grade) => (
+                            <SelectItem key={grade} value={grade}>{grade}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="cbc_category">Grade</Label>
-                      <Select 
-                        value={form.cbc_category || ""} 
-                        onValueChange={handleCbcGradeChange}
-                        disabled={!form.school_level}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select Grade" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {form.school_level && 
-                            CBC_GRADES[form.school_level as keyof typeof CBC_GRADES]?.map((grade) => (
-                              <SelectItem key={grade} value={grade}>{grade}</SelectItem>
-                            ))
-                          }
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="school_level">CBC Category</Label>
+                      <Input 
+                        name="school_level" 
+                        value={form.school_level || ""} 
+                        onChange={handleChange} 
+                        className="mt-1 bg-gray-100" 
+                        disabled={true}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="admission_date">Admission Date</Label>
