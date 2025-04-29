@@ -122,7 +122,7 @@ export function StudentLettersTab({
                       </p>
                     </div>
                   </div>
-                  {letter.content && <p className="mt-2 text-muted-foreground line-clamp-2">
+                  {letter.content && <p className="mt-2 text-muted-foreground line-clamp-2 text-left">
                       {letter.content}
                     </p>}
                   <div className="mt-3 flex flex-wrap gap-2">
