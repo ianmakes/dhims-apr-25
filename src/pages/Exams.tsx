@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart2, BookOpen, ChartBar, Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
@@ -22,7 +21,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 
-const academicYears = ["2023-2024", "2022-2023", "2021-2022"];
 const terms = ["Term 1", "Term 2", "Term 3"];
 
 interface ExamFormData {
@@ -376,7 +374,7 @@ export default function Exams() {
         <Checkbox
           checked={
             table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
+            (table.getIsSomePageRowsSelected() && "indeterminate" as any)
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
@@ -633,7 +631,7 @@ export default function Exams() {
             <SelectValue placeholder="Academic Year" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Years</SelectItem>
+            <SelectItem value="all">All Years</SelectItem>
             {academicYearsData.map(year => (
               <SelectItem key={year.id} value={year.year_name}>{year.year_name}</SelectItem>
             ))}
@@ -645,7 +643,7 @@ export default function Exams() {
             <SelectValue placeholder="Term" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Terms</SelectItem>
+            <SelectItem value="all">All Terms</SelectItem>
             {terms.map(term => <SelectItem key={term} value={term}>{term}</SelectItem>)}
           </SelectContent>
         </Select>

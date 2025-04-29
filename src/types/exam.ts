@@ -4,11 +4,11 @@ import { Database } from "@/integrations/supabase/types";
 export type Exam = Database["public"]["Tables"]["exams"]["Row"];
 export type StudentExamScore = Database["public"]["Tables"]["student_exam_scores"]["Row"];
 
-export interface ExamWithScores extends Exam {
+export interface ExamWithScores extends Omit<Exam, 'is_active'> {
   studentsTaken?: number;
   averageScore?: number;
   passRate?: number;
-  is_active?: boolean;
+  is_active: boolean; // Changed from optional to required to match the Exam type
   student_exam_scores?: StudentExamScoreWithStudent[];
 }
 
