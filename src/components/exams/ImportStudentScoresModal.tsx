@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,8 +15,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 interface ImportStudentScoresModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onClose?: () => void; // Added to support both naming conventions
   examId: string;
   onSuccess?: () => void;
+  onImportComplete?: () => void; // Added to support both naming conventions
 }
 
 type MappingField = 'admission_number' | 'name' | 'score' | 'did_not_sit' | null;
@@ -26,9 +27,18 @@ type CsvPreviewData = Array<{ [key: string]: string }>;
 export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> = ({
   open,
   onOpenChange,
+  onClose,
   examId,
-  onSuccess
+  onSuccess,
+  onImportComplete
 }) => {
+  // Use either onSuccess or onImportComplete
+  const handleSuccess = () => {
+    if (onSuccess) onSuccess();
+    if (onImportComplete) onImportComplete();
+    if (onClose) onClose();
+  };
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [importing, setImporting] = useState(false);
@@ -279,7 +289,7 @@ export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> =
         title: "Import Successful",
         description: `Successfully imported scores for ${data.count} students. ${data.notFound} students not found.`
       });
-      if (onSuccess) onSuccess();
+      handleSuccess();
     },
     onError: (error: any) => {
       toast({
@@ -292,7 +302,10 @@ export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> =
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      onOpenChange(newOpen);
+      if (!newOpen && onClose) onClose();
+    }}>
       <DialogContent className="sm:max-w-[800px] md:max-w-[900px] w-[90vw]">
         <DialogHeader>
           <DialogTitle>Import Student Scores</DialogTitle>
