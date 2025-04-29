@@ -17,16 +17,21 @@ import { RemoveStudentDialog } from "@/components/sponsors/RemoveStudentDialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
 export default function SponsorDetail() {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  const [currentStudentToRemove, setCurrentStudentToRemove] = useState<{id: string; name: string} | null>(null);
-  
+  const [currentStudentToRemove, setCurrentStudentToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const {
     sponsor,
     availableStudents,
@@ -40,54 +45,53 @@ export default function SponsorDetail() {
     addSponsorRelative,
     updateSponsorRelative,
     deleteSponsorRelative,
-    addTimelineEvent,
+    addTimelineEvent
   } = useSponsorDetails(id!);
-  
-  const { updateSponsor } = useSponsors();
-  const { toast } = useToast();
-
+  const {
+    updateSponsor
+  } = useSponsors();
+  const {
+    toast
+  } = useToast();
   const handleEditSponsor = (data: SponsorFormValues) => {
     if (id) {
-      updateSponsor({ id, ...data });
+      updateSponsor({
+        id,
+        ...data
+      });
       setIsEditModalOpen(false);
     }
   };
-
   if (isLoading) {
     return <div>Loading...</div>;
   }
-
   if (!sponsor) {
     return <div>Sponsor not found</div>;
   }
-
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "";
-
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-
     if (isNaN(dateObj.getTime())) {
       return "Invalid Date";
     }
-
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     }).format(dateObj);
   };
-
   const handleOpenRemoveDialog = (studentId: string, studentName: string) => {
-    setCurrentStudentToRemove({ id: studentId, name: studentName });
+    setCurrentStudentToRemove({
+      id: studentId,
+      name: studentName
+    });
     setIsRemoveDialogOpen(true);
   };
-
   const handleRemoveStudent = (data: StudentRemovalForm) => {
     removeStudent(data);
     setIsRemoveDialogOpen(false);
     setCurrentStudentToRemove(null);
   };
-
   const handleAssignStudents = () => {
     if (selectedStudentIds.length === 0) {
       toast({
@@ -97,29 +101,18 @@ export default function SponsorDetail() {
       });
       return;
     }
-    
     assignStudents(selectedStudentIds);
     setSelectedStudentIds([]);
   };
-
   const toggleStudentSelection = (studentId: string) => {
-    setSelectedStudentIds(
-      selectedStudentIds.includes(studentId)
-        ? selectedStudentIds.filter(id => id !== studentId)
-        : [...selectedStudentIds, studentId]
-    );
+    setSelectedStudentIds(selectedStudentIds.includes(studentId) ? selectedStudentIds.filter(id => id !== studentId) : [...selectedStudentIds, studentId]);
   };
 
   // Filter available students based on search query
   const filteredAvailableStudents = availableStudents.filter(student => {
     if (!searchQuery) return true;
-    
     const query = searchQuery.toLowerCase();
-    return (
-      student.name.toLowerCase().includes(query) ||
-      student.admission_number.toLowerCase().includes(query) ||
-      (student.current_grade && student.current_grade.toLowerCase().includes(query))
-    );
+    return student.name.toLowerCase().includes(query) || student.admission_number.toLowerCase().includes(query) || student.current_grade && student.current_grade.toLowerCase().includes(query);
   });
 
   // Map database fields to form fields for the modal
@@ -138,9 +131,7 @@ export default function SponsorDetail() {
     profileImageUrl: sponsor.profile_image_url || "",
     primaryEmailForUpdates: sponsor.primary_email_for_updates || ""
   } : {} as SponsorFormValues;
-
-  return (
-    <div className="space-y-6 fade-in">
+  return <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -172,13 +163,9 @@ export default function SponsorDetail() {
         <Card className="lg:col-span-2">
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-24 w-24">
-              {sponsor.profile_image_url ? (
-                <AvatarImage src={sponsor.profile_image_url} alt={`${sponsor.first_name} ${sponsor.last_name}`} />
-              ) : (
-                <AvatarFallback className="text-2xl">
+              {sponsor.profile_image_url ? <AvatarImage src={sponsor.profile_image_url} alt={`${sponsor.first_name} ${sponsor.last_name}`} /> : <AvatarFallback className="text-2xl">
                   {sponsor.first_name[0]}{sponsor.last_name[0]}
-                </AvatarFallback>
-              )}
+                </AvatarFallback>}
             </Avatar>
             <CardTitle className="mt-2">
               {sponsor.first_name} {sponsor.last_name}
@@ -196,43 +183,35 @@ export default function SponsorDetail() {
                 <span className="text-muted-foreground">Email:</span>
                 <span className="ml-auto">{sponsor.email}</span>
               </div>
-              {sponsor.email2 && (
-                <div className="flex items-center text-sm">
+              {sponsor.email2 && <div className="flex items-center text-sm">
                   <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Alt Email:</span>
                   <span className="ml-auto">{sponsor.email2}</span>
-                </div>
-              )}
-              {sponsor.phone && (
-                <div className="flex items-center text-sm">
+                </div>}
+              {sponsor.phone && <div className="flex items-center text-sm">
                   <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Phone:</span>
                   <span className="ml-auto">{sponsor.phone}</span>
-                </div>
-              )}
+                </div>}
               <div className="flex items-center text-sm">
                 <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Start Date:</span>
                 <span className="ml-auto">{formatDate(sponsor.start_date)}</span>
               </div>
-              {sponsor.country && (
-                <div className="flex items-center text-sm">
+              {sponsor.country && <div className="flex items-center text-sm">
                   <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Country:</span>
                   <span className="ml-auto">{sponsor.country}</span>
-                </div>
-              )}
+                </div>}
             </div>
 
-            {sponsor.address && (
-              <>
+            {sponsor.address && <>
                 <Separator />
                 <div>
                   <h3 className="text-sm font-medium mb-1">Address</h3>
                   <p className="text-sm">{sponsor.address}</p>
                 </div>
-              </>
-            )}
+              </>}
 
             <Separator />
 
@@ -250,9 +229,7 @@ export default function SponsorDetail() {
 
             <div className="text-xs text-muted-foreground">
               <p>Created at: {formatDate(sponsor.created_at)}</p>
-              {sponsor.updated_at && (
-                <p>Last updated: {formatDate(sponsor.updated_at)}</p>
-              )}
+              {sponsor.updated_at && <p>Last updated: {formatDate(sponsor.updated_at)}</p>}
             </div>
           </CardContent>
         </Card>
@@ -271,83 +248,62 @@ export default function SponsorDetail() {
             <TabsContent value="details" className="space-y-6 py-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Sponsor Information</CardTitle>
+                  <CardTitle className="text-left">Sponsor Information</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <h3 className="font-medium">Full Name</h3>
-                    <p>{sponsor.first_name} {sponsor.last_name}</p>
+                    <h3 className="font-medium text-left">Full Name</h3>
+                    <p className="text-left">{sponsor.first_name} {sponsor.last_name}</p>
                   </div>
                   <div>
-                    <h3 className="font-medium">Email</h3>
-                    <p>{sponsor.email}</p>
+                    <h3 className="font-medium text-left">Email</h3>
+                    <p className="text-left">{sponsor.email}</p>
                   </div>
-                  {sponsor.email2 && (
-                    <div>
-                      <h3 className="font-medium">Secondary Email</h3>
-                      <p>{sponsor.email2}</p>
-                    </div>
-                  )}
-                  {sponsor.phone && (
-                    <div>
-                      <h3 className="font-medium">Phone</h3>
-                      <p>{sponsor.phone}</p>
-                    </div>
-                  )}
+                  {sponsor.email2 && <div>
+                      <h3 className="font-medium text-left">Secondary Email</h3>
+                      <p className="text-left">{sponsor.email2}</p>
+                    </div>}
+                  {sponsor.phone && <div>
+                      <h3 className="font-medium text-left">Phone</h3>
+                      <p className="text-left">{sponsor.phone}</p>
+                    </div>}
                   <div>
-                    <h3 className="font-medium">Status</h3>
-                    <p className="capitalize">{sponsor.status}</p>
+                    <h3 className="font-medium text-left">Status</h3>
+                    <p className="capitalize text-left">{sponsor.status}</p>
                   </div>
-                  {sponsor.country && (
-                    <div>
-                      <h3 className="font-medium">Country</h3>
-                      <p>{sponsor.country}</p>
-                    </div>
-                  )}
-                  {sponsor.primary_email_for_updates && (
-                    <div>
+                  {sponsor.country && <div>
+                      <h3 className="font-medium text-left">Country</h3>
+                      <p className="text-left">{sponsor.country}</p>
+                    </div>}
+                  {sponsor.primary_email_for_updates && <div>
                       <h3 className="font-medium">Email for Updates</h3>
                       <p>
-                        {sponsor.primary_email_for_updates === "both" 
-                          ? "Both emails" 
-                          : sponsor.primary_email_for_updates}
+                        {sponsor.primary_email_for_updates === "both" ? "Both emails" : sponsor.primary_email_for_updates}
                       </p>
-                    </div>
-                  )}
+                    </div>}
                 </CardContent>
               </Card>
 
-              {sponsor.address && (
-                <Card>
+              {sponsor.address && <Card>
                   <CardHeader>
-                    <CardTitle>Address Information</CardTitle>
+                    <CardTitle className="text-left">Address Information</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p>{sponsor.address}</p>
+                    <p className="text-left">{sponsor.address}</p>
                   </CardContent>
-                </Card>
-              )}
+                </Card>}
 
-              {sponsor.notes && (
-                <Card>
+              {sponsor.notes && <Card>
                   <CardHeader>
-                    <CardTitle>Notes</CardTitle>
+                    <CardTitle className="text-left">Notes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p>{sponsor.notes}</p>
+                    <p className="text-left">{sponsor.notes}</p>
                   </CardContent>
-                </Card>
-              )}
+                </Card>}
 
               {/* Sponsor Relatives Section */}
-              <SponsorRelativesSection
-                sponsorId={id!}
-                relatives={sponsorRelatives}
-                isLoading={isLoadingRelatives}
-                onAddRelative={addSponsorRelative}
-                onUpdateRelative={updateSponsorRelative}
-                onDeleteRelative={deleteSponsorRelative}
-              />
+              <SponsorRelativesSection sponsorId={id!} relatives={sponsorRelatives} isLoading={isLoadingRelatives} onAddRelative={addSponsorRelative} onUpdateRelative={updateSponsorRelative} onDeleteRelative={deleteSponsorRelative} />
             </TabsContent>
 
             {/* Sponsored Students Tab */}
@@ -360,23 +316,16 @@ export default function SponsorDetail() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {sponsor.students?.length === 0 ? (
-                    <div className="text-center py-8">
+                  {sponsor.students?.length === 0 ? <div className="text-center py-8">
                       <p className="text-muted-foreground">This sponsor is not currently sponsoring any students.</p>
-                      <Button
-                        variant="outline"
-                        className="mt-4"
-                        onClick={() => {
-                          const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement;
-                          if (assignTab) assignTab.click();
-                        }}
-                      >
+                      <Button variant="outline" className="mt-4" onClick={() => {
+                    const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement;
+                    if (assignTab) assignTab.click();
+                  }}>
                         <Plus className="mr-2 h-4 w-4" />
                         Assign Students
                       </Button>
-                    </div>
-                  ) : (
-                    <Table>
+                    </div> : <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Student</TableHead>
@@ -387,24 +336,16 @@ export default function SponsorDetail() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {sponsor.students?.map((student: any) => (
-                          <TableRow key={student.id}>
+                        {sponsor.students?.map((student: any) => <TableRow key={student.id}>
                             <TableCell>
                               <div className="flex items-center space-x-3">
                                 <Avatar className="h-8 w-8">
-                                  {student.profile_image_url ? (
-                                    <AvatarImage src={student.profile_image_url} alt={student.name} />
-                                  ) : (
-                                    <AvatarFallback>
+                                  {student.profile_image_url ? <AvatarImage src={student.profile_image_url} alt={student.name} /> : <AvatarFallback>
                                       {student.name[0]}
-                                    </AvatarFallback>
-                                  )}
+                                    </AvatarFallback>}
                                 </Avatar>
                                 <div>
-                                  <Link
-                                    to={`/students/${student.id}`}
-                                    className="font-medium text-primary hover:underline"
-                                  >
+                                  <Link to={`/students/${student.id}`} className="font-medium text-primary hover:underline">
                                     {student.name}
                                   </Link>
                                 </div>
@@ -415,39 +356,24 @@ export default function SponsorDetail() {
                             <TableCell>{formatDate(student.sponsored_since)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => navigate(`/students/${student.id}`)}
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => navigate(`/students/${student.id}`)}>
                                   View
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => handleOpenRemoveDialog(student.id, student.name)}
-                                >
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleOpenRemoveDialog(student.id, student.name)}>
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>
-                          </TableRow>
-                        ))}
+                          </TableRow>)}
                       </TableBody>
-                    </Table>
-                  )}
+                    </Table>}
                 </CardContent>
               </Card>
             </TabsContent>
 
             {/* Timeline Tab */}
             <TabsContent value="timeline" className="py-4">
-              <SponsorTimelineTab 
-                timelineEvents={timelineEvents}
-                isLoading={isLoadingTimeline}
-                onAddTimelineEvent={addTimelineEvent}
-              />
+              <SponsorTimelineTab timelineEvents={timelineEvents} isLoading={isLoadingTimeline} onAddTimelineEvent={addTimelineEvent} />
             </TabsContent>
 
             {/* Assign Students Tab */}
@@ -460,21 +386,13 @@ export default function SponsorDetail() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {availableStudents?.length === 0 ? (
-                    <div className="text-center py-8">
+                  {availableStudents?.length === 0 ? <div className="text-center py-8">
                       <p className="text-muted-foreground">There are no unsponsored students available at this time.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
+                    </div> : <div className="space-y-4">
                       {/* Search input */}
                       <div className="flex items-center space-x-2">
                         <Search className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search students by name, admission number, or grade..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="flex-1"
-                        />
+                        <Input placeholder="Search students by name, admission number, or grade..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1" />
                       </div>
 
                       {/* Students table */}
@@ -483,22 +401,13 @@ export default function SponsorDetail() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="w-12">
-                                <Checkbox
-                                  checked={
-                                    filteredAvailableStudents.length > 0 &&
-                                    filteredAvailableStudents.every(student => 
-                                      selectedStudentIds.includes(student.id)
-                                    )
-                                  }
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedStudentIds(filteredAvailableStudents.map(s => s.id));
-                                    } else {
-                                      setSelectedStudentIds([]);
-                                    }
-                                  }}
-                                  aria-label="Select all students"
-                                />
+                                <Checkbox checked={filteredAvailableStudents.length > 0 && filteredAvailableStudents.every(student => selectedStudentIds.includes(student.id))} onCheckedChange={checked => {
+                              if (checked) {
+                                setSelectedStudentIds(filteredAvailableStudents.map(s => s.id));
+                              } else {
+                                setSelectedStudentIds([]);
+                              }
+                            }} aria-label="Select all students" />
                               </TableHead>
                               <TableHead>Student</TableHead>
                               <TableHead>Admission #</TableHead>
@@ -508,32 +417,20 @@ export default function SponsorDetail() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredAvailableStudents.length === 0 ? (
-                              <TableRow>
+                            {filteredAvailableStudents.length === 0 ? <TableRow>
                                 <TableCell colSpan={6} className="text-center h-24">
                                   No students match your search criteria
                                 </TableCell>
-                              </TableRow>
-                            ) : (
-                              filteredAvailableStudents.map((student) => (
-                                <TableRow key={student.id}>
+                              </TableRow> : filteredAvailableStudents.map(student => <TableRow key={student.id}>
                                   <TableCell>
-                                    <Checkbox
-                                      checked={selectedStudentIds.includes(student.id)}
-                                      onCheckedChange={() => toggleStudentSelection(student.id)}
-                                      aria-label={`Select ${student.name}`}
-                                    />
+                                    <Checkbox checked={selectedStudentIds.includes(student.id)} onCheckedChange={() => toggleStudentSelection(student.id)} aria-label={`Select ${student.name}`} />
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center space-x-3">
                                       <Avatar className="h-8 w-8">
-                                        {student.profile_image_url ? (
-                                          <AvatarImage src={student.profile_image_url} alt={student.name} />
-                                        ) : (
-                                          <AvatarFallback>
+                                        {student.profile_image_url ? <AvatarImage src={student.profile_image_url} alt={student.name} /> : <AvatarFallback>
                                             {student.name[0]}
-                                          </AvatarFallback>
-                                        )}
+                                          </AvatarFallback>}
                                       </Avatar>
                                       <div className="font-medium">{student.name}</div>
                                     </div>
@@ -542,17 +439,11 @@ export default function SponsorDetail() {
                                   <TableCell>{student.current_grade || "—"}</TableCell>
                                   <TableCell>{student.gender}</TableCell>
                                   <TableCell>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => navigate(`/students/${student.id}`)}
-                                    >
+                                    <Button variant="ghost" size="sm" onClick={() => navigate(`/students/${student.id}`)}>
                                       View
                                     </Button>
                                   </TableCell>
-                                </TableRow>
-                              ))
-                            )}
+                                </TableRow>)}
                           </TableBody>
                         </Table>
                       </div>
@@ -561,15 +452,11 @@ export default function SponsorDetail() {
                         <p className="text-sm text-muted-foreground">
                           {selectedStudentIds.length} students selected
                         </p>
-                        <Button
-                          onClick={handleAssignStudents}
-                          disabled={selectedStudentIds.length === 0}
-                        >
+                        <Button onClick={handleAssignStudents} disabled={selectedStudentIds.length === 0}>
                           Assign Selected Students
                         </Button>
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -578,23 +465,9 @@ export default function SponsorDetail() {
       </div>
 
       {/* Edit Sponsor Modal */}
-      <AddEditSponsorModal
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-        sponsor={sponsorForForm}
-        onSubmit={handleEditSponsor}
-      />
+      <AddEditSponsorModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} sponsor={sponsorForForm} onSubmit={handleEditSponsor} />
 
       {/* Remove Student Dialog */}
-      {currentStudentToRemove && (
-        <RemoveStudentDialog
-          open={isRemoveDialogOpen}
-          onOpenChange={setIsRemoveDialogOpen}
-          onConfirm={handleRemoveStudent}
-          studentId={currentStudentToRemove.id}
-          studentName={currentStudentToRemove.name}
-        />
-      )}
-    </div>
-  );
+      {currentStudentToRemove && <RemoveStudentDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen} onConfirm={handleRemoveStudent} studentId={currentStudentToRemove.id} studentName={currentStudentToRemove.name} />}
+    </div>;
 }
