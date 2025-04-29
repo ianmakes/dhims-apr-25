@@ -58,7 +58,7 @@ export default function ExamDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("students");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<{ [key: string]: number | boolean; }>({});
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
@@ -585,7 +585,7 @@ export default function ExamDetail() {
         </div>
       </div>
 
-      {/* New two-column layout - Overview card and Tabs card */}
+      {/* Two-column layout - Overview card and Tabs card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Overview Card */}
         <Card className="md:col-span-1 h-fit">
@@ -665,164 +665,15 @@ export default function ExamDetail() {
 
         {/* Tabs Card */}
         <Card className="md:col-span-2">
-          <CardHeader className="pb-0">
+          <CardHeader>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="mb-0 ml-0 justify-start">
-                <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsList className="grid grid-cols-2 w-fit mb-0">
                 <TabsTrigger value="students">Student Scores</TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
-          <CardContent className="pt-6">
-            {/* Details Tab (formerly Overview) */}
-            <TabsContent value="details" className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-                    <BarChart2 className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      Out of {examData.max_score} points
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
-                    <Bookmark className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{highestScore}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      By {studentsWithScores.find(s => s.score === highestScore)?.name || "N/A"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Lowest Score</CardTitle>
-                    <Bookmark className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{lowestScore}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      By {studentsWithScores.find(s => s.score === lowestScore)?.name || "N/A"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Pass Rate</CardTitle>
-                    <User className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      {studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= examData.passing_score).length} out of {scores.length} students
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Score Distribution</CardTitle>
-                    <CardDescription>
-                      Distribution of student scores by range
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={scoreDistribution}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="range" />
-                          <YAxis allowDecimals={false} />
-                          <RechartsTooltip />
-                          <Legend />
-                          <Bar dataKey="count" name="Number of Students" fill="#3b82f6" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance Categories</CardTitle>
-                    <CardDescription>
-                      Distribution of students by performance category
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={performanceData} margin={{ top: 20, right: 30, bottom: 0, left: 0 }}>
-                          <PolarGrid stroke="#e5e7eb" />
-                          <PolarAngleAxis dataKey="category" tick={false} />
-                          <RechartsTooltip 
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                return (
-                                  <div className="bg-white p-2 border rounded shadow-sm">
-                                    <p className="font-medium">{payload[0].name}</p>
-                                    <p>{payload[0].value} students</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Radar 
-                            name="Exceeding Expectation" 
-                            dataKey={ExamGrade.EXCEEDING} 
-                            stroke="#22c55e" 
-                            fill="#22c55e" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Meeting Expectation" 
-                            dataKey={ExamGrade.MEETING} 
-                            stroke="#3b82f6" 
-                            fill="#3b82f6" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Approaching Expectation" 
-                            dataKey={ExamGrade.APPROACHING} 
-                            stroke="#f59e0b" 
-                            fill="#f59e0b" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Below Expectation" 
-                            dataKey={ExamGrade.BELOW} 
-                            stroke="#ef4444" 
-                            fill="#ef4444" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Did Not Sit" 
-                            dataKey="Did Not Sit" 
-                            stroke="#94a3b8" 
-                            fill="#94a3b8" 
-                            fillOpacity={0.6} 
-                          />
-                          <Legend />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Student Scores Tab */}
+          <CardContent>
             <TabsContent value="students" className="space-y-6">
               <div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
@@ -999,8 +850,151 @@ export default function ExamDetail() {
               />
             </TabsContent>
 
-            {/* Analytics Tab */}
             <TabsContent value="analytics" className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                    <BarChart2 className="w-4 h-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      Out of {examData.max_score} points
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
+                    <Bookmark className="w-4 h-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{highestScore}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      By {studentsWithScores.find(s => s.score === highestScore)?.name || "N/A"}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-medium">Lowest Score</CardTitle>
+                    <Bookmark className="w-4 h-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{lowestScore}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      By {studentsWithScores.find(s => s.score === lowestScore)?.name || "N/A"}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-medium">Pass Rate</CardTitle>
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      {studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= examData.passing_score).length} out of {scores.length} students
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Score Distribution</CardTitle>
+                    <CardDescription>
+                      Distribution of student scores by range
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={scoreDistribution}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="range" />
+                          <YAxis allowDecimals={false} />
+                          <RechartsTooltip />
+                          <Legend />
+                          <Bar dataKey="count" name="Number of Students" fill="#3b82f6" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Categories</CardTitle>
+                    <CardDescription>
+                      Distribution of students by performance category
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={performanceData} margin={{ top: 20, right: 30, bottom: 0, left: 0 }}>
+                          <PolarGrid stroke="#e5e7eb" />
+                          <PolarAngleAxis dataKey="category" tick={false} />
+                          <RechartsTooltip 
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                return (
+                                  <div className="bg-white p-2 border rounded shadow-sm">
+                                    <p className="font-medium">{payload[0].name}</p>
+                                    <p>{payload[0].value} students</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Radar 
+                            name="Exceeding Expectation" 
+                            dataKey={ExamGrade.EXCEEDING} 
+                            stroke="#22c55e" 
+                            fill="#22c55e" 
+                            fillOpacity={0.6} 
+                          />
+                          <Radar 
+                            name="Meeting Expectation" 
+                            dataKey={ExamGrade.MEETING} 
+                            stroke="#3b82f6" 
+                            fill="#3b82f6" 
+                            fillOpacity={0.6} 
+                          />
+                          <Radar 
+                            name="Approaching Expectation" 
+                            dataKey={ExamGrade.APPROACHING} 
+                            stroke="#f59e0b" 
+                            fill="#f59e0b" 
+                            fillOpacity={0.6} 
+                          />
+                          <Radar 
+                            name="Below Expectation" 
+                            dataKey={ExamGrade.BELOW} 
+                            stroke="#ef4444" 
+                            fill="#ef4444" 
+                            fillOpacity={0.6} 
+                          />
+                          <Radar 
+                            name="Did Not Sit" 
+                            dataKey="Did Not Sit" 
+                            stroke="#94a3b8" 
+                            fill="#94a3b8" 
+                            fillOpacity={0.6} 
+                          />
+                          <Legend />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-left">Performance Analysis</CardTitle>
@@ -1089,7 +1083,7 @@ export default function ExamDetail() {
         </Card>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .dropdown:hover .dropdown-content {
           display: block;
         }

@@ -27,6 +27,18 @@ interface MappedField {
   targetField: string;
 }
 
+interface StudentScoreRecord {
+  id?: string;
+  exam_id: string;
+  student_id: string;
+  score: number;
+  did_not_sit: boolean;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+}
+
 const REQUIRED_TARGET_FIELDS = ["student_id", "score"];
 const TARGET_FIELDS = ["student_id", "score", "did_not_sit"];
 const SAMPLE_CSV = `admission_number,student_name,score,did_not_sit
@@ -200,10 +212,13 @@ export function ImportStudentScoresModal({
       });
       
       // Process data
-      const data = lines.slice(1).map(line => {
+      const data: StudentScoreRecord[] = lines.slice(1).map(line => {
         const values = line.split(",").map(v => v.trim());
-        const row: Record<string, any> = {
-          exam_id: examId
+        const row: StudentScoreRecord = {
+          exam_id: examId,
+          student_id: "", // Will be filled in below
+          score: 0, // Will be filled in below
+          did_not_sit: false
         };
         
         // Apply mappings
@@ -211,18 +226,13 @@ export function ImportStudentScoresModal({
           const targetField = fieldMap.get(i);
           if (targetField) {
             if (targetField === "score") {
-              row[targetField] = parseFloat(values[i]);
+              row.score = parseFloat(values[i]) || 0;
             } else if (targetField === "did_not_sit") {
-              row[targetField] = values[i].toLowerCase() === "true" || values[i] === "1";
-            } else {
-              row[targetField] = values[i];
+              row.did_not_sit = values[i].toLowerCase() === "true" || values[i] === "1";
+            } else if (targetField === "student_id") {
+              row.student_id = values[i];
             }
           }
-        }
-        
-        // If did_not_sit is not provided, default to false
-        if (!row.hasOwnProperty("did_not_sit")) {
-          row.did_not_sit = false;
         }
         
         return row;
@@ -250,19 +260,22 @@ export function ImportStudentScoresModal({
       });
       
       // Replace admission numbers with UUIDs
-      const processedData = data.map(row => {
-        // If the student_id looks like an admission number, try to replace it with UUID
-        if (row.student_id && !row.student_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-          const uuid = studentMap.get(row.student_id);
-          if (uuid) {
-            row.student_id = uuid;
-          } else {
-            // Skip this row as we couldn't find the student
-            return null;
+      const processedData: StudentScoreRecord[] = data
+        .map(row => {
+          // If the student_id looks like an admission number, try to replace it with UUID
+          if (row.student_id && !row.student_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            const uuid = studentMap.get(row.student_id);
+            if (uuid) {
+              row.student_id = uuid;
+              return row;
+            } else {
+              // Skip this row as we couldn't find the student
+              return null;
+            }
           }
-        }
-        return row;
-      }).filter(Boolean); // Remove null entries
+          return row;
+        })
+        .filter((row): row is StudentScoreRecord => row !== null); // Type guard to filter out null values
       
       if (processedData.length === 0) {
         throw new Error("No valid student records found. Please check that admission numbers match existing students.");
@@ -325,7 +338,7 @@ export function ImportStudentScoresModal({
             </TabsList>
             
             <TabsContent value="upload" className="space-y-4">
-              <Alert variant="info" className="bg-blue-50 border-blue-100">
+              <Alert className="bg-blue-50 border-blue-100">
                 <HelpCircle className="h-4 w-4" />
                 <AlertTitle className="text-blue-800">Tips for CSV format</AlertTitle>
                 <AlertDescription className="text-blue-700">
