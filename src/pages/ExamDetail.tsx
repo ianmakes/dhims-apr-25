@@ -28,6 +28,7 @@ import { ExamWithScores, StudentForExam, ExamGrade } from "@/types/exam";
 import { ImportStudentScoresModal } from "@/components/exams/ImportStudentScoresModal";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 // Get grade based on score percentage
 const getGrade = (score: number): ExamGrade => {
@@ -58,7 +59,7 @@ export default function ExamDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("students");
+  const [activeTab, setActiveTab] = useState("scores");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<{ [key: string]: number | boolean; }>({});
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
@@ -666,419 +667,457 @@ export default function ExamDetail() {
         {/* Tabs Card */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 w-fit mb-0">
-                <TabsTrigger value="students">Student Scores</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="border-b">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="flex h-10 items-center justify-start gap-2 rounded-none border-b border-transparent bg-transparent p-0 w-full">
+                  <TabsTrigger 
+                    value="scores" 
+                    className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-none bg-transparent px-3 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                  >
+                    Student Scores
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="details" 
+                    className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-none bg-transparent px-3 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                  >
+                    Details
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </CardHeader>
           <CardContent>
-            <TabsContent value="students" className="space-y-6">
-              <div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-                  <div className="relative w-full sm:max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      type="search" 
-                      placeholder="Search students by name or admission #..." 
-                      className="pl-8 w-full" 
-                      value={searchTerm} 
-                      onChange={e => setSearchTerm(e.target.value)} 
-                    />
-                  </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <div className="dropdown relative">
-                      <Button variant="outline" className="flex items-center gap-2">
-                        <Download className="h-4 w-4" />
-                        <span>Export</span>
-                      </Button>
-                      <div className="dropdown-content absolute hidden bg-white rounded-md shadow-lg z-10 mt-2 right-0 min-w-[160px] border p-1 group-hover:block">
-                        <Button variant="ghost" onClick={exportScores} className="w-full justify-start mb-1">
-                          <FileText className="mr-2 h-4 w-4" />
-                          <span>CSV</span>
-                        </Button>
-                        <Button variant="ghost" onClick={downloadAsPDF} className="w-full justify-start">
-                          <FileDown className="mr-2 h-4 w-4" />
-                          <span>PDF</span>
-                        </Button>
-                      </div>
+            <Tabs value={activeTab} className="w-full">
+              <TabsContent value="scores" className="space-y-6 mt-0">
+                <div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                    <div className="relative w-full sm:max-w-sm">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        type="search" 
+                        placeholder="Search students by name or admission #..." 
+                        className="pl-8 w-full" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                      />
                     </div>
-                    <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import
-                    </Button>
-                    {isEditing ? (
-                      <>
-                        <Button variant="outline" onClick={cancelEditing} disabled={updateScores.isPending}>
-                          <X className="mr-2 h-4 w-4" />
-                          Cancel
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <div className="dropdown relative">
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <Download className="h-4 w-4" />
+                          <span>Export</span>
                         </Button>
-                        <Button onClick={saveScores} disabled={updateScores.isPending}>
-                          {updateScores.isPending ? (
-                            <>
-                              <span className="animate-spin mr-2">⚬</span>
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="mr-2 h-4 w-4" />
-                              Save Scores
-                            </>
-                          )}
-                        </Button>
-                      </>
-                    ) : (
-                      <Button onClick={() => setIsEditing(true)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Enter Scores
+                        <div className="dropdown-content absolute hidden bg-white rounded-md shadow-lg z-10 mt-2 right-0 min-w-[160px] border p-1 group-hover:block">
+                          <Button variant="ghost" onClick={exportScores} className="w-full justify-start mb-1">
+                            <FileText className="mr-2 h-4 w-4" />
+                            <span>CSV</span>
+                          </Button>
+                          <Button variant="ghost" onClick={downloadAsPDF} className="w-full justify-start">
+                            <FileDown className="mr-2 h-4 w-4" />
+                            <span>PDF</span>
+                          </Button>
+                        </div>
+                      </div>
+                      <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import
                       </Button>
-                    )}
+                      {isEditing ? (
+                        <>
+                          <Button variant="outline" onClick={cancelEditing} disabled={updateScores.isPending}>
+                            <X className="mr-2 h-4 w-4" />
+                            Cancel
+                          </Button>
+                          <Button onClick={saveScores} disabled={updateScores.isPending}>
+                            {updateScores.isPending ? (
+                              <>
+                                <span className="animate-spin mr-2">⚬</span>
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="mr-2 h-4 w-4" />
+                                Save Scores
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      ) : (
+                        <Button onClick={() => setIsEditing(true)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Enter Scores
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div id="exam-header-info" className="hidden">
-                  <h1 className="text-2xl font-bold">{examData.name}</h1>
-                  <p>{examData.term} • {examData.academic_year}</p>
-                  <p>Exam Date: {new Date(examData.exam_date).toLocaleDateString()}</p>
-                  <p>Maximum Score: {examData.max_score}</p>
-                  <p>Passing Score: {examData.passing_score}</p>
-                  <p>Average Score: {averageScore.toFixed(1)}%</p>
-                  <p>Pass Rate: {passRate.toFixed(1)}%</p>
-                </div>
+                  <div id="exam-header-info" className="hidden">
+                    <h1 className="text-2xl font-bold">{examData.name}</h1>
+                    <p>{examData.term} • {examData.academic_year}</p>
+                    <p>Exam Date: {new Date(examData.exam_date).toLocaleDateString()}</p>
+                    <p>Maximum Score: {examData.max_score}</p>
+                    <p>Passing Score: {examData.passing_score}</p>
+                    <p>Average Score: {averageScore.toFixed(1)}%</p>
+                    <p>Pass Rate: {passRate.toFixed(1)}%</p>
+                  </div>
 
-                <div className="rounded-md border">
-                  <div id="student-scores-table">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Admission #</TableHead>
-                          <TableHead>Student Name</TableHead>
-                          <TableHead>Grade Level</TableHead>
-                          <TableHead className="text-center">Score</TableHead>
-                          <TableHead className="text-center">Did Not Sit</TableHead>
-                          <TableHead className="text-center">Performance</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {isLoadingStudents ? (
+                  <div className="rounded-md border">
+                    <div id="student-scores-table">
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                              <div className="flex justify-center items-center">
-                                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
-                                Loading students...
-                              </div>
-                            </TableCell>
+                            <TableHead>Admission #</TableHead>
+                            <TableHead>Student Name</TableHead>
+                            <TableHead>Grade Level</TableHead>
+                            <TableHead className="text-center">Score</TableHead>
+                            <TableHead className="text-center">Did Not Sit</TableHead>
+                            <TableHead className="text-center">Performance</TableHead>
                           </TableRow>
-                        ) : filteredStudents.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                              No students found. Try a different search term.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredStudents.map(student => (
-                            <TableRow key={student.id}>
-                              <TableCell className="font-mono text-sm">{student.admissionNumber}</TableCell>
-                              <TableCell>{student.name}</TableCell>
-                              <TableCell>{student.grade}</TableCell>
-                              <TableCell className="text-center">
-                                {isEditing ? (
-                                  <Input 
-                                    type="number" 
-                                    value={editData[`score_${student.id}`] !== undefined 
-                                      ? editData[`score_${student.id}`] as number 
-                                      : student.score || 0
-                                    } 
-                                    onChange={e => handleScoreChange(student.id, e.target.value)} 
-                                    min={0} 
-                                    max={examData.max_score} 
-                                    className="w-20 text-center mx-auto" 
-                                    disabled={editData[`dns_${student.id}`] === true} 
-                                  />
-                                ) : student.didNotSit ? (
-                                  <span className="text-muted-foreground">DNS</span>
-                                ) : (
-                                  <span>{student.score !== null ? student.score : "-"}</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {isEditing ? (
-                                  <Checkbox 
-                                    checked={editData[`dns_${student.id}`] !== undefined 
-                                      ? editData[`dns_${student.id}`] as boolean 
-                                      : student.didNotSit
-                                    } 
-                                    onCheckedChange={checked => handleDidNotSitChange(student.id, !!checked)} 
-                                    className="mx-auto" 
-                                  />
-                                ) : student.didNotSit ? (
-                                  <Check className="h-4 w-4 mx-auto text-primary" />
-                                ) : (
-                                  <span>-</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {student.didNotSit ? (
-                                  <span className="text-muted-foreground">N/A</span>
-                                ) : (
-                                  <Badge className={getGradeColor(student.status)}>
-                                    {student.status}
-                                  </Badge>
-                                )}
+                        </TableHeader>
+                        <TableBody>
+                          {isLoadingStudents ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                <div className="flex justify-center items-center">
+                                  <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
+                                  Loading students...
+                                </div>
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
+                          ) : filteredStudents.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                No students found. Try a different search term.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredStudents.map(student => (
+                              <TableRow key={student.id}>
+                                <TableCell className="font-mono text-sm">{student.admissionNumber}</TableCell>
+                                <TableCell>{student.name}</TableCell>
+                                <TableCell>{student.grade}</TableCell>
+                                <TableCell className="text-center">
+                                  {isEditing ? (
+                                    <Input 
+                                      type="number" 
+                                      value={editData[`score_${student.id}`] !== undefined 
+                                        ? editData[`score_${student.id}`] as number 
+                                        : student.score || 0
+                                      } 
+                                      onChange={e => handleScoreChange(student.id, e.target.value)} 
+                                      min={0} 
+                                      max={examData.max_score} 
+                                      className="w-20 text-center mx-auto" 
+                                      disabled={editData[`dns_${student.id}`] === true} 
+                                    />
+                                  ) : student.didNotSit ? (
+                                    <span className="text-muted-foreground">DNS</span>
+                                  ) : (
+                                    <span>{student.score !== null ? student.score : "-"}</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {isEditing ? (
+                                    <Checkbox 
+                                      checked={editData[`dns_${student.id}`] !== undefined 
+                                        ? editData[`dns_${student.id}`] as boolean 
+                                        : student.didNotSit
+                                      } 
+                                      onCheckedChange={checked => handleDidNotSitChange(student.id, !!checked)} 
+                                      className="mx-auto" 
+                                    />
+                                  ) : student.didNotSit ? (
+                                    <Check className="h-4 w-4 mx-auto text-primary" />
+                                  ) : (
+                                    <span>-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {student.didNotSit ? (
+                                    <span className="text-muted-foreground">N/A</span>
+                                  ) : (
+                                    <Badge className={getGradeColor(student.status)}>
+                                      {student.status}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <ImportStudentScoresModal 
-                open={isImportModalOpen} 
-                onOpenChange={setIsImportModalOpen} 
-                examId={id || ''} 
-                onSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['exam', id] });
-                  toast({
-                    title: "Scores Imported",
-                    description: "Student scores have been imported successfully."
-                  });
-                }} 
-              />
-            </TabsContent>
+                <ImportStudentScoresModal 
+                  open={isImportModalOpen} 
+                  onOpenChange={setIsImportModalOpen} 
+                  examId={id || ''} 
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['exam', id] });
+                    toast({
+                      title: "Scores Imported",
+                      description: "Student scores have been imported successfully."
+                    });
+                  }} 
+                />
+              </TabsContent>
 
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-                    <BarChart2 className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      Out of {examData.max_score} points
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
-                    <Bookmark className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{highestScore}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      By {studentsWithScores.find(s => s.score === highestScore)?.name || "N/A"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Lowest Score</CardTitle>
-                    <Bookmark className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{lowestScore}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      By {studentsWithScores.find(s => s.score === lowestScore)?.name || "N/A"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Pass Rate</CardTitle>
-                    <User className="w-4 h-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
-                    <p className="text-xs text-muted-foreground">
-                      {studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= examData.passing_score).length} out of {scores.length} students
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+              <TabsContent value="details" className="space-y-6 mt-0">
+                <div className="grid gap-6 md:grid-cols-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                      <BarChart2 className="w-4 h-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{averageScore.toFixed(1)}%</div>
+                      <p className="text-xs text-muted-foreground">
+                        Out of {examData.max_score} points
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
+                      <Bookmark className="w-4 h-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{highestScore}%</div>
+                      <p className="text-xs text-muted-foreground">
+                        By {studentsWithScores.find(s => s.score === highestScore)?.name || "N/A"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <CardTitle className="text-sm font-medium">Lowest Score</CardTitle>
+                      <Bookmark className="w-4 h-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{lowestScore}%</div>
+                      <p className="text-xs text-muted-foreground">
+                        By {studentsWithScores.find(s => s.score === lowestScore)?.name || "N/A"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <CardTitle className="text-sm font-medium">Pass Rate</CardTitle>
+                      <User className="w-4 h-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{passRate.toFixed(1)}%</div>
+                      <p className="text-xs text-muted-foreground">
+                        {studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= examData.passing_score).length} out of {scores.length} students
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Score Distribution</CardTitle>
-                    <CardDescription>
-                      Distribution of student scores by range
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={scoreDistribution}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="range" />
-                          <YAxis allowDecimals={false} />
-                          <RechartsTooltip />
-                          <Legend />
-                          <Bar dataKey="count" name="Number of Students" fill="#3b82f6" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance Categories</CardTitle>
-                    <CardDescription>
-                      Distribution of students by performance category
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={performanceData} margin={{ top: 20, right: 30, bottom: 0, left: 0 }}>
-                          <PolarGrid stroke="#e5e7eb" />
-                          <PolarAngleAxis dataKey="category" tick={false} />
-                          <RechartsTooltip 
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                return (
-                                  <div className="bg-white p-2 border rounded shadow-sm">
-                                    <p className="font-medium">{payload[0].name}</p>
-                                    <p>{payload[0].value} students</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Radar 
-                            name="Exceeding Expectation" 
-                            dataKey={ExamGrade.EXCEEDING} 
-                            stroke="#22c55e" 
-                            fill="#22c55e" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Meeting Expectation" 
-                            dataKey={ExamGrade.MEETING} 
-                            stroke="#3b82f6" 
-                            fill="#3b82f6" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Approaching Expectation" 
-                            dataKey={ExamGrade.APPROACHING} 
-                            stroke="#f59e0b" 
-                            fill="#f59e0b" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Below Expectation" 
-                            dataKey={ExamGrade.BELOW} 
-                            stroke="#ef4444" 
-                            fill="#ef4444" 
-                            fillOpacity={0.6} 
-                          />
-                          <Radar 
-                            name="Did Not Sit" 
-                            dataKey="Did Not Sit" 
-                            stroke="#94a3b8" 
-                            fill="#94a3b8" 
-                            fillOpacity={0.6} 
-                          />
-                          <Legend />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-left">Performance Analysis</CardTitle>
-                  <CardDescription className="text-left">Detailed exam performance analytics</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 text-left">Score Summary</h3>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Average</span>
-                            <span className="font-medium">{averageScore.toFixed(1)}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Median</span>
-                            <span className="font-medium">
-                              {scores.length > 0 ? scores.sort((a, b) => a - b)[Math.floor(scores.length / 2)] : 0}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Standard Deviation</span>
-                            <span className="font-medium">
-                              {scores.length > 0 ? 
-                                Math.sqrt(scores.reduce((sum, score) => 
-                                  sum + Math.pow(score - averageScore, 2), 0) / scores.length).toFixed(1) : 0
-                              }
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Pass Rate</span>
-                            <span className="font-medium">{passRate.toFixed(1)}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Students Assessed</span>
-                            <span className="font-medium">{scores.length}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Students Not Present</span>
-                            <span className="font-medium">{studentsWithScores.filter(s => s.didNotSit).length}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Performance Distribution</h3>
-                      <div className="h-64">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Score Distribution</CardTitle>
+                      <CardDescription>
+                        Distribution of student scores by range
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={[
-                            {
-                              name: "Exceeding",
-                              value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.EXCEEDING).length
-                            },
-                            {
-                              name: "Meeting",
-                              value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.MEETING).length
-                            },
-                            {
-                              name: "Approaching",
-                              value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.APPROACHING).length
-                            },
-                            {
-                              name: "Below",
-                              value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.BELOW).length
-                            }
-                          ]}>
+                          <BarChart data={scoreDistribution}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
+                            <XAxis dataKey="range" />
                             <YAxis allowDecimals={false} />
                             <RechartsTooltip />
                             <Legend />
-                            <Bar dataKey="value" name="Students" fill="#3b82f6" />
+                            <Bar dataKey="count" name="Number of Students" fill="#3b82f6" />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Performance Categories</CardTitle>
+                      <CardDescription>
+                        Distribution of students by performance category
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ChartContainer 
+                          className="h-80"
+                          config={{
+                            exceeding: {
+                              label: "Exceeding Expectation",
+                              theme: { light: "#22c55e", dark: "#22c55e" }
+                            },
+                            meeting: {
+                              label: "Meeting Expectation",
+                              theme: { light: "#3b82f6", dark: "#3b82f6" }
+                            },
+                            approaching: {
+                              label: "Approaching Expectation",
+                              theme: { light: "#f59e0b", dark: "#f59e0b" }
+                            },
+                            below: {
+                              label: "Below Expectation",
+                              theme: { light: "#ef4444", dark: "#ef4444" }
+                            },
+                            didNotSit: {
+                              label: "Did Not Sit",
+                              theme: { light: "#94a3b8", dark: "#94a3b8" }
+                            },
+                          }}
+                        >
+                          <RadarChart data={performanceData} margin={{ top: 20, right: 30, bottom: 0, left: 0 }}>
+                            <PolarGrid stroke="#e5e7eb" />
+                            <PolarAngleAxis dataKey="category" tick={false} />
+                            <RechartsTooltip 
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <ChartTooltipContent
+                                      className="bg-white p-2 border rounded shadow-sm"
+                                      payload={payload}
+                                    />
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Radar 
+                              name="exceeding" 
+                              dataKey={ExamGrade.EXCEEDING} 
+                              stroke="var(--color-exceeding)" 
+                              fill="var(--color-exceeding)" 
+                              fillOpacity={0.6} 
+                            />
+                            <Radar 
+                              name="meeting" 
+                              dataKey={ExamGrade.MEETING} 
+                              stroke="var(--color-meeting)" 
+                              fill="var(--color-meeting)" 
+                              fillOpacity={0.6} 
+                            />
+                            <Radar 
+                              name="approaching" 
+                              dataKey={ExamGrade.APPROACHING} 
+                              stroke="var(--color-approaching)" 
+                              fill="var(--color-approaching)" 
+                              fillOpacity={0.6} 
+                            />
+                            <Radar 
+                              name="below" 
+                              dataKey={ExamGrade.BELOW} 
+                              stroke="var(--color-below)" 
+                              fill="var(--color-below)" 
+                              fillOpacity={0.6} 
+                            />
+                            <Radar 
+                              name="didNotSit" 
+                              dataKey="Did Not Sit" 
+                              stroke="var(--color-didNotSit)" 
+                              fill="var(--color-didNotSit)" 
+                              fillOpacity={0.6} 
+                            />
+                            <Legend />
+                          </RadarChart>
+                        </ChartContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-left">Performance Analysis</CardTitle>
+                    <CardDescription className="text-left">Detailed exam performance analytics</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-8">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4 text-left">Score Summary</h3>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Average</span>
+                              <span className="font-medium">{averageScore.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Median</span>
+                              <span className="font-medium">
+                                {scores.length > 0 ? scores.sort((a, b) => a - b)[Math.floor(scores.length / 2)] : 0}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Standard Deviation</span>
+                              <span className="font-medium">
+                                {scores.length > 0 ? 
+                                  Math.sqrt(scores.reduce((sum, score) => 
+                                    sum + Math.pow(score - averageScore, 2), 0) / scores.length).toFixed(1) : 0
+                                }
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Pass Rate</span>
+                              <span className="font-medium">{passRate.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Students Assessed</span>
+                              <span className="font-medium">{scores.length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Students Not Present</span>
+                              <span className="font-medium">{studentsWithScores.filter(s => s.didNotSit).length}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Performance Distribution</h3>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={[
+                              {
+                                name: "Exceeding",
+                                value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.EXCEEDING).length
+                              },
+                              {
+                                name: "Meeting",
+                                value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.MEETING).length
+                              },
+                              {
+                                name: "Approaching",
+                                value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.APPROACHING).length
+                              },
+                              {
+                                name: "Below",
+                                value: studentsWithScores.filter(s => !s.didNotSit && s.status === ExamGrade.BELOW).length
+                              }
+                            ]}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis allowDecimals={false} />
+                              <RechartsTooltip />
+                              <Legend />
+                              <Bar dataKey="value" name="Students" fill="#3b82f6" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
@@ -1091,3 +1130,4 @@ export default function ExamDetail() {
     </div>
   );
 }
+
