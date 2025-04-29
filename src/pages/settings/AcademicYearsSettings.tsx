@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +17,8 @@ import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2 } from
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { AcademicYearStats } from "@/components/academic-year/AcademicYearStats";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
 
 // Update the schema to validate single-year format
 const academicYearSchema = z.object({
@@ -112,8 +113,9 @@ export default function AcademicYearsSettings() {
   const [yearToSetCurrent, setYearToSetCurrent] = useState<AcademicYear | null>(null);
   const [copyProgress, setCopyProgress] = useState(0);
   const [isCopying, setIsCopying] = useState(false);
+  const { setSelectedAcademicYear } = useAcademicYear();
   
-  const form = useForm<AcademicYearFormValues>({
+  const form = useForm<z.infer<typeof academicYearSchema>>({
     resolver: zodResolver(academicYearSchema),
     defaultValues: {
       year_name: "",
@@ -123,7 +125,7 @@ export default function AcademicYearsSettings() {
     }
   });
   
-  const copyForm = useForm<CopyYearFormValues>({
+  const copyForm = useForm<z.infer<typeof copyYearSchema>>({
     resolver: zodResolver(copyYearSchema),
     defaultValues: {
       sourceYearId: "",
@@ -187,7 +189,7 @@ export default function AcademicYearsSettings() {
     }
   };
   
-  const handleSubmit = async (values: AcademicYearFormValues) => {
+  const handleSubmit = async (values: z.infer<typeof academicYearSchema>) => {
     try {
       let response;
       if (editingYear) {
@@ -269,6 +271,18 @@ export default function AcademicYearsSettings() {
         .eq('id', yearToSetCurrent.id);
         
       if (error) throw error;
+      
+      // Update other years to not be current
+      await supabase
+        .from('academic_years')
+        .update({
+          is_current: false,
+          updated_at: new Date().toISOString()
+        })
+        .neq('id', yearToSetCurrent.id);
+      
+      // Set the selected year context to the new current year
+      setSelectedAcademicYear(yearToSetCurrent);
       
       toast({
         title: "Current Year Updated",
@@ -727,6 +741,9 @@ export default function AcademicYearsSettings() {
           </Dialog>
         </div>
       </div>
+
+      {/* Academic Year Statistics Chart */}
+      <AcademicYearStats />
 
       <Card>
         <CardContent className="pt-6">
