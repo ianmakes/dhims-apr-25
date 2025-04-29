@@ -14,42 +14,42 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Sample data for users
+// Sample data for users with the corrected User type
 const users: User[] = [{
   id: "1",
   name: "Admin User",
   email: "admin@davidshope.org",
   role: "admin",
-  createdAt: new Date(2022, 0, 1),
-  updatedAt: new Date(2022, 0, 1)
+  created_at: new Date(2022, 0, 1).toISOString(),
+  updated_at: new Date(2022, 0, 1).toISOString()
 }, {
   id: "2",
   name: "Manager User",
   email: "manager@davidshope.org",
   role: "manager",
-  createdAt: new Date(2022, 1, 15),
-  updatedAt: new Date(2022, 1, 15)
+  created_at: new Date(2022, 1, 15).toISOString(),
+  updated_at: new Date(2022, 1, 15).toISOString()
 }, {
   id: "3",
   name: "Viewer User",
   email: "viewer@davidshope.org",
   role: "viewer",
-  createdAt: new Date(2022, 2, 20),
-  updatedAt: new Date(2022, 2, 20)
+  created_at: new Date(2022, 2, 20).toISOString(),
+  updated_at: new Date(2022, 2, 20).toISOString()
 }, {
   id: "4",
   name: "Sarah Johnson",
   email: "sarah@davidshope.org",
   role: "manager",
-  createdAt: new Date(2022, 3, 5),
-  updatedAt: new Date(2022, 3, 5)
+  created_at: new Date(2022, 3, 5).toISOString(),
+  updated_at: new Date(2022, 3, 5).toISOString()
 }, {
   id: "5",
   name: "Michael Smith",
   email: "michael@davidshope.org",
   role: "viewer",
-  createdAt: new Date(2022, 4, 10),
-  updatedAt: new Date(2022, 4, 10)
+  created_at: new Date(2022, 4, 10).toISOString(),
+  updated_at: new Date(2022, 4, 10).toISOString()
 }];
 
 // Form schema for user creation/editing
@@ -150,7 +150,7 @@ function UsersPage() {
     cell: ({
       row
     }) => {
-      const role = row.getValue("role") as UserRole;
+      const role = row.getValue("role");
       return <div className="capitalize">
             {role === "superuser" ? <div className="inline-flex items-center justify-center rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-medium text-purple-700">
                 <span>Super User</span>
@@ -164,13 +164,13 @@ function UsersPage() {
           </div>;
     }
   }, {
-    accessorKey: "createdAt",
+    accessorKey: "created_at",
     header: "Joined Date",
     cell: ({
       row
     }) => {
       return <div>
-            {new Date(row.getValue("createdAt")).toLocaleDateString()}
+            {new Date(row.getValue("created_at")).toLocaleDateString()}
           </div>;
     }
   }, {

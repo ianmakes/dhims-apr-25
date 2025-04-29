@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 import { Json } from "@/integrations/supabase/types";
 
@@ -97,16 +98,20 @@ export interface AcademicYear {
   updated_at?: string;
 }
 
-// Add User and UserRole types
+// Update User and UserRole types
 export type User = {
   id: string;
   email: string;
-  role: string;
+  role: "superuser" | "admin" | "manager" | "viewer";
   created_at: string;
   updated_at?: string | null;
+  name: string; // Added name field
 };
 
-export type UserRole = {
+export type UserRole = "superuser" | "admin" | "manager" | "viewer";
+
+// Separate type for full user role details
+export type UserRoleDetails = {
   id: string;
   name: string;
   description: string;

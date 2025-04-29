@@ -10,7 +10,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import Home from "@/pages/Home";
 import Students from "@/pages/Students";
 import Sponsors from "@/pages/Sponsors";
-import Timeline from "@/pages/Timeline";
+import Timeline from "@/pages/Timeline";  // Now this import will work
 import Settings from "@/pages/Settings";
 import GeneralSettings from "@/pages/settings/GeneralSettings";
 import ProfileSettings from "@/pages/settings/ProfileSettings";
