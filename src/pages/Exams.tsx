@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart2, BookOpen, ChartBar, Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
@@ -486,7 +487,7 @@ export default function Exams() {
                       <SelectValue placeholder="Select Academic Year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {academicYearsData.map(year => <SelectItem key={year.id} value={year.year_name}>
+                      {academicYearsData.map(year => <SelectItem key={year.id} value={year.year_name || "default"}>
                           {year.year_name} {year.is_current ? "(Current)" : ""}
                         </SelectItem>)}
                     </SelectContent>
@@ -502,7 +503,7 @@ export default function Exams() {
                       <SelectValue placeholder="Select Term" />
                     </SelectTrigger>
                     <SelectContent>
-                      {terms.map(term => <SelectItem key={term} value={term}>
+                      {terms.map(term => <SelectItem key={term} value={term || "term1"}>
                           {term}
                         </SelectItem>)}
                     </SelectContent>
@@ -570,7 +571,7 @@ export default function Exams() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Years</SelectItem>
-            {academicYearsData.map(year => <SelectItem key={year.id} value={year.year_name}>{year.year_name}</SelectItem>)}
+            {academicYearsData.map(year => <SelectItem key={year.id} value={year.year_name || "default_year"}>{year.year_name}</SelectItem>)}
           </SelectContent>
         </Select>
 
@@ -580,7 +581,7 @@ export default function Exams() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Terms</SelectItem>
-            {terms.map(term => <SelectItem key={term} value={term}>{term}</SelectItem>)}
+            {terms.map(term => <SelectItem key={term} value={term || "default_term"}>{term}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -663,7 +664,7 @@ export default function Exams() {
                     <SelectValue placeholder="Select Academic Year" />
                   </SelectTrigger>
                   <SelectContent>
-                    {academicYearsData.map(year => <SelectItem key={year.id} value={year.year_name}>
+                    {academicYearsData.map(year => <SelectItem key={year.id} value={year.year_name || "default_year_edit"}>
                         {year.year_name} {year.is_current ? "(Current)" : ""}
                       </SelectItem>)}
                   </SelectContent>
@@ -679,7 +680,7 @@ export default function Exams() {
                     <SelectValue placeholder="Select Term" />
                   </SelectTrigger>
                   <SelectContent>
-                    {terms.map(term => <SelectItem key={term} value={term}>
+                    {terms.map(term => <SelectItem key={term} value={term || "default_term_edit"}>
                         {term}
                       </SelectItem>)}
                   </SelectContent>
