@@ -1,29 +1,9 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateSlug } from "@/utils/slugUtils";
 import { Sponsor } from "@/types/database";
-
-// Database model for Sponsor
-export interface Sponsor {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  email2?: string;
-  phone?: string;
-  address?: string;
-  country?: string;
-  start_date: string;
-  status: "active" | "inactive";
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-  profile_image_url?: string | null;
-  students?: any[];
-  primary_email_for_updates?: string;
-  slug?: string;
-}
 
 // Form values for Sponsor (used in forms)
 export interface SponsorFormValues {
@@ -123,6 +103,8 @@ export const useSponsors = () => {
         .eq("id", id)
         .single();
         
+      if (!currentSponsor) throw new Error("Sponsor not found");
+      
       const nameChanged = currentSponsor && 
         (currentSponsor.first_name !== values.firstName || 
          currentSponsor.last_name !== values.lastName);

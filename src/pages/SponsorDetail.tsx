@@ -1,4 +1,3 @@
-
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSponsorDetails, StudentRemovalForm } from "@/hooks/useSponsorDetails";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
@@ -55,7 +54,15 @@ export default function SponsorDetail() {
           .eq('slug', idOrSlug)
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching sponsor by slug:", error);
+          throw error;
+        }
+        
+        if (!data) {
+          throw new Error('Sponsor not found');
+        }
+        
         return data;
       }
     },
