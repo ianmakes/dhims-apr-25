@@ -43,7 +43,7 @@ export function StudentTimelineTab({
               {timelineEvents.map((event) => (
                 <div key={event.id} className="mb-8 relative">
                   <div
-                    className={`absolute -left-7 h-4 w-4 rounded-full border-2 
+                    className={`absolute -left-[10px] h-3 w-3 rounded-full border-2 
                       ${event.type === "academic"
                       ? "bg-blue-500 border-blue-300"
                       : event.type === "sponsor"
@@ -53,13 +53,13 @@ export function StudentTimelineTab({
                       : "bg-gray-500 border-gray-300"
                     }`}
                   />
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <div>
                     <p className="text-sm text-muted-foreground">
                       {formatDate(event.date)}
                     </p>
                     <h3 className="font-medium">{event.title}</h3>
+                    <p className="mt-1 text-left">{event.description}</p>
                   </div>
-                  <p className="mt-1">{event.description}</p>
                 </div>
               ))}
             </div>
