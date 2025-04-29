@@ -79,6 +79,18 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
     }
   };
 
+  // Get sponsor full name or display a meaningful placeholder
+  const getSponsorDisplayName = () => {
+    if (student.sponsor && student.sponsor.first_name && student.sponsor.last_name) {
+      return `${student.sponsor.first_name} ${student.sponsor.last_name}`;
+    } else if (student.sponsor && (student.sponsor.first_name || student.sponsor.last_name)) {
+      // In case only one name is available
+      return student.sponsor.first_name || student.sponsor.last_name;
+    } else {
+      return "Unknown Sponsor";
+    }
+  };
+
   if (student.sponsor_id) {
     return (
       <div className="py-4">
@@ -95,14 +107,14 @@ export function StudentSponsorTab({ student, formatDate, navigate, toast }: Stud
                 {student.sponsor?.profile_image_url ? (
                   <AvatarImage src={student.sponsor.profile_image_url} alt="Sponsor" />
                 ) : (
-                  <AvatarFallback className="bg-wp-gray-200 text-wp-gray-600 text-xl">SP</AvatarFallback>
+                  <AvatarFallback className="bg-wp-gray-200 text-wp-gray-600 text-xl">
+                    {student.sponsor?.first_name?.[0] || 'S'}{student.sponsor?.last_name?.[0] || 'P'}
+                  </AvatarFallback>
                 )}
               </Avatar>
               <div>
                 <h3 className="text-xl font-medium text-wp-text-primary">
-                  {student.sponsor ? 
-                    `${student.sponsor.first_name} ${student.sponsor.last_name}` : 
-                    `Sponsor #${student.sponsor_id}`}
+                  {getSponsorDisplayName()}
                 </h3>
                 <p className="text-sm text-wp-text-secondary mt-1">
                   Sponsoring since {formatDate(student.sponsored_since)}
