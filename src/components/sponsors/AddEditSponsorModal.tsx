@@ -36,14 +36,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Image } from "lucide-react";
+import { Calendar as CalendarIcon, Image, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { SponsorFormValues } from "@/hooks/useSponsors";
-import { Checkbox } from "@/components/ui/checkbox";
-import ImageUploadCropper from "@/components/students/ImageUploadCropper";
-import { supabase } from "@/integrations/supabase/client";
+import { Radio, RadioGroup, RadioIndicator, RadioItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Define form schema
 const sponsorFormSchema = z.object({
@@ -84,8 +84,8 @@ export function AddEditSponsorModal({
   const [date, setDate] = useState<Date | undefined>(
     sponsor ? new Date(sponsor.startDate) : new Date()
   );
-  const [showImageUploader, setShowImageUploader] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useState<HTMLInputElement | null>(null);
 
   // Helper function to format date to YYYY-MM-DD safely
   const formatDateSafely = (date: Date | string | undefined): string => {
@@ -146,18 +146,33 @@ export function AddEditSponsorModal({
         },
   });
 
-  // Handle profile image upload
-  const handleImageUpload = async (croppedImage: Blob) => {
+  // Direct file upload handling
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
     try {
       setUploadingImage(true);
       
-      const fileName = `sponsor-${Date.now()}.jpg`;
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select an image file");
+        return;
+      }
+      
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size should be less than 5MB");
+        return;
+      }
+      
+      const fileName = `sponsor-${Date.now()}.${file.name.split('.').pop()}`;
       const filePath = `sponsors/${fileName}`;
       
       // Upload the image to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('sponsor-images')
-        .upload(filePath, croppedImage, {
+        .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
         });
@@ -171,12 +186,17 @@ export function AddEditSponsorModal({
 
       // Update the form with the new image URL
       form.setValue('profileImageUrl', data.publicUrl);
-      setShowImageUploader(false);
+      toast.success("Image uploaded successfully");
       
     } catch (error) {
       console.error('Error uploading image:', error);
+      toast.error("Failed to upload image");
     } finally {
       setUploadingImage(false);
+      // Reset file input
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   };
 
@@ -185,10 +205,6 @@ export function AddEditSponsorModal({
     onSubmit(values);
     onOpenChange(false);
   };
-
-  // Calculate min year for the calendar (allowing historical dates)
-  const minYear = new Date();
-  minYear.setFullYear(1980); // Allow dates back to 1980
 
   // Steps management
   const [currentStep, setCurrentStep] = useState(1);
@@ -236,52 +252,58 @@ export function AddEditSponsorModal({
               <div className="space-y-4 fade-in">
                 <h3 className="text-lg font-medium">Basic Information</h3>
                 
-                {/* Profile Image */}
-                <div className="flex flex-col items-center space-y-4 mb-6">
-                  <FormField
-                    control={form.control}
-                    name="profileImageUrl"
-                    render={({ field }) => (
-                      <FormItem className="w-full flex flex-col items-center">
-                        <FormLabel className="text-center mb-2">Profile Image (Optional)</FormLabel>
-                        <FormControl>
-                          <div className="flex flex-col items-center">
-                            {field.value ? (
-                              <Avatar className="h-28 w-28 mb-2">
-                                <AvatarImage src={field.value} alt="Sponsor" />
-                                <AvatarFallback>
-                                  {form.getValues("firstName")?.[0]}{form.getValues("lastName")?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                            ) : (
-                              <div className="h-28 w-28 rounded-full bg-muted flex items-center justify-center mb-2">
-                                <Image className="h-10 w-10 text-muted-foreground" />
-                              </div>
-                            )}
-                            <Button
-                              type="button"
+                {/* Profile Image - Direct upload using input file */}
+                <FormField
+                  control={form.control}
+                  name="profileImageUrl"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col items-center space-y-4 mb-6">
+                      <FormLabel className="text-center">Profile Image (Optional)</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-col items-center">
+                          {field.value ? (
+                            <Avatar className="h-28 w-28 mb-2">
+                              <AvatarImage src={field.value} alt="Sponsor" />
+                              <AvatarFallback>
+                                {form.getValues("firstName")?.[0]}{form.getValues("lastName")?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="h-28 w-28 rounded-full bg-muted flex items-center justify-center mb-2">
+                              <Image className="h-10 w-10 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="mt-2">
+                            <input 
+                              type="file"
+                              id="profile-image"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleFileChange}
+                              ref={(input) => fileInputRef[1] = input}
+                            />
+                            <Button 
+                              type="button" 
                               variant="outline"
-                              onClick={() => setShowImageUploader(true)}
-                              className="mt-2"
+                              onClick={() => fileInputRef[1]?.click()}
+                              disabled={uploadingImage}
                             >
-                              {field.value ? "Change Image" : "Upload Image"}
+                              {uploadingImage ? (
+                                "Uploading..."
+                              ) : field.value ? (
+                                "Change Image"
+                              ) : (
+                                "Upload Image"
+                              )}
+                              <Upload className="ml-2 h-4 w-4" />
                             </Button>
                           </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {showImageUploader && (
-                    <ImageUploadCropper
-                      aspectRatio={1}
-                      onImageCropped={handleImageUpload}
-                      onCancel={() => setShowImageUploader(false)}
-                      isUploading={uploadingImage}
-                    />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
+                />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {/* First Name */}
@@ -345,56 +367,58 @@ export function AddEditSponsorModal({
                   )}
                 />
                 
-                {/* Email preferences */}
+                {/* Email preferences - Horizontal radio group */}
                 <FormField
                   control={form.control}
                   name="primaryEmailForUpdates"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-3">
                       <FormLabel>Email to use for student updates</FormLabel>
-                      <div className="flex flex-col gap-3 mt-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="primary-email"
-                            checked={field.value === form.getValues("email")}
-                            onCheckedChange={() => field.onChange(form.getValues("email"))}
-                          />
-                          <label
-                            htmlFor="primary-email"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Primary Email ({form.getValues("email")})
-                          </label>
-                        </div>
-                        {form.getValues("email2") && (
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="flex flex-wrap gap-4"
+                        >
                           <div className="flex items-center space-x-2">
-                            <Checkbox 
-                              id="secondary-email"
-                              checked={field.value === form.getValues("email2")}
-                              onCheckedChange={() => field.onChange(form.getValues("email2"))}
-                            />
+                            <RadioItem value={form.getValues("email")} id="primary-email">
+                              <RadioIndicator />
+                            </RadioItem>
                             <label
-                              htmlFor="secondary-email"
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              htmlFor="primary-email"
+                              className="text-sm font-medium leading-none cursor-pointer"
                             >
-                              Secondary Email ({form.getValues("email2")})
+                              Primary Email
                             </label>
                           </div>
-                        )}
-                        <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="both-emails"
-                            checked={field.value === "both"}
-                            onCheckedChange={() => field.onChange("both")}
-                          />
-                          <label
-                            htmlFor="both-emails"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Send to both emails
-                          </label>
-                        </div>
-                      </div>
+                          
+                          {form.getValues("email2") && (
+                            <div className="flex items-center space-x-2">
+                              <RadioItem value={form.getValues("email2")} id="secondary-email">
+                                <RadioIndicator />
+                              </RadioItem>
+                              <label
+                                htmlFor="secondary-email"
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                Secondary Email
+                              </label>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center space-x-2">
+                            <RadioItem value="both" id="both-emails">
+                              <RadioIndicator />
+                            </RadioItem>
+                            <label
+                              htmlFor="both-emails"
+                              className="text-sm font-medium leading-none cursor-pointer"
+                            >
+                              Both Emails
+                            </label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -458,7 +482,7 @@ export function AddEditSponsorModal({
                 />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {/* Start Date */}
+                  {/* Start Date - Improved with full year range */}
                   <FormField
                     control={form.control}
                     name="startDate"
@@ -469,7 +493,7 @@ export function AddEditSponsorModal({
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
-                                variant={"outline"}
+                                variant="outline"
                                 className={cn(
                                   "pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
@@ -492,12 +516,14 @@ export function AddEditSponsorModal({
                                 setDate(date);
                                 field.onChange(date ? formatDateSafely(date) : "");
                               }}
-                              disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
+                              disabled={(date) => 
+                                date > new Date()
                               }
                               initialFocus
+                              captionLayout="dropdown-buttons"
                               fromYear={1980}
                               toYear={new Date().getFullYear()}
+                              className={cn("p-3 pointer-events-auto")}
                             />
                           </PopoverContent>
                         </Popover>

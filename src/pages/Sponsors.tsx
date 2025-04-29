@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -5,27 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X } from "lucide-react";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
 import { useToast } from "@/hooks/use-toast";
 import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
+
 export default function Sponsors() {
   const {
     sponsors,
     isLoading,
     addSponsor,
     updateSponsor,
-    deleteSponsor
+    deleteSponsor,
+    bulkDeleteSponsors,
+    bulkUpdateSponsorStatus
   } = useSponsors();
+  
   const [status, setStatus] = useState<string>("all");
   const [country, setCountry] = useState<string>("all");
   const [isAddSponsorModalOpen, setIsAddSponsorModalOpen] = useState(false);
   const [isEditSponsorModalOpen, setIsEditSponsorModalOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorFormValues | null>(null);
-  const {
-    toast
-  } = useToast();
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  
+  const { toast } = useToast();
 
   // Filter sponsors based on filters
   const filteredSponsors = sponsors.filter((sponsor: any) => {
@@ -36,10 +42,12 @@ export default function Sponsors() {
 
   // Get unique countries for filter dropdown
   const uniqueCountries = Array.from(new Set(sponsors.map((sponsor: any) => sponsor.country).filter(Boolean)));
+  
   const handleAddSponsor = (data: SponsorFormValues) => {
     addSponsor(data);
     setIsAddSponsorModalOpen(false);
   };
+  
   const handleEditSponsor = (data: SponsorFormValues) => {
     if (selectedSponsor && selectedSponsor.id) {
       updateSponsor({
@@ -49,12 +57,27 @@ export default function Sponsors() {
       setIsEditSponsorModalOpen(false);
     }
   };
+  
   const handleDeleteSponsor = () => {
     if (selectedSponsor) {
       deleteSponsor(selectedSponsor.id);
       setIsDeleteAlertOpen(false);
     }
   };
+  
+  const handleBulkDeleteSponsors = () => {
+    if (selectedRowIds.length > 0) {
+      bulkDeleteSponsors(selectedRowIds);
+      setIsBulkDeleteAlertOpen(false);
+    }
+  };
+  
+  const handleBulkUpdateStatus = (status: "active" | "inactive") => {
+    if (selectedRowIds.length > 0) {
+      bulkUpdateSponsorStatus({ ids: selectedRowIds, status });
+    }
+  };
+  
   const handleOpenEditModal = (sponsor: any) => {
     // Map database fields to form fields
     setSelectedSponsor({
@@ -74,76 +97,94 @@ export default function Sponsors() {
     });
     setIsEditSponsorModalOpen(true);
   };
+  
   const handleOpenDeleteAlert = (sponsor: any) => {
     setSelectedSponsor(sponsor);
     setIsDeleteAlertOpen(true);
   };
 
+  // Bulk action handlers
+  const handleRowSelectionChange = (ids: string[]) => {
+    setSelectedRowIds(ids);
+  };
+  
+  const bulkActions = [
+    {
+      label: "Delete Selected",
+      action: () => setIsBulkDeleteAlertOpen(true)
+    },
+    {
+      label: "Deactivate Selected",
+      action: () => handleBulkUpdateStatus("inactive")
+    },
+    {
+      label: "Activate Selected",
+      action: () => handleBulkUpdateStatus("active")
+    }
+  ];
+
   // Updated columns without the ID column
-  const columnsWithActions = [{
-    accessorKey: "first_name",
-    header: "First Name",
-    cell: ({
-      row
-    }: any) => {
-      return <Link to={`/sponsors/${row.original.id}`} className="text-primary hover:underline">
+  const columnsWithActions = [
+    {
+      accessorKey: "first_name",
+      header: "First Name",
+      cell: ({ row }: any) => {
+        return <Link to={`/sponsors/${row.original.slug || row.original.id}`} className="text-primary hover:underline">
             {row.getValue("first_name")}
           </Link>;
-    }
-  }, {
-    accessorKey: "last_name",
-    header: "Last Name",
-    cell: ({
-      row
-    }: any) => {
-      return <Link to={`/sponsors/${row.original.id}`} className="text-primary hover:underline">
+      }
+    }, 
+    {
+      accessorKey: "last_name",
+      header: "Last Name",
+      cell: ({ row }: any) => {
+        return <Link to={`/sponsors/${row.original.slug || row.original.id}`} className="text-primary hover:underline">
             {row.getValue("last_name")}
           </Link>;
-    }
-  }, {
-    accessorKey: "email",
-    header: "Email"
-  }, {
-    accessorKey: "country",
-    header: "Country",
-    cell: ({
-      row
-    }: any) => {
-      const country = row.getValue("country");
-      return <div>{country || "—"}</div>;
-    }
-  }, {
-    accessorKey: "start_date",
-    header: "Start Date",
-    cell: ({
-      row
-    }: any) => {
-      return <div>
+      }
+    }, 
+    {
+      accessorKey: "email",
+      header: "Email"
+    }, 
+    {
+      accessorKey: "country",
+      header: "Country",
+      cell: ({ row }: any) => {
+        const country = row.getValue("country");
+        return <div>{country || "—"}</div>;
+      }
+    }, 
+    {
+      accessorKey: "start_date",
+      header: "Start Date",
+      cell: ({ row }: any) => {
+        return <div>
             {new Date(row.getValue("start_date")).toLocaleDateString()}
           </div>;
-    }
-  }, {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({
-      row
-    }: any) => {
-      const status = row.getValue("status");
-      return <div className="capitalize">
+      }
+    }, 
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }: any) => {
+        const status = row.getValue("status");
+        return <div className="capitalize">
             {status === "active" ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
+                <Check className="mr-1 h-3 w-3" />
                 <span>Active</span>
               </div> : <div className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
+                <X className="mr-1 h-3 w-3" />
                 <span>Inactive</span>
               </div>}
           </div>;
-    }
-  }, {
-    id: "actions",
-    cell: ({
-      row
-    }: any) => {
-      const sponsor = row.original;
-      return <div className="text-right">
+      }
+    }, 
+    {
+      id: "actions",
+      cell: ({ row }: any) => {
+        const sponsor = row.original;
+        return <div className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -158,7 +199,7 @@ export default function Sponsors() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <Link to={`/sponsors/${sponsor.id}`} className="flex items-center">
+                  <Link to={`/sponsors/${sponsor.slug || sponsor.id}`} className="flex items-center w-full">
                     <Eye className="mr-2 h-4 w-4" />
                     <span>View</span>
                   </Link>
@@ -174,8 +215,10 @@ export default function Sponsors() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>;
+      }
     }
-  }];
+  ];
+  
   return <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div>
@@ -226,16 +269,33 @@ export default function Sponsors() {
         </div>
       </div>
 
-      {/* Sponsors table */}
-      <DataTable columns={columnsWithActions} data={filteredSponsors} searchColumn="first_name" searchPlaceholder="Search sponsors..." isLoading={isLoading} />
+      {/* Sponsors table with bulk actions */}
+      <DataTable 
+        columns={columnsWithActions} 
+        data={filteredSponsors} 
+        searchColumn="first_name" 
+        searchPlaceholder="Search sponsors..." 
+        isLoading={isLoading} 
+        onRowSelectionChange={handleRowSelectionChange}
+        bulkActions={bulkActions}
+      />
 
       {/* Add Sponsor Modal */}
-      <AddEditSponsorModal open={isAddSponsorModalOpen} onOpenChange={setIsAddSponsorModalOpen} onSubmit={handleAddSponsor} />
+      <AddEditSponsorModal 
+        open={isAddSponsorModalOpen} 
+        onOpenChange={setIsAddSponsorModalOpen} 
+        onSubmit={handleAddSponsor} 
+      />
 
       {/* Edit Sponsor Modal */}
-      {selectedSponsor && <AddEditSponsorModal open={isEditSponsorModalOpen} onOpenChange={setIsEditSponsorModalOpen} sponsor={selectedSponsor} onSubmit={handleEditSponsor} />}
+      {selectedSponsor && <AddEditSponsorModal 
+        open={isEditSponsorModalOpen} 
+        onOpenChange={setIsEditSponsorModalOpen} 
+        sponsor={selectedSponsor} 
+        onSubmit={handleEditSponsor} 
+      />}
 
-      {/* Delete Sponsor Alert */}
+      {/* Delete Single Sponsor Alert */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -250,6 +310,26 @@ export default function Sponsors() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSponsor} className="bg-destructive text-destructive-foreground">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Bulk Delete Sponsors Alert */}
+      <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedRowIds.length} sponsors?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected sponsor records
+              and remove their data from the system. Any students sponsored by these sponsors
+              will become unsponsored.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDeleteSponsors} className="bg-destructive text-destructive-foreground">
+              Delete {selectedRowIds.length} sponsors
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -56,96 +56,111 @@ export const useSponsors = () => {
 
   const addSponsorMutation = useMutation({
     mutationFn: async (values: SponsorFormValues) => {
-      // Generate a slug for the new sponsor
-      const slug = generateSlug(`${values.firstName}-${values.lastName}`);
-      
-      // Transform form values to match the database schema
-      const sponsorData = {
-        first_name: values.firstName,
-        last_name: values.lastName,
-        email: values.email,
-        email2: values.email2 || null,
-        phone: values.phone || null,
-        address: values.address || null,
-        country: values.country || null,
-        start_date: values.startDate,
-        status: values.status,
-        notes: values.notes || null,
-        profile_image_url: values.profileImageUrl || null,
-        primary_email_for_updates: values.primaryEmailForUpdates || null,
-        slug: slug
-      };
+      try {
+        // Generate a slug for the new sponsor
+        const existingSlugs = (sponsors as Sponsor[])
+          .map(sponsor => sponsor.slug || "");
+        const slug = generateSlug(`${values.firstName}-${values.lastName}`, existingSlugs);
+        
+        // Transform form values to match the database schema
+        const sponsorData = {
+          first_name: values.firstName,
+          last_name: values.lastName,
+          email: values.email,
+          email2: values.email2 || null,
+          phone: values.phone || null,
+          address: values.address || null,
+          country: values.country || null,
+          start_date: values.startDate,
+          status: values.status,
+          notes: values.notes || null,
+          profile_image_url: values.profileImageUrl || null,
+          primary_email_for_updates: values.primaryEmailForUpdates || null,
+          slug: slug
+        };
 
-      const { data, error } = await supabase
-        .from("sponsors")
-        .insert([sponsorData])
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from("sponsors")
+          .insert([sponsorData])
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      } catch (error: any) {
+        console.error("Error adding sponsor:", error);
+        throw new Error(error.message || "Failed to add sponsor");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors"] });
       toast.success("Sponsor added successfully");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Failed to add sponsor: " + error.message);
     },
   });
 
   const updateSponsorMutation = useMutation({
     mutationFn: async ({ id, ...values }: SponsorFormValues & { id: string }) => {
-      // Check if name changed
-      const { data: currentSponsor } = await supabase
-        .from("sponsors")
-        .select("first_name, last_name, slug")
-        .eq("id", id)
-        .single();
+      try {
+        // Check if name changed
+        const { data: currentSponsor } = await supabase
+          .from("sponsors")
+          .select("first_name, last_name, slug")
+          .eq("id", id)
+          .single();
+          
+        if (!currentSponsor) throw new Error("Sponsor not found");
         
-      if (!currentSponsor) throw new Error("Sponsor not found");
-      
-      const nameChanged = currentSponsor && 
-        (currentSponsor.first_name !== values.firstName || 
-         currentSponsor.last_name !== values.lastName);
-      
-      // Transform form values to match the database schema
-      const sponsorData: any = {
-        first_name: values.firstName,
-        last_name: values.lastName,
-        email: values.email,
-        email2: values.email2 || null,
-        phone: values.phone || null,
-        address: values.address || null,
-        country: values.country || null,
-        start_date: values.startDate,
-        status: values.status,
-        notes: values.notes || null,
-        profile_image_url: values.profileImageUrl || null,
-        primary_email_for_updates: values.primaryEmailForUpdates || null
-      };
-      
-      // Update slug if name changed
-      if (nameChanged) {
-        sponsorData.slug = generateSlug(`${values.firstName}-${values.lastName}`);
+        const nameChanged = currentSponsor && 
+          (currentSponsor.first_name !== values.firstName || 
+           currentSponsor.last_name !== values.lastName);
+        
+        // Transform form values to match the database schema
+        const sponsorData: any = {
+          first_name: values.firstName,
+          last_name: values.lastName,
+          email: values.email,
+          email2: values.email2 || null,
+          phone: values.phone || null,
+          address: values.address || null,
+          country: values.country || null,
+          start_date: values.startDate,
+          status: values.status,
+          notes: values.notes || null,
+          profile_image_url: values.profileImageUrl || null,
+          primary_email_for_updates: values.primaryEmailForUpdates || null
+        };
+        
+        // Update slug if name changed
+        if (nameChanged) {
+          const existingSlugs = (sponsors as Sponsor[])
+            .filter(s => s.id !== id)
+            .map(s => s.slug || "");
+          sponsorData.slug = generateSlug(`${values.firstName}-${values.lastName}`, existingSlugs);
+        }
+
+        const { data, error } = await supabase
+          .from("sponsors")
+          .update(sponsorData)
+          .eq("id", id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } catch (error: any) {
+        console.error("Error updating sponsor:", error);
+        throw new Error(error.message || "Failed to update sponsor");
       }
-
-      const { data, error } = await supabase
-        .from("sponsors")
-        .update(sponsorData)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["sponsors"] });
       queryClient.invalidateQueries({ queryKey: ["sponsors", data.id] });
       toast.success("Sponsor updated successfully");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Failed to update sponsor: " + error.message);
     },
   });
@@ -163,8 +178,46 @@ export const useSponsors = () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors"] });
       toast.success("Sponsor deleted successfully");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Failed to delete sponsor: " + error.message);
+    },
+  });
+  
+  const bulkDeleteSponsorsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("sponsors")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: (ids) => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors"] });
+      toast.success(`${ids.length} sponsor${ids.length > 1 ? 's' : ''} deleted successfully`);
+    },
+    onError: (error: any) => {
+      toast.error("Failed to delete sponsors: " + error.message);
+    },
+  });
+  
+  const bulkUpdateSponsorStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[], status: "active" | "inactive" }) => {
+      const { error } = await supabase
+        .from("sponsors")
+        .update({ status })
+        .in("id", ids);
+
+      if (error) throw error;
+      return { ids, status };
+    },
+    onSuccess: ({ ids, status }) => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors"] });
+      toast.success(`${ids.length} sponsor${ids.length > 1 ? 's' : ''} ${status === "inactive" ? "deactivated" : "activated"} successfully`);
+    },
+    onError: (error: any) => {
+      toast.error("Failed to update sponsors: " + error.message);
     },
   });
   
@@ -174,5 +227,7 @@ export const useSponsors = () => {
     addSponsor: addSponsorMutation.mutate,
     updateSponsor: updateSponsorMutation.mutate,
     deleteSponsor: deleteSponsorMutation.mutate,
+    bulkDeleteSponsors: bulkDeleteSponsorsMutation.mutate,
+    bulkUpdateSponsorStatus: bulkUpdateSponsorStatusMutation.mutate,
   };
 };
