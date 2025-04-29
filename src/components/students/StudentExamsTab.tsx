@@ -4,12 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, FileImage, FileText, FileIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,12 +13,11 @@ import { StudentExamScore } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { StudentExamsPDF } from "./StudentExamsPDF";
 import html2canvas from "html2canvas";
-
 const gradeColors = {
   "EE": "#4ade80",
   "ME": "#3b82f6",
   "AE": "#f97316",
-  "BE": "#b91c1c",
+  "BE": "#b91c1c"
 };
 
 // Updated to use the new grading system
@@ -33,117 +27,110 @@ const calculateGrade = (score: number) => {
   if (score >= 40) return "AE";
   return "BE";
 };
-
 const getGradeDescription = (grade: string) => {
   switch (grade) {
-    case "EE": return "Exceeding Expectation";
-    case "ME": return "Meeting Expectation";
-    case "AE": return "Approaching Expectation";
-    case "BE": return "Below Expectation";
-    default: return "Unknown";
+    case "EE":
+      return "Exceeding Expectation";
+    case "ME":
+      return "Meeting Expectation";
+    case "AE":
+      return "Approaching Expectation";
+    case "BE":
+      return "Below Expectation";
+    default:
+      return "Unknown";
   }
 };
-
 const getGradeCategory = (score: number) => {
   if (score >= 80) return "Exceeding Expectation";
   if (score >= 50) return "Meeting Expectation";
   if (score >= 40) return "Approaching Expectation";
   return "Below Expectation";
 };
-
 interface StudentExamsTabProps {
   studentName: string;
   studentId: string;
 }
-
-export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps) {
-  const { toast } = useToast();
+export function StudentExamsTab({
+  studentName,
+  studentId
+}: StudentExamsTabProps) {
+  const {
+    toast
+  } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
-  
+
   // Get available academic years
-  const { data: academicYears = [], isLoading: loadingYears } = useQuery({
+  const {
+    data: academicYears = [],
+    isLoading: loadingYears
+  } = useQuery({
     queryKey: ['academic-years'],
     queryFn: async () => {
       // First, get the exams the student has taken
-      const { data: examScores, error } = await supabase
-        .from('student_exam_scores')
-        .select('exam_id')
-        .eq('student_id', studentId);
-      
+      const {
+        data: examScores,
+        error
+      } = await supabase.from('student_exam_scores').select('exam_id').eq('student_id', studentId);
       if (error) throw error;
-      
       if (!examScores || examScores.length === 0) {
         return ["2024"];
       }
-      
+
       // Then get details about those exams
       const examIds = examScores.map(score => score.exam_id).filter(Boolean);
-      
       if (examIds.length === 0) {
         return ["2024"];
       }
-      
-      const { data: exams, error: examsError } = await supabase
-        .from('exams')
-        .select('academic_year')
-        .in('id', examIds);
-      
+      const {
+        data: exams,
+        error: examsError
+      } = await supabase.from('exams').select('academic_year').in('id', examIds);
       if (examsError) throw examsError;
-      
-      const uniqueYears = Array.from(
-        new Set(
-          exams
-            ?.map(exam => exam.academic_year)
-            .filter(Boolean) || []
-        )
-      ).sort().reverse();
-      
+      const uniqueYears = Array.from(new Set(exams?.map(exam => exam.academic_year).filter(Boolean) || [])).sort().reverse();
       return uniqueYears.length ? uniqueYears : ["2024"];
     }
   });
-
   const [selectedYear, setSelectedYear] = useState<string>("");
-  
+
   // Set initial selected year once data is loaded
   useEffect(() => {
     if (academicYears.length > 0 && !selectedYear) {
       setSelectedYear(academicYears[0]);
     }
   }, [academicYears]);
-  
+
   // Get student exam scores
-  const { data: examScores = [], isLoading: loadingScores } = useQuery<StudentExamScore[]>({
+  const {
+    data: examScores = [],
+    isLoading: loadingScores
+  } = useQuery<StudentExamScore[]>({
     queryKey: ['student-exams', studentId, selectedYear],
     queryFn: async () => {
       if (!studentId) throw new Error('Student ID is required');
-      
+
       // First, get exam scores for this student
-      const { data: scores, error: scoresError } = await supabase
-        .from('student_exam_scores')
-        .select('*')
-        .eq('student_id', studentId);
-        
+      const {
+        data: scores,
+        error: scoresError
+      } = await supabase.from('student_exam_scores').select('*').eq('student_id', studentId);
       if (scoresError) throw scoresError;
-      
       if (!scores || scores.length === 0) {
         return [];
       }
 
       // Get exam details for each score
       const examIds = scores.map(score => score.exam_id).filter(Boolean);
-      
       if (examIds.length === 0) {
         return scores as StudentExamScore[];
       }
-      
-      const { data: exams, error: examsError } = await supabase
-        .from('exams')
-        .select('*')
-        .in('id', examIds);
-      
+      const {
+        data: exams,
+        error: examsError
+      } = await supabase.from('exams').select('*').in('id', examIds);
       if (examsError) throw examsError;
-      
+
       // Join exam details with scores
       const enrichedScores = scores.map(score => {
         const examDetails = exams?.find(exam => exam.id === score.exam_id);
@@ -152,24 +139,18 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
           exam: examDetails
         } as StudentExamScore;
       });
-      
+
       // Filter by selected academic year if one is selected
-      return selectedYear 
-        ? enrichedScores.filter(score => score.exam?.academic_year === selectedYear)
-        : enrichedScores;
+      return selectedYear ? enrichedScores.filter(score => score.exam?.academic_year === selectedYear) : enrichedScores;
     },
     enabled: !!studentId
   });
-  
+
   // Process exam data for charts
-  const processedData = examScores
-    .filter(score => score.exam) // Only include scores that have exam data
-    .map(score => {
+  const processedData = examScores.filter(score => score.exam) // Only include scores that have exam data
+  .map(score => {
     // Calculate percentage 
-    const percentage = score.exam?.max_score 
-      ? Math.round((score.score / score.exam.max_score) * 100) 
-      : 0;
-      
+    const percentage = score.exam?.max_score ? Math.round(score.score / score.exam.max_score * 100) : 0;
     return {
       examName: score.exam?.name || "Unknown",
       term: score.exam?.term || "Unknown",
@@ -177,21 +158,17 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
       maxScore: score.exam?.max_score || 100,
       percentage,
       grade: calculateGrade(percentage),
-      date: score.exam?.exam_date 
-        ? new Date(score.exam.exam_date).toLocaleDateString() 
-        : "Unknown date"
+      date: score.exam?.exam_date ? new Date(score.exam.exam_date).toLocaleDateString() : "Unknown date"
     };
   });
-  
+
   // Prepare trend data - sort by exam date chronologically
-  const trendData = [...processedData]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map((item) => ({
-      name: item.examName,
-      percentage: item.percentage,
-      term: item.term
-    }));
-    
+  const trendData = [...processedData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(item => ({
+    name: item.examName,
+    percentage: item.percentage,
+    term: item.term
+  }));
+
   // Prepare term-based average data
   const termGroups = processedData.reduce((acc, item) => {
     if (!acc[item.term]) {
@@ -203,9 +180,14 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
     acc[item.term].total += item.percentage;
     acc[item.term].count++;
     return acc;
-  }, {} as Record<string, { total: number, count: number }>);
-  
-  const termData = Object.entries(termGroups).map(([term, { total, count }]) => ({
+  }, {} as Record<string, {
+    total: number;
+    count: number;
+  }>);
+  const termData = Object.entries(termGroups).map(([term, {
+    total,
+    count
+  }]) => ({
     term,
     average: Math.round(total / count)
   }));
@@ -220,29 +202,22 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
       });
       return;
     }
-    
+
     // CSV Headers
     const headers = ["Exam Name", "Term", "Date", "Score", "Out of", "Percentage", "Grade"];
-    
+
     // CSV Rows
-    const csvRows = [
-      headers.join(","),
-      ...processedData.map(item => [
-        `"${item.examName}"`, // Quote strings to handle commas in names
-        `"${item.term}"`,
-        `"${item.date}"`,
-        item.score,
-        item.maxScore,
-        `${item.percentage}%`,
-        item.grade
-      ].join(","))
-    ];
-    
+    const csvRows = [headers.join(","), ...processedData.map(item => [`"${item.examName}"`,
+    // Quote strings to handle commas in names
+    `"${item.term}"`, `"${item.date}"`, item.score, item.maxScore, `${item.percentage}%`, item.grade].join(","))];
+
     // Create CSV content
     const csvContent = csvRows.join("\n");
-    
+
     // Create and download the file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;"
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
@@ -250,7 +225,6 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
     toast({
       title: "Export Successful",
       description: "Exam results have been exported to CSV."
@@ -264,19 +238,16 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
       if (!element) {
         throw new Error("Element not found");
       }
-      
       toast({
         title: "Generating Image",
         description: "Please wait while we generate the image..."
       });
-      
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#ffffff"
       });
-      
       const url = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.setAttribute("href", url);
@@ -284,7 +255,6 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
       toast({
         title: "Export Successful",
         description: "Exam results have been exported as an image."
@@ -298,36 +268,27 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
       });
     }
   };
-
   const togglePDFPreview = () => {
     setShowPDFPreview(!showPDFPreview);
   };
-
-  return (
-    <div className="py-4">
+  return <div className="py-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Exam Performance</CardTitle>
+            <CardTitle className="text-left">Exam Performance</CardTitle>
             <CardDescription>
               View {studentName}'s academic performance
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {loadingYears ? (
-              <Skeleton className="h-10 w-36" />
-            ) : (
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
+            {loadingYears ? <Skeleton className="h-10 w-36" /> : <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {academicYears.map(year => (
-                    <SelectItem key={year} value={year}>{year} Academic Year</SelectItem>
-                  ))}
+                  {academicYears.map(year => <SelectItem key={year} value={year}>{year} Academic Year</SelectItem>)}
                 </SelectContent>
-              </Select>
-            )}
+              </Select>}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -358,14 +319,11 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
               Exam Results - {selectedYear || "All Years"}
             </h3>
             
-            {loadingScores ? (
-              <div className="space-y-2">
+            {loadingScores ? <div className="space-y-2">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
-              </div>
-            ) : examScores.length > 0 ? (
-              <div className="border rounded-lg overflow-hidden">
+              </div> : examScores.length > 0 ? <div className="border rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -379,20 +337,15 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {examScores.map((score, idx) => {
-                      // Only render if we have exam data
-                      if (!score.exam) {
-                        return null;
-                      }
-                      
-                      // Calculate percentage 
-                      const percentage = score.exam?.max_score 
-                        ? Math.round((score.score / score.exam.max_score) * 100) 
-                        : 0;
-                        
-                      const grade = calculateGrade(percentage);
-                        
-                      return (
-                        <tr key={score.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  // Only render if we have exam data
+                  if (!score.exam) {
+                    return null;
+                  }
+
+                  // Calculate percentage 
+                  const percentage = score.exam?.max_score ? Math.round(score.score / score.exam.max_score * 100) : 0;
+                  const grade = calculateGrade(percentage);
+                  return <tr key={score.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {score.exam?.name || "Unknown"}
                           </td>
@@ -400,68 +353,54 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                             {score.exam?.term || "Unknown"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {score.exam?.exam_date 
-                              ? new Date(score.exam.exam_date).toLocaleDateString() 
-                              : "Unknown date"}
+                            {score.exam?.exam_date ? new Date(score.exam.exam_date).toLocaleDateString() : "Unknown date"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {score.did_not_sit ? (
-                              <Badge variant="destructive">Did not sit</Badge>
-                            ) : (
-                              <span>{score.score} / {score.exam?.max_score || "?"}</span>
-                            )}
+                            {score.did_not_sit ? <Badge variant="destructive">Did not sit</Badge> : <span>{score.score} / {score.exam?.max_score || "?"}</span>}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {score.did_not_sit ? "-" : (
-                              <span>{percentage}%</span>
-                            )}
+                            {score.did_not_sit ? "-" : <span>{percentage}%</span>}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {!score.did_not_sit && (
-                              <div 
-                                className="text-xs font-medium px-2 py-1 rounded-full text-center"
-                                style={{ 
-                                  color: 'white', 
-                                  backgroundColor: gradeColors[grade],
-                                  width: 'fit-content',
-                                  minWidth: '2.5rem',
-                                }}
-                              >
+                            {!score.did_not_sit && <div className="text-xs font-medium px-2 py-1 rounded-full text-center" style={{
+                        color: 'white',
+                        backgroundColor: gradeColors[grade],
+                        width: 'fit-content',
+                        minWidth: '2.5rem'
+                      }}>
                                 {grade} ({getGradeDescription(grade)})
-                              </div>
-                            )}
+                              </div>}
                           </td>
-                        </tr>
-                      );
-                    })}
+                        </tr>;
+                })}
                   </tbody>
                 </table>
-              </div>
-            ) : (
-              <div className="text-center p-10 border rounded-lg bg-muted/10">
+              </div> : <div className="text-center p-10 border rounded-lg bg-muted/10">
                 <p className="text-muted-foreground">No exam records found for {studentName}</p>
-              </div>
-            )}
+              </div>}
           </div>
 
           {/* Performance Charts */}
-          {examScores.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          {examScores.length > 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
               {/* Trend Chart */}
               <Card className="p-4">
                 <h3 className="font-medium mb-2">Performance Trends</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={trendData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
+                    <LineChart data={trendData} margin={{
+                  top: 5,
+                  right: 30,
+                  left: 20,
+                  bottom: 5
+                }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 100]} />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="percentage" name="Score %" stroke="#8884d8" activeDot={{ r: 8 }} />
+                      <Line type="monotone" dataKey="percentage" name="Score %" stroke="#8884d8" activeDot={{
+                    r: 8
+                  }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -472,10 +411,12 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                 <h3 className="font-medium mb-2">Term Performance</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={termData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
+                    <BarChart data={termData} margin={{
+                  top: 5,
+                  right: 30,
+                  left: 20,
+                  bottom: 5
+                }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="term" />
                       <YAxis domain={[0, 100]} />
@@ -486,14 +427,12 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                   </ResponsiveContainer>
                 </div>
               </Card>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
       {/* PDF Preview Modal */}
-      {showPDFPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      {showPDFPreview && <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
             <div className="p-4 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
               <h2 className="text-xl font-bold">Exam Results PDF Preview</h2>
@@ -501,12 +440,7 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                 <Button variant="outline" onClick={togglePDFPreview}>
                   Close
                 </Button>
-                <StudentExamsPDF 
-                  studentName={studentName} 
-                  examData={processedData}
-                  termData={termData}
-                  trendData={trendData}
-                />
+                <StudentExamsPDF studentName={studentName} examData={processedData} termData={termData} trendData={trendData} />
               </div>
             </div>
             <div className="p-6">
@@ -530,15 +464,13 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                     <div className="bg-gray-50 p-3 rounded-md">
                       <div className="text-sm text-gray-500">Average Score</div>
                       <div className="text-xl font-bold">
-                        {processedData.length > 0 ? 
-                          Math.round(processedData.reduce((sum, item) => sum + item.percentage, 0) / processedData.length) : 0}%
+                        {processedData.length > 0 ? Math.round(processedData.reduce((sum, item) => sum + item.percentage, 0) / processedData.length) : 0}%
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-md">
                       <div className="text-sm text-gray-500">Highest Score</div>
                       <div className="text-xl font-bold">
-                        {processedData.length > 0 ? 
-                          Math.max(...processedData.map(item => item.percentage)) : 0}%
+                        {processedData.length > 0 ? Math.max(...processedData.map(item => item.percentage)) : 0}%
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-md">
@@ -548,9 +480,7 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                     <div className="bg-gray-50 p-3 rounded-md">
                       <div className="text-sm text-gray-500">Performance Trend</div>
                       <div className="text-xl font-bold text-green-600">
-                        {processedData.length > 1 ? 
-                          (processedData[processedData.length-1].percentage > processedData[0].percentage ? 
-                            "↑ Improving" : "↓ Declining") : "—"}
+                        {processedData.length > 1 ? processedData[processedData.length - 1].percentage > processedData[0].percentage ? "↑ Improving" : "↓ Declining" : "—"}
                       </div>
                     </div>
                   </div>
@@ -569,26 +499,23 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                       </tr>
                     </thead>
                     <tbody>
-                      {processedData.slice(0, 3).map((item, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      {processedData.slice(0, 3).map((item, idx) => <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="border p-2">{item.examName}</td>
                           <td className="border p-2">{item.term}</td>
                           <td className="border p-2">{item.percentage}%</td>
                           <td className="border p-2">
-                            <span className="px-2 py-1 rounded-full text-xs font-medium text-white"
-                                  style={{ backgroundColor: gradeColors[item.grade] }}>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{
+                        backgroundColor: gradeColors[item.grade]
+                      }}>
                               {item.grade}
                             </span>
                           </td>
-                        </tr>
-                      ))}
-                      {processedData.length > 3 && (
-                        <tr>
+                        </tr>)}
+                      {processedData.length > 3 && <tr>
                           <td colSpan={4} className="border p-2 text-center text-gray-500 italic">
                             ... and {processedData.length - 3} more exam(s)
                           </td>
-                        </tr>
-                      )}
+                        </tr>}
                     </tbody>
                   </table>
                 </div>
@@ -627,8 +554,6 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }
