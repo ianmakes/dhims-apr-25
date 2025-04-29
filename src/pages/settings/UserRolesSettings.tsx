@@ -146,8 +146,9 @@ export default function UserRolesSettings() {
 
       // Map database results to our Role interface
       const rolesWithPermissions: Role[] = roleData?.map(role => {
-        // Default to false if is_system is null
-        const is_system = role.is_system === null ? false : role.is_system;
+        // Handle the is_system field which may not exist in the database schema
+        // Default to false if is_system is null or undefined
+        const is_system = Boolean(role.is_system);
         
         // Extract permissions from the JSONB field if it exists
         let permissions: string[] = [];
@@ -164,8 +165,11 @@ export default function UserRolesSettings() {
         }
         
         return {
-          ...role,
-          is_system,
+          id: role.id,
+          name: role.name,
+          description: role.description,
+          is_system: is_system,
+          created_at: role.created_at,
           permissions
         };
       }) || [];
