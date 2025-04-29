@@ -664,8 +664,8 @@ export default function ExamDetail() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Student Scores</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-left">Student Scores</CardTitle>
+                <CardDescription className="text-left">
                   Manage and update student scores for this exam
                 </CardDescription>
               </div>
