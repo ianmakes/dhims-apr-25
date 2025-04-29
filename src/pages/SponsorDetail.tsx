@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Edit, FileDown, Mail, MapPin, Phone, Plus, Search, Toggle, Trash2, Users } from "lucide-react";
+import { Calendar, Edit, FileDown, Mail, MapPin, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
@@ -150,16 +150,33 @@ export default function SponsorDetail() {
   };
   
   const handleToggleStatus = () => {
-    if (sponsorId) {
+    if (sponsorId && sponsor) {
       const newStatus = sponsor.status === "active" ? "inactive" : "active";
+      
+      // Create a complete SponsorFormValues object with all required fields
+      const fullSponsorData: SponsorFormValues = {
+        firstName: sponsor.first_name,
+        lastName: sponsor.last_name,
+        email: sponsor.email,
+        startDate: sponsor.start_date,
+        status: newStatus,
+        // Optional fields
+        email2: sponsor.email2 || undefined,
+        phone: sponsor.phone || undefined,
+        address: sponsor.address || undefined,
+        country: sponsor.country || undefined,
+        notes: sponsor.notes || undefined,
+        profileImageUrl: sponsor.profile_image_url || undefined,
+        primaryEmailForUpdates: sponsor.primary_email_for_updates || undefined
+      };
+      
       updateSponsor({
         id: sponsorId,
-        status: newStatus
+        ...fullSponsorData
       });
       
       // If sponsor is deactivated, unassign all students
       if (newStatus === "inactive" && sponsor.students && sponsor.students.length > 0) {
-        const studentIds = sponsor.students.map((student: any) => student.id);
         sponsor.students.forEach((student: any) => {
           removeStudent({
             studentId: student.id,
