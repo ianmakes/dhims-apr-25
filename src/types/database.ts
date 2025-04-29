@@ -3,7 +3,11 @@ import { Database } from "@/integrations/supabase/types";
 import { Json } from "@/integrations/supabase/types";
 
 // Export specific table types for easier usage
-export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Profile = Database['public']['Tables']['profiles']['Row'] & {
+  name?: string;
+  role?: string;
+};
+
 export type Student = Database['public']['Tables']['students']['Row'];
 export type TimelineEvent = Database['public']['Tables']['timeline_events']['Row'];
 export type StudentLetter = Database['public']['Tables']['student_letters']['Row'];
@@ -42,7 +46,7 @@ export type SponsorRelative = {
   sponsor_id: string;
   name: string;
   relationship: string;
-  email: string;
+  email?: string | null;
   phone_number?: string | null;
   photo_url?: string | null;
   created_at: string;
@@ -71,9 +75,6 @@ export interface StudentFormInput {
   sponsored_since?: string | null;
   profile_image_url?: string | null;
   slug?: string | null;
-  students?: Student[]; // Add this to resolve type issues
-  createdAt?: string;   // Add this to resolve type issues
-  updatedAt?: string;   // Add this to resolve type issues
 }
 
 // Add Sponsor type
@@ -81,4 +82,21 @@ export type Sponsor = Database['public']['Tables']['sponsors']['Row'] & {
   students?: Student[];
   profile_image_url?: string | null;
   primary_email_for_updates?: string | null;
+  email2?: string | null;
+  phone?: string | null;
+  start_date?: string | null;
+  status?: string | null;
+  notes?: string | null;
+};
+
+export type AcademicYear = Database['public']['Tables']['academic_years']['Row'];
+
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+  role?: string;
+  avatar_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };

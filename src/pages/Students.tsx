@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -12,6 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
+
 interface Student {
   id: string;
   admission_number: string;
@@ -26,36 +30,30 @@ interface Student {
 }
 
 // Define columns for DataTable
-const columns = [{
+const columnsWithoutSelection = [{
   accessorKey: "admission_number",
   header: "ADM No."
 }, {
   accessorKey: "name",
   header: "Name",
-  cell: ({
-    row
-  }) => {
+  cell: ({ row }) => {
     return <Link to={`/students/${row.original.id}`} className="text-primary hover:underline">
           {row.getValue("name")}
         </Link>;
   }
 }, {
-  accessorKey: "current_grade",
-  header: "Grade"
+  accessorKey: "cbc_category",
+  header: "CBC Category"
 }, {
   accessorKey: "gender",
   header: "Gender",
-  cell: ({
-    row
-  }) => {
+  cell: ({ row }) => {
     return <div className="capitalize">{row.getValue("gender")}</div>;
   }
 }, {
   accessorKey: "admission_date",
   header: "Admission Date",
-  cell: ({
-    row
-  }) => {
+  cell: ({ row }) => {
     const date = row.getValue("admission_date");
     return <div>
           {date ? new Date(date).toLocaleDateString() : "N/A"}
@@ -64,9 +62,7 @@ const columns = [{
 }, {
   accessorKey: "sponsor_id",
   header: "Sponsor",
-  cell: ({
-    row
-  }) => {
+  cell: ({ row }) => {
     const sponsorId = row.getValue("sponsor_id");
     return <div>
           {sponsorId ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
@@ -79,9 +75,7 @@ const columns = [{
 }, {
   accessorKey: "status",
   header: "Status",
-  cell: ({
-    row
-  }) => {
+  cell: ({ row }) => {
     const status = row.getValue("status");
     return <div className="capitalize">
           {status === "Active" ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
@@ -94,19 +88,19 @@ const columns = [{
         </div>;
   }
 }];
+
 export default function Students() {
   const [grade, setGrade] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [sponsored, setSponsored] = useState<string>("all");
-  const [academicYear, setAcademicYear] = useState<string>("2024");
-  const {
-    toast
-  } = useToast();
-  const {
-    user
-  } = useAuth();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isBulkActionAlertOpen, setIsBulkActionAlertOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<"delete" | "deactivate">("deactivate");
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const { currentAcademicYear } = useAcademicYear();
 
   // Fetch students data from Supabase
   const {
@@ -114,17 +108,18 @@ export default function Students() {
     isLoading,
     error
   } = useQuery({
-    queryKey: ['students'],
+    queryKey: ['students', currentAcademicYear?.id],
     queryFn: async () => {
       const {
         data,
         error
-      } = await supabase.from('students').select('*').order('created_at', {
-        ascending: false
-      });
+      } = await supabase.from('students').select('*')
+        .eq('current_academic_year', currentAcademicYear?.year_name?.split("-")[0] || new Date().getFullYear())
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data as Student[];
-    }
+    },
+    enabled: !!currentAcademicYear
   });
 
   // Mutation for adding a student
@@ -136,7 +131,8 @@ export default function Students() {
       } = await supabase.from('students').insert([{
         ...studentData,
         created_by: user?.id,
-        updated_by: user?.id
+        updated_by: user?.id,
+        current_academic_year: currentAcademicYear?.year_name?.split("-")[0] || new Date().getFullYear()
       }]).select().single();
       if (error) throw error;
       return data;
@@ -224,6 +220,41 @@ export default function Students() {
     }
   });
 
+  // Mutation for bulk actions
+  const bulkActionMutation = useMutation({
+    mutationFn: async ({ action, ids }: { action: "delete" | "deactivate", ids: string[] }) => {
+      if (action === "delete") {
+        const { error } = await supabase.from('students').delete().in('id', ids);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('students').update({
+          status: "Inactive",
+          updated_by: user?.id,
+          updated_at: new Date().toISOString()
+        }).in('id', ids);
+        if (error) throw error;
+      }
+      return ids;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: `Students ${variables.action === "delete" ? "deleted" : "deactivated"}`,
+        description: `${selectedStudents.length} students have been ${variables.action === "delete" ? "deleted" : "deactivated"} successfully.`
+      });
+      setSelectedStudents([]);
+    },
+    onError: error => {
+      toast({
+        title: "Error performing bulk action",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   // Filter students based on filters
   const filteredStudents = students.filter(student => {
     if (grade && grade !== "all" && student.current_grade !== grade) return false;
@@ -237,10 +268,12 @@ export default function Students() {
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  
   const handleAddStudent = (data: any) => {
     addStudentMutation.mutate(data);
     setIsAddStudentModalOpen(false);
   };
+  
   const handleEditStudent = (data: any) => {
     if (selectedStudent) {
       updateStudentMutation.mutate({
@@ -250,27 +283,78 @@ export default function Students() {
       setIsEditStudentModalOpen(false);
     }
   };
+  
   const handleDeleteStudent = () => {
     if (selectedStudent) {
       deleteStudentMutation.mutate(selectedStudent.id);
       setIsDeleteAlertOpen(false);
     }
   };
+  
   const handleOpenEditModal = (student: Student) => {
     setSelectedStudent(student);
     setIsEditStudentModalOpen(true);
   };
+  
   const handleOpenDeleteAlert = (student: Student) => {
     setSelectedStudent(student);
     setIsDeleteAlertOpen(true);
   };
 
-  // Updated columns with edit/delete actions
-  const columnsWithActions = [...columns, {
+  const handleBulkAction = () => {
+    bulkActionMutation.mutate({
+      action: bulkActionType,
+      ids: selectedStudents
+    });
+    setIsBulkActionAlertOpen(false);
+  };
+
+  // Selection column
+  const selectionColumn = {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => {
+          table.toggleAllPageRowsSelected(!!value);
+          const rowSelection = table.getState().rowSelection;
+          const selectedIds = Object.keys(rowSelection).map(
+            (index) => table.getRow(index).original.id
+          );
+          setSelectedStudents(selectedIds);
+        }}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => {
+          row.toggleSelected(!!value);
+          
+          // Update selectedStudents state based on current selection
+          const rowSelection = row.getTable().getState().rowSelection;
+          const selectedIds = Object.keys(rowSelection).map(
+            (index) => row.getTable().getRow(index).original.id
+          );
+          setSelectedStudents(selectedIds);
+        }}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  };
+
+  const columnsWithSelection = [selectionColumn, ...columnsWithoutSelection];
+
+  // Add actions column
+  const actionsColumn = {
     id: "actions",
-    cell: ({
-      row
-    }) => {
+    cell: ({ row }) => {
       const student = row.original;
       return <div className="text-right">
             <DropdownMenu>
@@ -304,8 +388,12 @@ export default function Students() {
             </DropdownMenu>
           </div>;
     }
-  }];
-  return <div className="space-y-6 fade-in">
+  };
+  
+  const finalColumns = [...columnsWithSelection, actionsColumn];
+
+  return (
+    <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-left">Students</h1>
@@ -318,19 +406,23 @@ export default function Students() {
             <label htmlFor="academicYear" className="text-sm font-medium">
               Academic Year:
             </label>
-            <Select value={academicYear} onValueChange={setAcademicYear}>
+            <Select value={currentAcademicYear?.year_name || ""} onValueChange={(value) => {
+              const year = academicYears.find(y => y.year_name === value);
+              if (year) {
+                setCurrentAcademicYear(year);
+              }
+            }}>
               <SelectTrigger id="academicYear" className="w-36">
                 <SelectValue placeholder="Select year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="2024">2024</SelectItem>
-                <SelectItem value="2023">2023</SelectItem>
-                <SelectItem value="2022">2022</SelectItem>
-                <SelectItem value="2021">2021</SelectItem>
+                {academicYears.map((year) => (
+                  <SelectItem key={year.id} value={year.year_name}>{year.year_name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={() => setIsAddStudentModalOpen(true)}>
+          <Button onClick={() => setIsAddStudentModalOpen(true)} variant="default">
             <Plus className="mr-2 h-4 w-4" />
             Add Student
           </Button>
@@ -390,16 +482,51 @@ export default function Students() {
             </SelectContent>
           </Select>
         </div>
+
+        {selectedStudents.length > 0 && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm font-medium">{selectedStudents.length} selected</span>
+            <Select value={bulkActionType} onValueChange={(value: "delete" | "deactivate") => setBulkActionType(value)}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Bulk Actions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deactivate">Deactivate</SelectItem>
+                <SelectItem value="delete">Delete</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => setIsBulkActionAlertOpen(true)}>
+              Apply
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Students table */}
-      <DataTable columns={columnsWithActions} data={filteredStudents} searchColumn="name" searchPlaceholder="Search students..." isLoading={isLoading} />
+      <DataTable 
+        columns={finalColumns} 
+        data={filteredStudents} 
+        searchColumn="name" 
+        searchPlaceholder="Search students..." 
+        isLoading={isLoading} 
+      />
 
       {/* Add Student Modal */}
-      <AddEditStudentModal open={isAddStudentModalOpen} onOpenChange={setIsAddStudentModalOpen} onSubmit={handleAddStudent} isLoading={addStudentMutation.isPending} />
+      <AddEditStudentModal 
+        open={isAddStudentModalOpen} 
+        onOpenChange={setIsAddStudentModalOpen} 
+        onSubmit={handleAddStudent} 
+        isLoading={addStudentMutation.isPending} 
+      />
 
       {/* Edit Student Modal */}
-      {selectedStudent && <AddEditStudentModal open={isEditStudentModalOpen} onOpenChange={setIsEditStudentModalOpen} student={selectedStudent as any} onSubmit={handleEditStudent} isLoading={updateStudentMutation.isPending} />}
+      {selectedStudent && <AddEditStudentModal 
+        open={isEditStudentModalOpen} 
+        onOpenChange={setIsEditStudentModalOpen} 
+        student={selectedStudent as any} 
+        onSubmit={handleEditStudent} 
+        isLoading={updateStudentMutation.isPending} 
+      />}
 
       {/* Delete Student Alert */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
@@ -419,5 +546,27 @@ export default function Students() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>;
+
+      {/* Bulk Action Alert */}
+      <AlertDialog open={isBulkActionAlertOpen} onOpenChange={setIsBulkActionAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkActionType === "delete" ? 
+                `This action cannot be undone. This will permanently delete ${selectedStudents.length} student records and remove their data from the system.` : 
+                `This will deactivate ${selectedStudents.length} students. Their records will remain in the system but will be marked as inactive.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkAction} 
+              className={bulkActionType === "delete" ? "bg-destructive text-destructive-foreground" : ""}>
+              {bulkActionType === "delete" ? "Delete" : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 }
