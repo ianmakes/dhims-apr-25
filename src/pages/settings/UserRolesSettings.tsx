@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -146,9 +147,10 @@ export default function UserRolesSettings() {
 
       // Map database results to our Role interface
       const rolesWithPermissions: Role[] = roleData?.map(role => {
-        // Handle the is_system field which may not exist in the database schema
-        // Default to false if is_system is null or undefined
-        const is_system = Boolean(role.is_system);
+        // Since is_system is not in the database schema, we'll add it with a default value of false
+        // We can determine if a role is a system role based on some criteria (e.g., name or some other logic)
+        // For now, we'll just set a default value
+        const is_system = false;
         
         // Extract permissions from the JSONB field if it exists
         let permissions: string[] = [];
@@ -168,7 +170,7 @@ export default function UserRolesSettings() {
           id: role.id,
           name: role.name,
           description: role.description,
-          is_system: is_system,
+          is_system: is_system, // Using our determined value
           created_at: role.created_at,
           permissions
         };
@@ -219,8 +221,8 @@ export default function UserRolesSettings() {
           .update({
             name: data.name,
             description: data.description,
-            is_system: data.is_system,
             permissions: permissionsObject
+            // Note: we don't store is_system in the database since it's not a field there
           })
           .eq("id", editingRole.id);
 
@@ -239,8 +241,8 @@ export default function UserRolesSettings() {
           .insert({
             name: data.name,
             description: data.description,
-            is_system: data.is_system,
             permissions: permissionsObject
+            // Note: we don't store is_system in the database since it's not a field there
           })
           .select()
           .single();
@@ -275,7 +277,7 @@ export default function UserRolesSettings() {
     try {
       setIsSubmitting(true);
 
-      // Delete the role directly (no need to deal with role_permissions)
+      // Delete the role directly
       const { error } = await supabase
         .from("user_roles")
         .delete()
