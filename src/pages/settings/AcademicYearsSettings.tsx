@@ -702,8 +702,8 @@ export default function AcademicYearsSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>How Academic Years Work</CardTitle>
-          <CardDescription>Important information about academic year management</CardDescription>
+          <CardTitle className="text-left">How Academic Years Work</CardTitle>
+          <CardDescription className="text-left">Important information about academic year management</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-md bg-blue-50 p-4">
@@ -720,7 +720,7 @@ export default function AcademicYearsSettings() {
           </div>
           
           <div className="space-y-2">
-            <h4 className="font-medium">Academic Year Impact:</h4>
+            <h4 className="font-medium text-center">Academic Year Impact:</h4>
             <ul className="list-disc pl-5 text-sm space-y-1">
               <li>All new data entered will be associated with the current academic year</li>
               <li>Reports will default to the current academic year</li>
