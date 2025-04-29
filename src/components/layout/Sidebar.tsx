@@ -10,8 +10,7 @@ import {
   Settings, 
   User, 
   ChevronLeft, 
-  ChevronRight, 
-  LogOut
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -104,20 +103,6 @@ export function Sidebar() {
               </Link>
             ))}
           </nav>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="p-2 border-t border-sidebar-border">
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full flex justify-start text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
-              collapsed && "justify-center p-2"
-            )}
-          >
-            <LogOut className="h-5 w-5" />
-            {!collapsed && <span className="ml-3">Logout</span>}
-          </Button>
         </div>
       </div>
     </aside>

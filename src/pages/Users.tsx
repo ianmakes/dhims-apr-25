@@ -67,7 +67,8 @@ const userFormSchema = z.object({
     message: "Password must be at least 6 characters"
   }).optional()
 });
-export default function Users() {
+
+function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -205,7 +206,8 @@ export default function Users() {
           </div>;
     }
   }];
-  return <div className="space-y-6 fade-in">
+  return (
+    <div className="space-y-6 fade-in">
       {/* Header section */}
       <div className="flex items-center justify-between">
         <div>
@@ -377,5 +379,8 @@ export default function Users() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>;
+    </div>
+  );
 }
+
+export default UsersPage;

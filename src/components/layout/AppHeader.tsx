@@ -32,6 +32,7 @@ export function AppHeader() {
         description: "Please try again",
         variant: "destructive",
       });
+      console.error("Logout error:", error);
     }
   };
 
