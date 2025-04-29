@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,35 +19,11 @@ const SCHOOL_LEVELS = [
   "Junior School (Grade 7-9)",
   "Senior School (Grade 10-12)",
 ];
-
-const CBC_GRADES = [
-  "Playgroup", "PP1", "PP2", 
-  "Grade 1", "Grade 2", "Grade 3", 
-  "Grade 4", "Grade 5", "Grade 6", 
-  "Grade 7", "Grade 8", "Grade 9", 
-  "Grade 10", "Grade 11", "Grade 12", 
-  "SNE"
+const CBC_CATEGORIES = [
+  "Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3",
+  "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", 
+  "Grade 10", "Grade 11", "Grade 12", "SNE"
 ];
-
-const CBC_CATEGORIES = {
-  "Playgroup": "Pre-Primary",
-  "PP1": "Pre-Primary",
-  "PP2": "Pre-Primary",
-  "Grade 1": "Lower Primary",
-  "Grade 2": "Lower Primary",
-  "Grade 3": "Lower Primary",
-  "Grade 4": "Upper Primary",
-  "Grade 5": "Upper Primary",
-  "Grade 6": "Upper Primary",
-  "Grade 7": "Junior Secondary",
-  "Grade 8": "Junior Secondary",
-  "Grade 9": "Junior Secondary",
-  "Grade 10": "Senior Secondary",
-  "Grade 11": "Senior Secondary",
-  "Grade 12": "Senior Secondary",
-  "SNE": "Special Needs Education"
-};
-
 const ACCOMMODATION = ["Boarder", "Day Scholar"];
 const GENDERS = ["Male", "Female"];
 const HEALTH_STATUS = ["Healthy", "Disabled", "Cognitive Disorder"];
@@ -128,11 +104,6 @@ export function AddEditStudentModal({
 
   const handlePickGender = (value: "Male" | "Female") => setForm(f => ({ ...f, gender: value }));
   const handlePickHealthStatus = (value: string) => setForm(f => ({ ...f, health_status: value }));
-  const handlePickGrade = (value: string) => setForm(f => ({ 
-    ...f, 
-    current_grade: value,
-    cbc_category: CBC_CATEGORIES[value as keyof typeof CBC_CATEGORIES] || ""
-  }));
   const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -143,35 +114,13 @@ export function AddEditStudentModal({
   const nextStep = () => setCurrentStep((current) => Math.min(current + 1, steps.length - 1));
   const prevStep = () => setCurrentStep((current) => Math.max(current - 1, 0));
   
-  // Determine if the form is valid for the current step
-  const isStepValid = (step: number) => {
-    switch(step) {
-      case 0: // Basic Info
-        return !!form.name && !!form.admission_number;
-      case 1: // Academic Info
-        return !!form.current_grade;
-      case 2: // Additional Info
-        return true; // No required fields in the additional info step
-      default:
-        return false;
-    }
-  };
-  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-xl">{student ? "Edit Student" : "Add Student"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          // Only submit the form if we're on the last step
-          if (currentStep === steps.length - 1) {
-            handleSubmit();
-          } else {
-            nextStep();
-          }
-        }} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center justify-between mb-6">
             <div className="space-x-1">
               {steps.map((step, index) => (
@@ -200,38 +149,20 @@ export function AddEditStudentModal({
                 <Card className="p-4 border rounded-lg shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <Label htmlFor="admission_number">Admission Number <span className="text-red-500">*</span></Label>
-                      <Input 
-                        name="admission_number" 
-                        value={form.admission_number || ""} 
-                        onChange={handleChange} 
-                        required 
-                        className="mt-1" 
-                      />
+                      <Label htmlFor="admission_number">Admission Number</Label>
+                      <Input name="admission_number" value={form.admission_number} onChange={handleChange} required className="mt-1" />
                     </div>
                     <div>
-                      <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
-                      <Input 
-                        name="name" 
-                        value={form.name || ""} 
-                        onChange={handleChange} 
-                        required 
-                        className="mt-1" 
-                      />
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input name="name" value={form.name} onChange={handleChange} required className="mt-1" />
                     </div>
                     <div>
                       <Label htmlFor="dob">Date of Birth</Label>
-                      <Input 
-                        name="dob" 
-                        type="date" 
-                        value={form.dob?.toString().substring(0, 10) || ""} 
-                        onChange={handleChange} 
-                        className="mt-1" 
-                      />
+                      <Input name="dob" type="date" value={form.dob ?? ""} onChange={handleChange} required className="mt-1" />
                     </div>
                     <div>
-                      <Label htmlFor="gender">Gender <span className="text-red-500">*</span></Label>
-                      <Select value={form.gender || "Male"} onValueChange={handlePickGender}>
+                      <Label htmlFor="gender">Gender</Label>
+                      <Select value={form.gender || ""} onValueChange={handlePickGender}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
@@ -260,11 +191,7 @@ export function AddEditStudentModal({
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label htmlFor="school_level">School Level</Label>
-                      <Select 
-                        value={form.school_level || ""} 
-                        onValueChange={v => setForm(f => ({...f, school_level: v}))}
-                        disabled={!!form.current_grade} // Disabled if grade is selected
-                      >
+                      <Select value={form.school_level || ""} onValueChange={v => setForm(f => ({...f, school_level: v}))}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
@@ -276,46 +203,29 @@ export function AddEditStudentModal({
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="current_grade">Grade <span className="text-red-500">*</span></Label>
-                      <Select 
-                        value={form.current_grade || ""} 
-                        onValueChange={handlePickGrade}
-                      >
+                      <Label htmlFor="cbc_category">CBC Category</Label>
+                      <Select value={form.cbc_category || ""} onValueChange={v => setForm(f => ({...f, cbc_category: v}))}>
                         <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select Grade" />
+                          <SelectValue placeholder="Select CBC" />
                         </SelectTrigger>
                         <SelectContent>
-                          {CBC_GRADES.map((grade) => (
-                            <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                          {CBC_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="cbc_category">CBC Category</Label>
-                      <Input 
-                        name="cbc_category" 
-                        value={form.cbc_category || ""} 
-                        disabled 
-                        className="mt-1 bg-gray-50" 
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        This is automatically determined by the Grade selection
-                      </p>
+                      <Label htmlFor="current_grade">Current Grade</Label>
+                      <Input name="current_grade" value={form.current_grade || ""} onChange={handleChange} className="mt-1" />
                     </div>
                     <div>
                       <Label htmlFor="admission_date">Admission Date</Label>
-                      <Input 
-                        name="admission_date" 
-                        type="date" 
-                        value={form.admission_date?.toString().substring(0, 10) || ""} 
-                        onChange={handleChange} 
-                        className="mt-1" 
-                      />
+                      <Input name="admission_date" type="date" value={form.admission_date || ""} onChange={handleChange} className="mt-1" />
                     </div>
                     <div>
                       <Label htmlFor="status">Status</Label>
-                      <Select value={form.status || "Active"} onValueChange={v => setForm(f => ({...f, status: v}))}>
+                      <Select value={form.status} onValueChange={v => setForm(f => ({...f, status: v}))}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
@@ -401,7 +311,6 @@ export function AddEditStudentModal({
                 type="button" 
                 onClick={nextStep}
                 className="flex items-center"
-                disabled={!isStepValid(currentStep)}
               >
                 Next <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
