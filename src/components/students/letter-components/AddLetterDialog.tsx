@@ -23,6 +23,7 @@ export function AddLetterDialog({
   refetchLetters
 }: AddLetterDialogProps) {
   const [newLetter, setNewLetter] = useState({
+    title: "",
     content: "",
     date: new Date().toISOString().slice(0, 10),
     file_url: ""
@@ -42,6 +43,12 @@ export function AddLetterDialog({
     
     const file = e.target.files[0];
     setSelectedFile(file);
+    
+    // If no title is set yet, use the filename (without extension) as the title
+    if (!newLetter.title) {
+      const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+      setNewLetter(prev => ({ ...prev, title: fileNameWithoutExt }));
+    }
     
     // Upload file to Supabase storage
     setIsUploading(true);
@@ -84,11 +91,11 @@ export function AddLetterDialog({
 
     setIsUploading(true);
     try {
-      // FIX: Remove the title field as it doesn't exist in the database
       const { error } = await supabase
         .from('student_letters')
         .insert({
           student_id: studentId,
+          title: newLetter.title || null,
           content: newLetter.content || null,
           file_url: newLetter.file_url || null,
           date: new Date(newLetter.date).toISOString()
@@ -98,6 +105,7 @@ export function AddLetterDialog({
       
       // Reset form and close modal
       setNewLetter({
+        title: "",
         content: "",
         date: new Date().toISOString().slice(0, 10),
         file_url: ""
@@ -124,6 +132,16 @@ export function AddLetterDialog({
           <DialogTitle>Add New Letter</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="title">Letter Title</Label>
+            <Input
+              id="title"
+              name="title"
+              value={newLetter.title}
+              onChange={handleInputChange}
+              placeholder="Enter letter title"
+            />
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="content">Letter Content (Optional if file is uploaded)</Label>
             <Textarea

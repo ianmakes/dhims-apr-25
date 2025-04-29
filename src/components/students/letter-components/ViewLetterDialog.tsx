@@ -44,12 +44,24 @@ export function ViewLetterDialog({
     return url?.match(/\.(jpeg|jpg|gif|png)$/i) !== null;
   };
 
+  // Extract filename from URL to use as a title if no title is provided
+  const getFileNameFromUrl = (url?: string) => {
+    if (!url) return "";
+    const parts = url.split('/');
+    return parts[parts.length - 1].split('?')[0];
+  };
+
+  // Get a display title for the letter
+  const letterTitle = letter.title || 
+                     (letter.file_url ? getFileNameFromUrl(letter.file_url) : 
+                     (letter.content?.substring(0, 20) + "..." || "Untitled Letter"));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex justify-between items-center">
-            <span>{letter.title || "Untitled Letter"}</span>
+            <span>{letterTitle}</span>
             {letter.file_url && (
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={onZoomOut} disabled={zoomLevel <= 0.5}>
@@ -76,12 +88,12 @@ export function ViewLetterDialog({
           )}
           
           {letter.file_url && (
-            <div className="border rounded-md overflow-hidden flex justify-center">
+            <div className="border rounded-md overflow-hidden flex justify-center bg-gray-50">
               {isPDF(letter.file_url) ? (
                 <div className="w-full" style={{ height: "60vh" }}>
                   <iframe 
                     src={`${letter.file_url}#view=FitH&zoom=${zoomLevel}`}
-                    title={letter.title || "Letter"}
+                    title={letterTitle}
                     className="w-full h-full"
                     style={{ border: "none" }}
                   />
@@ -90,7 +102,7 @@ export function ViewLetterDialog({
                 <div className="flex justify-center overflow-auto" style={{ maxHeight: "60vh" }}>
                   <img 
                     src={letter.file_url} 
-                    alt={letter.title || "Letter"}
+                    alt={letterTitle}
                     style={{ transform: `scale(${zoomLevel})`, transformOrigin: "center top" }}
                     className="transition-transform"
                   />
