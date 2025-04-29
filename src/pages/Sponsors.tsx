@@ -1,338 +1,393 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { DataTable } from "@/components/data-display/DataTable";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PlusCircle, Download, Filter, Search, Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
+import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
 
 export default function Sponsors() {
-  const {
-    sponsors,
-    isLoading,
-    addSponsor,
-    updateSponsor,
-    deleteSponsor,
-    bulkDeleteSponsors,
-    bulkUpdateSponsorStatus
-  } = useSponsors();
-  
-  const [status, setStatus] = useState<string>("all");
-  const [country, setCountry] = useState<string>("all");
-  const [isAddSponsorModalOpen, setIsAddSponsorModalOpen] = useState(false);
-  const [isEditSponsorModalOpen, setIsEditSponsorModalOpen] = useState(false);
-  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
-  const [selectedSponsor, setSelectedSponsor] = useState<SponsorFormValues | null>(null);
-  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  
   const { toast } = useToast();
-
-  // Filter sponsors based on filters
-  const filteredSponsors = sponsors.filter((sponsor: any) => {
-    if (status && status !== "all" && sponsor.status !== status) return false;
-    if (country && country !== "all" && sponsor.country !== country) return false;
-    return true;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [selectedSponsors, setSelectedSponsors] = useState<string[]>([]);
+  const { currentYear } = useAcademicYear();
+  
+  // Fetch sponsors
+  const { data: sponsors = [], isLoading, refetch } = useQuery({
+    queryKey: ["sponsors", currentYear?.id],
+    queryFn: async () => {
+      try {
+        let query = supabase
+          .from("sponsors")
+          .select(`
+            id, 
+            first_name,
+            last_name,
+            email,
+            phone,
+            country,
+            start_date,
+            status,
+            address,
+            profile_image_url,
+            created_at,
+            updated_at
+          `)
+          .order("last_name", { ascending: true });
+          
+        // If we have a current year, filter sponsors who were active during this year
+        if (currentYear) {
+          query = query
+            .lte('start_date', currentYear.end_date)
+            .eq('status', 'active');
+        }
+          
+        const { data, error } = await query;
+        
+        if (error) {
+          throw error;
+        }
+        
+        return data || [];
+      } catch (error: any) {
+        console.error("Error fetching sponsors:", error);
+        toast({
+          title: "Error",
+          description: `Failed to load sponsors: ${error.message}`,
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
   });
-
-  // Get unique countries for filter dropdown
-  const uniqueCountries = Array.from(new Set(sponsors.map((sponsor: any) => sponsor.country).filter(Boolean)));
   
-  const handleAddSponsor = (data: SponsorFormValues) => {
-    addSponsor(data);
-    setIsAddSponsorModalOpen(false);
-  };
+  // Fetch sponsored students to calculate how many students each sponsor has
+  const { data: sponsoredStudents = [] } = useQuery({
+    queryKey: ["sponsored-students", currentYear?.id],
+    queryFn: async () => {
+      try {
+        let query = supabase
+          .from("students")
+          .select(`id, sponsor_id`);
+          
+        // If we have a current year, filter by academic year
+        if (currentYear) {
+          query = query.eq('current_academic_year', parseInt(currentYear.year_name));
+        }
+          
+        const { data, error } = await query;
+        
+        if (error) {
+          throw error;
+        }
+        
+        return data || [];
+      } catch (error) {
+        console.error("Error fetching sponsored students:", error);
+        return [];
+      }
+    },
+  });
   
-  const handleEditSponsor = (data: SponsorFormValues) => {
-    if (selectedSponsor && selectedSponsor.id) {
-      updateSponsor({
-        id: selectedSponsor.id,
-        ...data
-      });
-      setIsEditSponsorModalOpen(false);
+  // Create a map of sponsor ID to student count
+  const sponsorStudentCounts = sponsoredStudents.reduce((acc, student) => {
+    if (student.sponsor_id) {
+      acc[student.sponsor_id] = (acc[student.sponsor_id] || 0) + 1;
     }
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Filter sponsors by search term
+  const filteredSponsors = searchTerm
+    ? sponsors.filter((sponsor) => {
+        const searchRegex = new RegExp(searchTerm, "i");
+        return (
+          searchRegex.test(`${sponsor.first_name} ${sponsor.last_name}`) ||
+          (sponsor.email && searchRegex.test(sponsor.email)) ||
+          (sponsor.country && searchRegex.test(sponsor.country))
+        );
+      })
+    : sponsors;
+  
+  const handleAddSponsor = () => {
+    setIsModalOpen(true);
   };
   
-  const handleDeleteSponsor = () => {
-    if (selectedSponsor) {
-      deleteSponsor(selectedSponsor.id);
-      setIsDeleteAlertOpen(false);
-    }
-  };
-  
-  const handleBulkDeleteSponsors = () => {
-    if (selectedRowIds.length > 0) {
-      bulkDeleteSponsors(selectedRowIds);
-      setIsBulkDeleteAlertOpen(false);
-    }
-  };
-  
-  const handleBulkUpdateStatus = (status: "active" | "inactive") => {
-    if (selectedRowIds.length > 0) {
-      bulkUpdateSponsorStatus({ ids: selectedRowIds, status });
-    }
-  };
-  
-  const handleOpenEditModal = (sponsor: any) => {
-    // Map database fields to form fields
-    setSelectedSponsor({
-      id: sponsor.id,
-      firstName: sponsor.first_name,
-      lastName: sponsor.last_name,
-      email: sponsor.email,
-      email2: sponsor.email2 || "",
-      phone: sponsor.phone || "",
-      address: sponsor.address || "",
-      country: sponsor.country || "",
-      startDate: sponsor.start_date,
-      status: sponsor.status,
-      notes: sponsor.notes || "",
-      profileImageUrl: sponsor.profile_image_url || "",
-      primaryEmailForUpdates: sponsor.primary_email_for_updates || ""
+  const handleSponsorSaved = () => {
+    refetch();
+    setIsModalOpen(false);
+    toast({
+      title: "Success",
+      description: "Sponsor has been saved successfully.",
     });
-    setIsEditSponsorModalOpen(true);
   };
   
-  const handleOpenDeleteAlert = (sponsor: any) => {
-    setSelectedSponsor(sponsor);
-    setIsDeleteAlertOpen(true);
-  };
-
-  // Bulk action handlers
-  const handleRowSelectionChange = (ids: string[]) => {
-    setSelectedRowIds(ids);
+  const handleSendEmail = () => {
+    toast({
+      title: "Email Feature",
+      description: `Preparing to send emails to ${selectedSponsors.length} sponsors.`,
+    });
+    setIsEmailDialogOpen(false);
+    setSelectedSponsors([]);
   };
   
-  const bulkActions = [
-    {
-      label: "Delete Selected",
-      action: () => setIsBulkDeleteAlertOpen(true)
-    },
-    {
-      label: "Deactivate Selected",
-      action: () => handleBulkUpdateStatus("inactive")
-    },
-    {
-      label: "Activate Selected",
-      action: () => handleBulkUpdateStatus("active")
+  const toggleSponsorSelection = (sponsorId: string) => {
+    if (selectedSponsors.includes(sponsorId)) {
+      setSelectedSponsors(selectedSponsors.filter(id => id !== sponsorId));
+    } else {
+      setSelectedSponsors([...selectedSponsors, sponsorId]);
     }
-  ];
-
-  // Updated columns without the ID column
-  const columnsWithActions = [
-    {
-      accessorKey: "first_name",
-      header: "First Name",
-      cell: ({ row }: any) => {
-        return <Link to={`/sponsors/${row.original.slug || row.original.id}`} className="text-primary hover:underline">
-            {row.getValue("first_name")}
-          </Link>;
-      }
-    }, 
-    {
-      accessorKey: "last_name",
-      header: "Last Name",
-      cell: ({ row }: any) => {
-        return <Link to={`/sponsors/${row.original.slug || row.original.id}`} className="text-primary hover:underline">
-            {row.getValue("last_name")}
-          </Link>;
-      }
-    }, 
-    {
-      accessorKey: "email",
-      header: "Email"
-    }, 
-    {
-      accessorKey: "country",
-      header: "Country",
-      cell: ({ row }: any) => {
-        const country = row.getValue("country");
-        return <div>{country || "—"}</div>;
-      }
-    }, 
-    {
-      accessorKey: "start_date",
-      header: "Start Date",
-      cell: ({ row }: any) => {
-        return <div>
-            {new Date(row.getValue("start_date")).toLocaleDateString()}
-          </div>;
-      }
-    }, 
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }: any) => {
-        const status = row.getValue("status");
-        return <div className="capitalize">
-            {status === "active" ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
-                <Check className="mr-1 h-3 w-3" />
-                <span>Active</span>
-              </div> : <div className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
-                <X className="mr-1 h-3 w-3" />
-                <span>Inactive</span>
-              </div>}
-          </div>;
-      }
-    }, 
-    {
-      id: "actions",
-      cell: ({ row }: any) => {
-        const sponsor = row.original;
-        return <div className="text-right">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(sponsor.id)}>
-                  Copy sponsor ID
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Link to={`/sponsors/${sponsor.slug || sponsor.id}`} className="flex items-center w-full">
-                    <Eye className="mr-2 h-4 w-4" />
-                    <span>View</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleOpenEditModal(sponsor)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={() => handleOpenDeleteAlert(sponsor)}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>;
-      }
-    }
-  ];
+  };
   
-  return <div className="space-y-6 fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-left">Sponsors</h1>
-          <p className="text-muted-foreground">
-            Manage and track sponsors in the system
-          </p>
-        </div>
-        <Button onClick={() => setIsAddSponsorModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Sponsor
-        </Button>
-      </div>
+  // Status color mapping
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+  
+  // Year label for the page title
+  const yearLabel = currentYear ? ` - ${currentYear.year_name}` : "";
 
-      {/* Filter section */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="status" className="text-sm font-medium">
-            Status:
-          </label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger id="status" className="w-32">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+  return (
+    <div className="space-y-6">
+      <PageHeader 
+        title={`Sponsors${yearLabel}`}
+        description="Manage and view all sponsors in the system"
+        actions={
+          <Button onClick={handleAddSponsor}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Sponsor
+          </Button>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          <label htmlFor="country" className="text-sm font-medium">
-            Country:
-          </label>
-          <Select value={country} onValueChange={setCountry}>
-            <SelectTrigger id="country" className="w-40">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Countries</SelectItem>
-              {uniqueCountries.map(country => <SelectItem key={country} value={country || ""}>
-                  {country}
-                </SelectItem>)}
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search sponsors..."
+            className="pl-8 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            className="flex-1 sm:flex-none"
+            onClick={() => {
+              if (selectedSponsors.length > 0) {
+                setIsEmailDialogOpen(true);
+              } else {
+                toast({
+                  title: "No sponsors selected",
+                  description: "Please select sponsors to email.",
+                });
+              }
+            }}
+            disabled={selectedSponsors.length === 0}
+          >
+            <Mail className="mr-2 h-4 w-4" />
+            Email Selected
+          </Button>
+          <Button variant="outline" className="flex-1 sm:flex-none">
+            <Filter className="mr-2 h-4 w-4" />
+            Filter
+          </Button>
+          <Button variant="outline" className="flex-1 sm:flex-none">
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
         </div>
       </div>
 
-      {/* Sponsors table with bulk actions */}
-      <DataTable 
-        columns={columnsWithActions} 
-        data={filteredSponsors} 
-        searchColumn="first_name" 
-        searchPlaceholder="Search sponsors..." 
-        isLoading={isLoading} 
-        onRowSelectionChange={handleRowSelectionChange}
-        bulkActions={bulkActions}
+      <div className="border rounded-lg">
+        {isLoading ? (
+          // Loading skeleton
+          <>
+            <div className="p-4">
+              <Skeleton className="h-8 w-full" />
+            </div>
+            {[...Array(5)].map((_, index) => (
+              <div key={index} className="p-4 border-t">
+                <Skeleton className="h-6 w-full" />
+              </div>
+            ))}
+          </>
+        ) : filteredSponsors.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">
+                  <Input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={selectedSponsors.length === filteredSponsors.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSponsors(filteredSponsors.map(s => s.id));
+                      } else {
+                        setSelectedSponsors([]);
+                      }
+                    }}
+                  />
+                </TableHead>
+                <TableHead className="min-w-[200px]">Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Country</TableHead>
+                <TableHead>Since</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Students</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSponsors.map((sponsor) => (
+                <TableRow key={sponsor.id}>
+                  <TableCell>
+                    <Input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={selectedSponsors.includes(sponsor.id)}
+                      onChange={() => toggleSponsorSelection(sponsor.id)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-muted mr-2 overflow-hidden">
+                        {sponsor.profile_image_url ? (
+                          <img
+                            src={sponsor.profile_image_url}
+                            alt={`${sponsor.first_name} ${sponsor.last_name}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs font-medium">
+                            {`${sponsor.first_name?.charAt(0) || ''}${sponsor.last_name?.charAt(0) || ''}`}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium">{`${sponsor.first_name} ${sponsor.last_name}`}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {sponsor.phone || "No phone"}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{sponsor.email || "-"}</TableCell>
+                  <TableCell>{sponsor.country || "-"}</TableCell>
+                  <TableCell>
+                    {sponsor.start_date 
+                      ? format(new Date(sponsor.start_date), 'MMM yyyy') 
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={getStatusColor(sponsor.status)}
+                    >
+                      {sponsor.status || "Unknown"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge>
+                      {sponsorStudentCounts[sponsor.id] || 0}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/sponsors/${sponsor.id}`}>View</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <p className="mb-2">No sponsors found</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {searchTerm 
+                ? "Try adjusting your search term" 
+                : currentYear
+                  ? `No active sponsors found for the ${currentYear.year_name} academic year`
+                  : "Get started by adding your first sponsor"}
+            </p>
+            <Button onClick={handleAddSponsor} variant="outline">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Sponsor
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Sponsor Modal */}
+      <AddEditSponsorModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSponsorSaved}
       />
 
-      {/* Add Sponsor Modal */}
-      <AddEditSponsorModal 
-        open={isAddSponsorModalOpen} 
-        onOpenChange={setIsAddSponsorModalOpen} 
-        onSubmit={handleAddSponsor} 
-      />
-
-      {/* Edit Sponsor Modal */}
-      {selectedSponsor && <AddEditSponsorModal 
-        open={isEditSponsorModalOpen} 
-        onOpenChange={setIsEditSponsorModalOpen} 
-        sponsor={selectedSponsor} 
-        onSubmit={handleEditSponsor} 
-      />}
-
-      {/* Delete Single Sponsor Alert */}
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the sponsor record
-              and remove their data from the system. Any students sponsored by this sponsor
-              will become unsponsored.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSponsor} className="bg-destructive text-destructive-foreground">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Bulk Delete Sponsors Alert */}
-      <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedRowIds.length} sponsors?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the selected sponsor records
-              and remove their data from the system. Any students sponsored by these sponsors
-              will become unsponsored.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDeleteSponsors} className="bg-destructive text-destructive-foreground">
-              Delete {selectedRowIds.length} sponsors
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>;
+      {/* Email Dialog */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Selected Sponsors</DialogTitle>
+            <DialogDescription>
+              You are about to send an email to {selectedSponsors.length} selected sponsors. 
+              This feature is under development.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Subject"
+              className="mb-4"
+            />
+            <textarea
+              className="w-full min-h-[100px] p-2 border rounded-md"
+              placeholder="Message content..."
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEmailDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSendEmail}>
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
