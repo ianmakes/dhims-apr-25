@@ -23,7 +23,6 @@ export function AddLetterDialog({
   refetchLetters
 }: AddLetterDialogProps) {
   const [newLetter, setNewLetter] = useState({
-    title: "",
     content: "",
     date: new Date().toISOString().slice(0, 10),
     file_url: ""
@@ -78,18 +77,18 @@ export function AddLetterDialog({
   };
 
   const handleAddLetter = async () => {
-    if (!newLetter.title || (!newLetter.content && !newLetter.file_url)) {
-      toast.error("Please provide a title and either content or upload a file");
+    if (!newLetter.content && !newLetter.file_url) {
+      toast.error("Please provide either content or upload a file");
       return;
     }
 
     setIsUploading(true);
     try {
+      // FIX: Remove the title field as it doesn't exist in the database
       const { error } = await supabase
         .from('student_letters')
         .insert({
           student_id: studentId,
-          title: newLetter.title,
           content: newLetter.content || null,
           file_url: newLetter.file_url || null,
           date: new Date(newLetter.date).toISOString()
@@ -99,7 +98,6 @@ export function AddLetterDialog({
       
       // Reset form and close modal
       setNewLetter({
-        title: "",
         content: "",
         date: new Date().toISOString().slice(0, 10),
         file_url: ""
@@ -126,16 +124,6 @@ export function AddLetterDialog({
           <DialogTitle>Add New Letter</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Letter Title</Label>
-            <Input
-              id="title"
-              name="title"
-              value={newLetter.title}
-              onChange={handleInputChange}
-              placeholder="Enter letter title"
-            />
-          </div>
           <div className="grid gap-2">
             <Label htmlFor="content">Letter Content (Optional if file is uploaded)</Label>
             <Textarea
@@ -193,7 +181,7 @@ export function AddLetterDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button 
             onClick={handleAddLetter} 
-            disabled={isUploading || !newLetter.title || (!newLetter.content && !newLetter.file_url)}
+            disabled={isUploading || (!newLetter.content && !newLetter.file_url)}
           >
             {isUploading ? "Uploading..." : "Add Letter"}
           </Button>

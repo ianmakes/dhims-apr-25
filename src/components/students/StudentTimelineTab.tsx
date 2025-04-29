@@ -65,6 +65,36 @@ export function StudentTimelineTab({
     }
   };
 
+  // Get event type color
+  const getEventTypeColor = (eventType: string) => {
+    switch (eventType) {
+      case 'academic':
+        return {
+          bg: 'bg-blue-500',
+          border: 'border-blue-300',
+          text: 'text-blue-800'
+        };
+      case 'sponsor':
+        return {
+          bg: 'bg-green-500',
+          border: 'border-green-300',
+          text: 'text-green-800'
+        };
+      case 'personal':
+        return {
+          bg: 'bg-yellow-500',
+          border: 'border-yellow-300',
+          text: 'text-yellow-800'
+        };
+      default:
+        return {
+          bg: 'bg-gray-500',
+          border: 'border-gray-300',
+          text: 'text-gray-800'
+        };
+    }
+  };
+
   return (
     <div className="py-4">
       <Card>
@@ -80,48 +110,54 @@ export function StudentTimelineTab({
         </CardHeader>
         <CardContent>
           {timelineEvents.length > 0 ? (
-            <div className="relative border-l border-border pl-6 ml-4">
-              {timelineEvents.map((event) => (
+            <div className="relative border-l-2 border-gray-200 pl-6 ml-4">
+              {timelineEvents.map((event) => {
+                const eventColors = getEventTypeColor(event.type);
+                return (
                 <div key={event.id} className="mb-8 relative group">
+                  {/* Updated dot design */}
                   <div
-                    className={`absolute -left-7 h-4 w-4 rounded-full border-2 
-                      ${event.type === "academic"
-                      ? "bg-blue-500 border-blue-300"
-                      : event.type === "sponsor"
-                      ? "bg-green-500 border-green-300"
-                      : event.type === "personal"
-                      ? "bg-yellow-500 border-yellow-300"
-                      : "bg-gray-500 border-gray-300"
-                    }`}
-                  />
+                    className={`absolute -left-[17px] h-8 w-8 rounded-full flex items-center justify-center ${eventColors.bg} shadow-md transition-all duration-300 group-hover:scale-110`}
+                  >
+                    <div className={`h-5 w-5 rounded-full bg-white ${eventColors.border}`}></div>
+                  </div>
+                  
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(event.date)}
-                      </p>
-                      <h3 className="font-medium">{event.title}</h3>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${eventColors.bg} ${eventColors.text} bg-opacity-20`}>
+                          {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(event.date)}
+                        </p>
+                      </div>
+                      <h3 className="font-medium mt-1">{event.title}</h3>
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button 
                         variant="ghost" 
                         size="sm"
                         onClick={() => onEditTimelineEvent(event)}
+                        className="h-8 w-8 p-0"
                       >
                         <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                         onClick={() => handleDeleteClick(event)}
                       >
                         <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
                       </Button>
                     </div>
                   </div>
-                  <p className="mt-1">{event.description}</p>
+                  <p className="mt-1 text-left text-gray-700">{event.description}</p>
                 </div>
-              ))}
+              )})}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-8">

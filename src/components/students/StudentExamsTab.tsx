@@ -1,572 +1,149 @@
 
-import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Download, FileImage, FileText, ChevronRight, ChevronLeft, ZoomIn, ZoomOut } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StudentExamScore } from "@/types/database";
-import { useToast } from "@/hooks/use-toast";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import * as XLSX from 'xlsx';
-
-// Refactored components
-import { GradeIndicator } from "./exam-components/GradeIndicator";
 import { ExamResultsTable } from "./exam-components/ExamResultsTable";
-import { ExportPreview } from "./exam-components/ExportPreview";
-
-const gradeColors = {
-  "A": "#4ade80",
-  "A-": "#86efac",
-  "B+": "#a3e635",
-  "B": "#facc15",
-  "B-": "#fde047",
-  "C+": "#fdba74",
-  "C": "#fb923c",
-  "C-": "#f97316",
-  "D+": "#f87171",
-  "D": "#ef4444",
-  "D-": "#dc2626",
-  "E": "#b91c1c",
-};
-
-// Helper functions
-const calculateGrade = (score: number) => {
-  if (score >= 80) return "A";
-  if (score >= 75) return "A-";
-  if (score >= 70) return "B+";
-  if (score >= 65) return "B";
-  if (score >= 60) return "B-";
-  if (score >= 55) return "C+";
-  if (score >= 50) return "C";
-  if (score >= 45) return "C-";
-  if (score >= 40) return "D+";
-  if (score >= 35) return "D";
-  if (score >= 30) return "D-";
-  return "E";
-};
-
-const getGradeCategory = (score: number) => {
-  if (score >= 80) return "Exceeding Expectation";
-  if (score >= 50) return "Meeting Expectation";
-  if (score >= 40) return "Approaching Expectation";
-  return "Below Expectation";
-};
 
 interface StudentExamsTabProps {
   studentName: string;
   studentId: string;
 }
 
-export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps) {
-  const { toast } = useToast();
-  const [isExporting, setIsExporting] = useState(false);
-  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
-  const pdfExportRef = useRef<HTMLDivElement>(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
+// Helper function to determine grade level based on score and max score
+function getGrade(score: number, maxScore: number): [string, string, string] {
+  // Calculate percentage
+  const percentage = (score / maxScore) * 100;
   
-  // Get available academic years
-  const { data: academicYears = [], isLoading: loadingYears } = useQuery({
-    queryKey: ['academic-years'],
+  // Return grade based on percentage ranges
+  if (percentage >= 80) {
+    return ["EE", "Exceeding Expectation", "text-success bg-success/10"];
+  } else if (percentage >= 50) {
+    return ["ME", "Meeting Expectation", "text-info bg-info/10"];
+  } else if (percentage >= 40) {
+    return ["AE", "Approaching Expectation", "text-warning bg-warning/10"];
+  } else {
+    return ["BE", "Below Expectation", "text-destructive bg-destructive/10"];
+  }
+}
+
+export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps) {
+  const { data: examScores = [], isLoading, error } = useQuery({
+    queryKey: ['student-exam-scores', studentId],
     queryFn: async () => {
-      // First, get the exams the student has taken
-      const { data: examScores, error } = await supabase
+      const { data, error } = await supabase
         .from('student_exam_scores')
-        .select('exam_id')
-        .eq('student_id', studentId);
+        .select(`
+          *,
+          exam:exams(
+            id,
+            name,
+            term,
+            academic_year,
+            exam_date,
+            max_score,
+            passing_score
+          )
+        `)
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
-      
-      if (!examScores || examScores.length === 0) {
-        return ["2024"];
-      }
-      
-      // Then get details about those exams
-      const examIds = examScores.map(score => score.exam_id).filter(Boolean);
-      
-      if (examIds.length === 0) {
-        return ["2024"];
-      }
-      
-      const { data: exams, error: examsError } = await supabase
-        .from('exams')
-        .select('academic_year')
-        .in('id', examIds);
-      
-      if (examsError) throw examsError;
-      
-      const uniqueYears = Array.from(
-        new Set(
-          exams
-            ?.map(exam => exam.academic_year)
-            .filter(Boolean) || []
-        )
-      ).sort().reverse();
-      
-      return uniqueYears.length ? uniqueYears : ["2024"];
-    }
-  });
-
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  
-  // Set initial selected year once data is loaded
-  useEffect(() => {
-    if (academicYears.length > 0 && !selectedYear) {
-      setSelectedYear(academicYears[0]);
-    }
-  }, [academicYears]);
-  
-  // Get student exam scores
-  const { data: examScores = [], isLoading: loadingScores } = useQuery<StudentExamScore[]>({
-    queryKey: ['student-exams', studentId, selectedYear],
-    queryFn: async () => {
-      if (!studentId) throw new Error('Student ID is required');
-      
-      // First, get exam scores for this student
-      const { data: scores, error: scoresError } = await supabase
-        .from('student_exam_scores')
-        .select('*')
-        .eq('student_id', studentId);
-        
-      if (scoresError) throw scoresError;
-      
-      if (!scores || scores.length === 0) {
-        return [];
-      }
-
-      // Get exam details for each score
-      const examIds = scores.map(score => score.exam_id).filter(Boolean);
-      
-      if (examIds.length === 0) {
-        return scores as StudentExamScore[];
-      }
-      
-      const { data: exams, error: examsError } = await supabase
-        .from('exams')
-        .select('*')
-        .in('id', examIds);
-      
-      if (examsError) throw examsError;
-      
-      // Join exam details with scores
-      const enrichedScores = scores.map(score => {
-        const examDetails = exams?.find(exam => exam.id === score.exam_id);
-        return {
-          ...score,
-          exam: examDetails
-        } as StudentExamScore;
-      });
-      
-      // Filter by selected academic year if one is selected
-      return selectedYear 
-        ? enrichedScores.filter(score => score.exam?.academic_year === selectedYear)
-        : enrichedScores;
+      return data;
     },
     enabled: !!studentId
   });
-  
-  // Process exam data for charts
-  const processedData = examScores
-    .filter(score => score.exam) // Only include scores that have exam data
-    .map(score => {
-    // Calculate percentage 
-    const percentage = score.exam?.max_score 
-      ? Math.round((score.score / score.exam.max_score) * 100) 
-      : 0;
-      
-    return {
-      examName: score.exam?.name || "Unknown",
-      term: score.exam?.term || "Unknown",
-      score: score.score,
-      maxScore: score.exam?.max_score || 100,
-      percentage,
-      date: score.exam?.exam_date 
-        ? new Date(score.exam.exam_date).toLocaleDateString() 
-        : "Unknown date"
-    };
-  });
-  
-  // Prepare trend data - sort by exam date chronologically
-  const trendData = [...processedData]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map((item) => ({
-      name: item.examName,
-      percentage: item.percentage,
-      term: item.term
-    }));
-    
-  // Prepare term-based average data
-  const termGroups = processedData.reduce((acc, item) => {
-    if (!acc[item.term]) {
-      acc[item.term] = {
-        total: 0,
-        count: 0
-      };
-    }
-    acc[item.term].total += item.percentage;
-    acc[item.term].count++;
-    return acc;
-  }, {} as Record<string, { total: number, count: number }>);
-  
-  const termData = Object.entries(termGroups).map(([term, { total, count }]) => ({
-    term,
-    average: Math.round(total / count)
-  }));
 
-  // Calculate overall statistics
-  const overallStats = {
-    total: processedData.length,
-    averagePercentage: processedData.length > 0 
-      ? Math.round(processedData.reduce((sum, item) => sum + item.percentage, 0) / processedData.length) 
-      : 0,
-    highestScore: processedData.length > 0 
-      ? Math.max(...processedData.map(item => item.percentage))
-      : 0,
-    lowestScore: processedData.length > 0 
-      ? Math.min(...processedData.map(item => item.percentage))
-      : 0,
-  };
+  if (isLoading) {
+    return <div className="flex items-center justify-center p-8">Loading exam results...</div>;
+  }
 
-  const categoryDistribution = processedData.reduce((acc, item) => {
-    const category = getGradeCategory(item.percentage);
-    acc[category] = (acc[category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  if (error) {
+    return <div className="text-destructive p-8">Error loading exam results: {(error as Error).message}</div>;
+  }
 
-  const categoryDistributionData = Object.entries(categoryDistribution).map(([category, count]) => ({
-    category,
-    count,
-    percentage: Math.round((count / processedData.length) * 100)
-  }));
-
-  const handleExportPDF = async () => {
-    setIsExporting(true);
-    try {
-      const container = pdfExportRef.current;
-      if (!container) {
-        throw new Error("Export container not found");
-      }
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgWidth = pdfWidth;
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-      
-      pdf.save(`${studentName}_Exam_Report.pdf`);
-      
-      toast({
-        title: "Export complete",
-        description: "Exam report has been exported as PDF",
-      });
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast({
-        title: "Export failed",
-        description: "Failed to export exam report. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportImage = async () => {
-    setIsExporting(true);
-    try {
-      const container = pdfExportRef.current;
-      if (!container) {
-        throw new Error("Export container not found");
-      }
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
-      
-      // Create a download link
-      const link = document.createElement('a');
-      link.download = `${studentName}_Exam_Report.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      
-      toast({
-        title: "Export complete",
-        description: "Exam report has been exported as image",
-      });
-    } catch (error) {
-      console.error("Error exporting image:", error);
-      toast({
-        title: "Export failed",
-        description: "Failed to export exam report. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportCSV = () => {
-    setIsExporting(true);
-    try {
-      // Prepare data for export
-      const data = examScores
-        .filter(score => score.exam) // Only include scores that have exam data
-        .map(score => {
-          const percentage = score.exam?.max_score 
-            ? Math.round((score.score / score.exam.max_score) * 100) 
-            : 0;
-          
-          return {
-            'Exam Name': score.exam?.name || "Unknown",
-            'Term': score.exam?.term || "Unknown",
-            'Date': score.exam?.exam_date 
-              ? new Date(score.exam.exam_date).toLocaleDateString() 
-              : "Unknown",
-            'Score': score.did_not_sit ? "Did not sit" : score.score,
-            'Max Score': score.exam?.max_score || "N/A",
-            'Percentage': score.did_not_sit ? "N/A" : `${percentage}%`,
-            'Grade': score.did_not_sit ? "N/A" : calculateGrade(percentage),
-            'Performance': score.did_not_sit ? "N/A" : getGradeCategory(percentage)
-          };
-        });
-      
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(data);
-      
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Exam Results");
-      
-      // Save file
-      XLSX.writeFile(wb, `${studentName}_Exam_Results.xlsx`);
-      
-      toast({
-        title: "Export complete",
-        description: "Exam results have been exported as Excel",
-      });
-    } catch (error) {
-      console.error("Error exporting CSV:", error);
-      toast({
-        title: "Export failed",
-        description: "Failed to export exam results. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.25, 2));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
-  };
-
-  return (
-    <div className="py-4">
+  if (examScores.length === 0) {
+    return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Exam Performance</CardTitle>
-            <CardDescription>
-              View {studentName}'s academic performance
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            {loadingYears ? (
-              <Skeleton className="h-10 w-36" />
-            ) : (
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Select year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map(year => (
-                    <SelectItem key={year} value={year}>{year} Academic Year</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" /> Export Results
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsPdfPreviewOpen(true)}>
-                  <FileText className="mr-2 h-4 w-4" /> Export as PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportImage}>
-                  <FileImage className="mr-2 h-4 w-4" /> Export as Image
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileText className="mr-2 h-4 w-4" /> Export as Excel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <CardHeader>
+          <CardTitle>Exam Results</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Exam Records Table */}
-          <div>
-            <h3 className="font-medium mb-4 text-lg">
-              Exam Results - {selectedYear || "All Years"}
-            </h3>
-            
-            {loadingScores ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : examScores.length > 0 ? (
-              <ExamResultsTable 
-                examScores={examScores}
-                calculateGrade={calculateGrade}
-                getGradeCategory={getGradeCategory}
-                gradeColors={gradeColors}
-              />
-            ) : (
-              <div className="text-center p-10 border rounded-lg bg-muted/10">
-                <p className="text-muted-foreground">No exam records found for {studentName}</p>
-              </div>
-            )}
+        <CardContent>
+          <div className="flex flex-col items-center justify-center p-8">
+            <p className="text-muted-foreground">No exam results found for this student.</p>
           </div>
-
-          {/* Performance Charts */}
-          {examScores.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              {/* Trend Chart */}
-              <Card className="p-4">
-                <h3 className="font-medium mb-2">Performance Trends</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={trendData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="percentage" name="Score %" stroke="#8884d8" activeDot={{ r: 8 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-
-              {/* Term Average Chart */}
-              <Card className="p-4">
-                <h3 className="font-medium mb-2">Term Performance</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={termData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="term" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="average" name="Term Average %" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            </div>
-          )}
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* PDF Preview Dialog */}
-      <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex justify-between items-center">
-              <span>Exam Report Preview</span>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={handleZoomOut} disabled={zoomLevel <= 0.5}>
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="mx-2">{Math.round(zoomLevel * 100)}%</span>
-                <Button size="sm" variant="outline" onClick={handleZoomIn} disabled={zoomLevel >= 2}>
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="overflow-y-auto flex justify-center p-4 bg-gray-100 rounded-md">
-            <ExportPreview 
-              pdfExportRef={pdfExportRef}
-              zoomLevel={zoomLevel}
-              studentName={studentName}
-              selectedYear={selectedYear}
-              examScores={examScores}
-              trendData={trendData}
-              termData={termData}
-              overallStats={overallStats}
-              categoryDistributionData={categoryDistributionData}
-              calculateGrade={calculateGrade}
-              getGradeCategory={getGradeCategory}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleExportPDF} 
-              disabled={isExporting}
-              className="gap-2"
-            >
-              {isExporting ? "Generating..." : "Generate PDF"}
-              <Download className="h-4 w-4" />
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Exam Results</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Exam</TableHead>
+              <TableHead>Term</TableHead>
+              <TableHead>Academic Year</TableHead>
+              <TableHead className="text-right">Score</TableHead>
+              <TableHead className="text-center">Grade</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {examScores.map((score) => {
+              if (!score.exam) return null;
+              
+              // Get grade information
+              const [gradeCode, gradeText, gradeStyle] = score.did_not_sit 
+                ? ["DNS", "Did Not Sit", "text-muted-foreground bg-muted"] 
+                : getGrade(score.score, score.exam.max_score);
+                
+              // Calculate score status
+              const isPassed = score.did_not_sit 
+                ? false 
+                : score.score >= score.exam.passing_score;
+                
+              return (
+                <TableRow key={score.id}>
+                  <TableCell className="font-medium">{score.exam.name}</TableCell>
+                  <TableCell>{score.exam.term}</TableCell>
+                  <TableCell>{score.exam.academic_year}</TableCell>
+                  <TableCell className="text-right">
+                    {score.did_not_sit 
+                      ? "N/A" 
+                      : `${score.score}/${score.exam.max_score}`}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center">
+                      <Badge className={`${gradeStyle} font-bold`} variant="outline">
+                        {gradeCode}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">{gradeText}</div>
+                  </TableCell>
+                  <TableCell>
+                    {score.did_not_sit ? (
+                      <Badge variant="outline" className="bg-muted text-muted-foreground">
+                        Did Not Sit
+                      </Badge>
+                    ) : (
+                      <Badge variant={isPassed ? "default" : "destructive"}>
+                        {isPassed ? "Passed" : "Failed"}
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
