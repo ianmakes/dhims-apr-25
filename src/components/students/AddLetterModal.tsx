@@ -35,6 +35,7 @@ interface AddLetterModalProps {
 }
 
 const letterFormSchema = z.object({
+  title: z.string().min(1, { message: "Title is required" }),
   content: z.string().min(1, { message: "Content is required" }),
   date: z.string().optional(),
 });
@@ -53,6 +54,7 @@ export function AddLetterModal({
   const form = useForm<z.infer<typeof letterFormSchema>>({
     resolver: zodResolver(letterFormSchema),
     defaultValues: {
+      title: "",
       content: "",
       date: new Date().toISOString().slice(0, 10),
     },
@@ -98,6 +100,7 @@ export function AddLetterModal({
         .from('student_letters')
         .insert({
           student_id: studentId,
+          title: values.title,
           date: values.date ? new Date(values.date).toISOString() : new Date().toISOString(),
           content: values.content,
           file_url: fileUrl,
@@ -112,6 +115,14 @@ export function AddLetterModal({
         title: "Letter added",
         description: "The letter has been added successfully.",
       });
+      
+      // Reset form and close modal
+      form.reset({
+        title: "",
+        content: "",
+        date: new Date().toISOString().slice(0, 10),
+      });
+      setSelectedFile(null);
       
       onSuccess();
       onOpenChange(false);
@@ -139,6 +150,23 @@ export function AddLetterModal({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Letter Title</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter the letter title" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="content"
@@ -177,6 +205,7 @@ export function AddLetterModal({
                   type="file" 
                   onChange={handleFileChange} 
                   className="mt-1"
+                  accept=".pdf,image/*"
                 />
                 {selectedFile && (
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -192,7 +221,7 @@ export function AddLetterModal({
               </DialogClose>
               <Button 
                 type="submit" 
-                disabled={isUploading}
+                disabled={isUploading || !form.formState.isValid}
               >
                 {isUploading ? "Saving..." : "Add Letter"}
               </Button>

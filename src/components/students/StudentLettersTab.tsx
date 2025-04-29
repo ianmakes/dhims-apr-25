@@ -1,22 +1,17 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, BookOpen, Download, Mail, Calendar, Eye, Upload, X } from "lucide-react";
+import { FileText, BookOpen, Download, Mail, Calendar, Eye, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-
-interface StudentLetter {
-  id: string;
-  title: string;
-  content?: string;
-  date: string;
-  fileName?: string;
-  fileUrl?: string;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { StudentLetter } from "@/types/database";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface StudentLettersTabProps {
   studentName: string;
@@ -24,113 +19,102 @@ interface StudentLettersTabProps {
   formatDate: (date: string | Date | null | undefined) => string;
 }
 
-// Mock data for letters
-const mockLetters: StudentLetter[] = [
-  {
-    id: "1",
-    title: "Thank you letter to sponsor",
-    content: "Dear Sponsor, thank you for your continued support...",
-    date: new Date(2024, 1, 15).toISOString(),
-    fileUrl: "https://example.com/letter1.pdf",
-    fileName: "letter1.pdf"
-  },
-  {
-    id: "2",
-    title: "School progress update",
-    content: "Dear Sponsor, I am doing well in school...",
-    date: new Date(2024, 2, 20).toISOString(),
-    fileUrl: "https://example.com/letter2.pdf",
-    fileName: "letter2.pdf"
-  },
-  {
-    id: "3",
-    title: "Holiday greetings",
-    content: "Dear Sponsor, Happy holidays to you and your family...",
-    date: new Date(2024, 3, 10).toISOString(),
-    fileUrl: "https://example.com/letter3.pdf",
-    fileName: "letter3.pdf"
-  }
-];
-
 export function StudentLettersTab({ studentName, onAddLetter, formatDate }: StudentLettersTabProps) {
-  const [letters] = useState<StudentLetter[]>(mockLetters);
-  const [isAddLetterModalOpen, setIsAddLetterModalOpen] = useState(false);
+  const queryClient = useQueryClient();
   const [isViewLetterModalOpen, setIsViewLetterModalOpen] = useState(false);
   const [currentLetter, setCurrentLetter] = useState<StudentLetter | null>(null);
-  const [newLetter, setNewLetter] = useState({
-    title: "",
-    content: "",
-    date: new Date().toISOString().slice(0, 10),
-    fileName: "",
-    fileUrl: ""
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  
+  // Fetch letters from the database
+  const { data: letters = [], isLoading, error } = useQuery({
+    queryKey: ['student-letters', currentLetter?.student_id],
+    queryFn: async () => {
+      if (!currentLetter?.student_id) return [];
+      
+      const { data, error } = await supabase
+        .from('student_letters')
+        .select('*')
+        .eq('student_id', currentLetter.student_id)
+        .order('date', { ascending: false });
+        
+      if (error) throw error;
+      return data as StudentLetter[];
+    },
+    enabled: !!currentLetter?.student_id,
   });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setNewLetter(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setNewLetter(prev => ({ 
-        ...prev, 
-        fileName: file.name,
-        fileUrl: URL.createObjectURL(file) // Temporary URL for preview
-      }));
-    }
-  };
-
-  const handleAddLetter = async () => {
-    if (!newLetter.title || (!newLetter.content && !selectedFile)) {
-      alert("Please provide a title and either content or upload a file");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      // In a real implementation, you would upload the file to storage
-      // and save letter data to the database
+  // Query to fetch all letters for a specific student
+  const { data: studentLetters = [], refetch: refetchLetters } = useQuery({
+    queryKey: ['student-letters', currentLetter?.student_id],
+    queryFn: async () => {
+      const studentId = new URL(window.location.href).pathname.split('/').pop();
+      if (!studentId) return [];
       
-      // Simulate uploading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Reset form and close modal
-      setNewLetter({
-        title: "",
-        content: "",
-        date: new Date().toISOString().slice(0, 10),
-        fileName: "",
-        fileUrl: ""
-      });
-      setSelectedFile(null);
-      setIsAddLetterModalOpen(false);
-      
-      // This would refresh the letters in a real implementation
-      onAddLetter();
-      
-      toast.success("Letter added successfully");
-    } catch (error) {
-      console.error("Error adding letter:", error);
-      toast.error("Failed to add letter");
-    } finally {
-      setIsUploading(false);
-    }
-  };
+      const { data, error } = await supabase
+        .from('student_letters')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('date', { ascending: false });
+        
+      if (error) throw error;
+      return data as StudentLetter[];
+    },
+  });
 
   const handleViewLetter = (letter: StudentLetter) => {
     setCurrentLetter(letter);
     setIsViewLetterModalOpen(true);
+    setZoomLevel(1); // Reset zoom level when opening a new letter
   };
 
   const handleSendEmail = (letter: StudentLetter) => {
     // In a real implementation, this would trigger an email to the sponsor
-    toast.success(`Email with letter "${letter.title}" sent to sponsor`);
+    toast.success(`Email with letter "${letter.title || 'Letter'}" sent to sponsor`);
+  };
+
+  const handleDeleteLetter = async () => {
+    if (!currentLetter) return;
+    
+    try {
+      const { error } = await supabase
+        .from('student_letters')
+        .delete()
+        .eq('id', currentLetter.id);
+        
+      if (error) throw error;
+      
+      toast.success("Letter deleted successfully");
+      setIsDeleteDialogOpen(false);
+      setIsViewLetterModalOpen(false);
+      refetchLetters();
+    } catch (error) {
+      console.error('Error deleting letter:', error);
+      toast.error("Failed to delete letter");
+    }
+  };
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3)); // Limit max zoom to 3x
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5)); // Limit min zoom to 0.5x
+  };
+
+  // Function to determine if the file is a PDF
+  const isPDF = (url: string | undefined) => {
+    if (!url) return false;
+    return url.toLowerCase().endsWith('.pdf');
+  };
+
+  // Function to determine if the file is an image
+  const isImage = (url: string | undefined) => {
+    if (!url) return false;
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || 
+           lowerUrl.endsWith('.png') || lowerUrl.endsWith('.gif') || 
+           lowerUrl.endsWith('.webp');
   };
 
   return (
@@ -141,18 +125,26 @@ export function StudentLettersTab({ studentName, onAddLetter, formatDate }: Stud
             <CardTitle>Student Letters</CardTitle>
             <CardDescription>Letters from {studentName} to sponsors</CardDescription>
           </div>
-          <Button onClick={() => setIsAddLetterModalOpen(true)}>
+          <Button onClick={onAddLetter}>
             <FileText className="mr-2 h-4 w-4" />
             Add Letter
           </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {letters.length > 0 ? (
-              letters.map((letter) => (
+            {isLoading ? (
+              <div className="flex justify-center items-center p-8">
+                <p>Loading letters...</p>
+              </div>
+            ) : error ? (
+              <div className="flex justify-center items-center p-8 text-red-500">
+                <p>Error loading letters: {(error as Error).message}</p>
+              </div>
+            ) : studentLetters.length > 0 ? (
+              studentLetters.map((letter) => (
                 <div key={letter.id} className="rounded-lg border p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium">{letter.title}</h3>
+                    <h3 className="font-medium">{letter.title || 'Letter'}</h3>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
@@ -170,9 +162,14 @@ export function StudentLettersTab({ studentName, onAddLetter, formatDate }: Stud
                       <Eye className="mr-2 h-4 w-4" />
                       View Letter
                     </Button>
-                    {letter.fileUrl && (
+                    {letter.file_url && (
                       <Button variant="outline" size="sm" asChild>
-                        <a href={letter.fileUrl} download={letter.fileName} target="_blank" rel="noreferrer">
+                        <a 
+                          href={letter.file_url} 
+                          download={`letter-${letter.id}${isPDF(letter.file_url) ? '.pdf' : '.jpg'}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                        >
                           <Download className="mr-2 h-4 w-4" />
                           Download
                         </a>
@@ -188,7 +185,7 @@ export function StudentLettersTab({ studentName, onAddLetter, formatDate }: Stud
             ) : (
               <div className="flex flex-col items-center justify-center p-8">
                 <p className="mb-4 text-muted-foreground">No letters available</p>
-                <Button onClick={() => setIsAddLetterModalOpen(true)}>
+                <Button onClick={onAddLetter}>
                   <FileText className="mr-2 h-4 w-4" />
                   Add First Letter
                 </Button>
@@ -198,138 +195,117 @@ export function StudentLettersTab({ studentName, onAddLetter, formatDate }: Stud
         </CardContent>
       </Card>
 
-      {/* Add Letter Modal */}
-      <Dialog open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Letter</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Letter Title</Label>
-              <Input
-                id="title"
-                name="title"
-                value={newLetter.title}
-                onChange={handleInputChange}
-                placeholder="Enter letter title"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="content">Letter Content (Optional if file is uploaded)</Label>
-              <Textarea
-                id="content"
-                name="content"
-                rows={4}
-                value={newLetter.content}
-                onChange={handleInputChange}
-                placeholder="Enter letter content"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                name="date"
-                type="date"
-                value={newLetter.date}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="file">Upload File (PDF or Image)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="file"
-                  type="file"
-                  accept=".pdf,image/*"
-                  onChange={handleFileChange}
-                  className={selectedFile ? "hidden" : ""}
-                />
-                {selectedFile && (
-                  <div className="flex items-center gap-2 p-2 border rounded-md w-full">
-                    <div className="flex-1 truncate">{selectedFile.name}</div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => {
-                        setSelectedFile(null);
-                        setNewLetter(prev => ({ ...prev, fileName: "", fileUrl: "" }));
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddLetterModalOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleAddLetter} 
-              disabled={isUploading || !newLetter.title || (!newLetter.content && !selectedFile)}
-            >
-              {isUploading ? "Uploading..." : "Add Letter"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* View Letter Modal */}
       {currentLetter && (
         <Dialog open={isViewLetterModalOpen} onOpenChange={setIsViewLetterModalOpen}>
-          <DialogContent className="sm:max-w-3xl">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
-              <DialogTitle>{currentLetter.title}</DialogTitle>
+              <DialogTitle>{currentLetter.title || 'Letter'}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Calendar className="h-4 w-4" />
                 <span>{formatDate(currentLetter.date)}</span>
               </div>
+              
               {currentLetter.content && (
-                <div className="border rounded-md p-4 bg-gray-50">
+                <div className="border rounded-md p-4 bg-gray-50 max-h-40 overflow-y-auto">
                   <p className="whitespace-pre-wrap">{currentLetter.content}</p>
                 </div>
               )}
-              {currentLetter.fileUrl && (
-                <div className="border rounded-md overflow-hidden">
-                  {currentLetter.fileUrl.endsWith('.pdf') ? (
-                    <iframe 
-                      src={currentLetter.fileUrl} 
-                      title={currentLetter.title}
-                      className="w-full h-96"
-                    />
-                  ) : (
-                    <img 
-                      src={currentLetter.fileUrl} 
-                      alt={currentLetter.title}
-                      className="max-h-96 mx-auto object-contain" 
-                    />
-                  )}
+              
+              {currentLetter.file_url && (
+                <div className="border rounded-md overflow-hidden relative">
+                  <div className="absolute top-2 right-2 z-10 flex gap-2 bg-white/80 p-1 rounded-md shadow">
+                    <Button variant="outline" size="icon" onClick={handleZoomIn}>
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handleZoomOut}>
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div style={{ overflow: 'auto', maxHeight: '60vh' }}>
+                    {isPDF(currentLetter.file_url) ? (
+                      <iframe 
+                        src={`${currentLetter.file_url}#zoom=${zoomLevel * 100}`}
+                        title={currentLetter.title || 'Letter PDF'}
+                        className="w-full h-[60vh]"
+                        style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
+                      />
+                    ) : isImage(currentLetter.file_url) ? (
+                      <div className="flex justify-center">
+                        <img 
+                          src={currentLetter.file_url} 
+                          alt={currentLetter.title || 'Letter Image'}
+                          className="max-h-[60vh] object-contain"
+                          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center">
+                        <p>Preview not available for this file type.</p>
+                        <Button variant="outline" size="sm" asChild className="mt-2">
+                          <a href={currentLetter.file_url} target="_blank" rel="noreferrer">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download File
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
             <DialogFooter>
-              <div className="flex gap-2">
-                {currentLetter.fileUrl && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={currentLetter.fileUrl} download={currentLetter.fileName} target="_blank" rel="noreferrer">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </a>
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => handleSendEmail(currentLetter)}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email to Sponsor
+              <div className="flex justify-between w-full">
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
+                  Delete
                 </Button>
+                <div className="flex gap-2">
+                  {currentLetter.file_url && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a 
+                        href={currentLetter.file_url} 
+                        download={`letter-${currentLetter.id}${isPDF(currentLetter.file_url) ? '.pdf' : '.jpg'}`}
+                        target="_blank" 
+                        rel="noreferrer"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </a>
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => handleSendEmail(currentLetter)}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email to Sponsor
+                  </Button>
+                </div>
               </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the letter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLetter}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
