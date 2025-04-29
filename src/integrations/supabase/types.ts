@@ -127,6 +127,8 @@ export type Database = {
           last_name: string
           notes: string | null
           phone: string | null
+          primary_email_for_updates: string | null
+          profile_image_url: string | null
           slug: string | null
           start_date: string
           status: string
@@ -145,6 +147,8 @@ export type Database = {
           last_name: string
           notes?: string | null
           phone?: string | null
+          primary_email_for_updates?: string | null
+          profile_image_url?: string | null
           slug?: string | null
           start_date: string
           status?: string
@@ -163,6 +167,8 @@ export type Database = {
           last_name?: string
           notes?: string | null
           phone?: string | null
+          primary_email_for_updates?: string | null
+          profile_image_url?: string | null
           slug?: string | null
           start_date?: string
           status?: string
