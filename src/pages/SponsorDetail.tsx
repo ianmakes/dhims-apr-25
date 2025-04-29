@@ -380,8 +380,8 @@ export default function SponsorDetail() {
             <TabsContent value="assign" className="py-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Assign Students to Sponsor</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-left">Assign Students to Sponsor</CardTitle>
+                  <CardDescription className="text-left">
                     Select students to be sponsored by {sponsor.first_name} {sponsor.last_name}
                   </CardDescription>
                 </CardHeader>
