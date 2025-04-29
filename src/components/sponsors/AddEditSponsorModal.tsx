@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +40,7 @@ import { Calendar as CalendarIcon, Image, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { SponsorFormValues } from "@/hooks/useSponsors";
-import { Radio, RadioGroup, RadioIndicator, RadioItem } from "@/components/ui/radio-group";
+import { RadioGroup, RadioIndicator, RadioItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -85,7 +85,7 @@ export function AddEditSponsorModal({
     sponsor ? new Date(sponsor.startDate) : new Date()
   );
   const [uploadingImage, setUploadingImage] = useState(false);
-  const fileInputRef = useState<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Helper function to format date to YYYY-MM-DD safely
   const formatDateSafely = (date: Date | string | undefined): string => {
@@ -280,12 +280,12 @@ export function AddEditSponsorModal({
                               accept="image/*"
                               className="hidden"
                               onChange={handleFileChange}
-                              ref={(input) => fileInputRef[1] = input}
+                              ref={fileInputRef}
                             />
                             <Button 
                               type="button" 
                               variant="outline"
-                              onClick={() => fileInputRef[1]?.click()}
+                              onClick={() => fileInputRef.current?.click()}
                               disabled={uploadingImage}
                             >
                               {uploadingImage ? (

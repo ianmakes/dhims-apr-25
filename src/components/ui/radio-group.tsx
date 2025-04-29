@@ -5,6 +5,8 @@ import { Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+const Radio = RadioGroupPrimitive.Root;
+
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
@@ -42,4 +44,4 @@ RadioItem.displayName = RadioGroupPrimitive.Item.displayName
 
 const RadioIndicator = RadioGroupPrimitive.Indicator
 
-export { RadioGroup, RadioItem, RadioIndicator }
+export { RadioGroup, RadioItem, RadioIndicator, Radio }
