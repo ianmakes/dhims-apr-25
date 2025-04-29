@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, X, Maximize, Calendar, MapPin, Info } from "lucide-react";
+import { PlusCircle, X, Maximize, Calendar, MapPin, Info, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import ImageUploadCropper from "./ImageUploadCropper";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,8 @@ interface StudentPhotosTabProps {
 export function StudentPhotosTab({ studentName, studentId, formatDate }: StudentPhotosTabProps) {
   const [viewPhoto, setViewPhoto] = useState<StudentPhoto | null>(null);
   const [isAddPhotoModalOpen, setIsAddPhotoModalOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(-1);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const { toast } = useToast();
   const { user } = useAuth();
   const [newPhoto, setNewPhoto] = useState({
@@ -40,6 +43,7 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
   } = useQuery<StudentPhoto[]>({
     queryKey: ['student-photos', studentId],
     queryFn: async () => {
+      if (!studentId) throw new Error('Student ID is required');
       const { data, error } = await supabase
         .from('student_photos')
         .select('*')
@@ -146,6 +150,11 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
         description: "Photo has been deleted successfully"
       });
       
+      // Close gallery if it's the deleted photo
+      if (galleryIndex !== -1 && photos[galleryIndex]?.id === photoId) {
+        setGalleryIndex(-1);
+      }
+      
       // Close view dialog if it's the deleted photo
       if (viewPhoto?.id === photoId) {
         setViewPhoto(null);
@@ -160,6 +169,22 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
         variant: "destructive"
       });
     }
+  };
+
+  const handlePrevPhoto = () => {
+    setGalleryIndex(prev => (prev > 0 ? prev - 1 : photos.length - 1));
+  };
+
+  const handleNextPhoto = () => {
+    setGalleryIndex(prev => (prev < photos.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
   };
 
   return (
@@ -177,20 +202,20 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
         </CardHeader>
         <CardContent>
           {loadingPhotos ? (
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="space-y-2">
-                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="aspect-square w-full" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
                 </div>
               ))}
             </div>
           ) : photos.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {photos.map((photo) => (
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {photos.map((photo, index) => (
                 <div key={photo.id} className="overflow-hidden rounded-lg border group relative">
-                  <div className="relative h-48">
+                  <div className="relative aspect-square">
                     <img 
                       src={photo.url} 
                       alt={photo.caption} 
@@ -198,13 +223,17 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
                       onError={() => {
                         console.error("Failed to load image:", photo.url);
                       }}
+                      onClick={() => setGalleryIndex(index)}
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <Button 
                         variant="secondary" 
                         size="sm" 
                         className="rounded-full" 
-                        onClick={() => setViewPhoto(photo)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewPhoto(photo);
+                        }}
                       >
                         <Maximize className="h-4 w-4" />
                       </Button>
@@ -212,7 +241,10 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
                         variant="destructive" 
                         size="sm" 
                         className="rounded-full" 
-                        onClick={() => handleDeletePhoto(photo.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePhoto(photo.id);
+                        }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -230,10 +262,6 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
                         <span className="truncate">{photo.location}</span>
                       </div>
                     )}
-                    <div className="flex items-center text-muted-foreground text-xs">
-                      <Info className="h-3 w-3 mr-1" />
-                      <span>{formatDate(photo.created_at)}</span>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -263,7 +291,7 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
                 value={newPhoto.url}
                 onChange={handleImageChange}
                 label="Upload Photo"
-                aspectRatio={16/9}
+                aspectRatio={1/1} // Changed to 1:1 aspect ratio
               />
             </div>
             <div className="grid gap-2">
@@ -341,6 +369,97 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
                 </div>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Gallery View */}
+      {galleryIndex !== -1 && photos[galleryIndex] && (
+        <Dialog open={galleryIndex !== -1} onOpenChange={() => setGalleryIndex(-1)}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex justify-between items-center">
+                <span>{photos[galleryIndex].caption}</span>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={handleZoomOut} disabled={zoomLevel <= 0.5}>
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="mx-2">{Math.round(zoomLevel * 100)}%</span>
+                  <Button size="sm" variant="outline" onClick={handleZoomIn} disabled={zoomLevel >= 3}>
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="relative flex justify-center items-center">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute left-0 z-10 bg-background/80 rounded-full" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevPhoto();
+                }}
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              
+              <div 
+                className="overflow-hidden flex justify-center items-center p-4"
+                style={{ maxHeight: 'calc(90vh - 180px)' }}
+              >
+                <img 
+                  src={photos[galleryIndex].url} 
+                  alt={photos[galleryIndex].caption}
+                  className="max-h-full max-w-full object-contain rounded-md transition-transform duration-200"
+                  style={{ transform: `scale(${zoomLevel})` }}
+                />
+              </div>
+              
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 z-10 bg-background/80 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNextPhoto();
+                }}
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+            </div>
+            
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">{formatDate(photos[galleryIndex].date)}</span>
+                
+                {photos[galleryIndex].location && (
+                  <>
+                    <span className="mx-2">•</span>
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{photos[galleryIndex].location}</span>
+                  </>
+                )}
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                {galleryIndex + 1} of {photos.length}
+              </div>
+            </div>
+            
+            <DialogFooter className="mt-2">
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => {
+                  handleDeletePhoto(photos[galleryIndex].id);
+                }}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Delete Photo
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,8 @@ import { StudentSponsorTab } from "@/components/students/StudentSponsorTab";
 import { StudentPhotosTab } from "@/components/students/StudentPhotosTab";
 import { StudentLettersTab } from "@/components/students/StudentLettersTab";
 import { StudentTimelineTab } from "@/components/students/StudentTimelineTab";
+import { EditTimelineEventModal } from "@/components/students/EditTimelineEventModal";
+
 export default function StudentDetail() {
   const {
     id
@@ -42,6 +45,8 @@ export default function StudentDetail() {
   const [isAddPhotoModalOpen, setIsAddPhotoModalOpen] = useState(false);
   const [isAddLetterModalOpen, setIsAddLetterModalOpen] = useState(false);
   const [isAddTimelineEventModalOpen, setIsAddTimelineEventModalOpen] = useState(false);
+  const [isEditTimelineEventModalOpen, setIsEditTimelineEventModalOpen] = useState(false);
+  const [currentTimelineEvent, setCurrentTimelineEvent] = useState(null);
 
   // Fetch student data
   const {
@@ -60,6 +65,24 @@ export default function StudentDetail() {
       return data;
     },
     enabled: !!id
+  });
+
+  // Fetch sponsor data if student has a sponsor_id
+  const {
+    data: sponsor,
+    isLoading: sponsorLoading
+  } = useQuery({
+    queryKey: ['sponsor', student?.sponsor_id],
+    queryFn: async () => {
+      if (!student?.sponsor_id) return null;
+      const {
+        data,
+        error
+      } = await supabase.from('sponsors').select('*').eq('id', student.sponsor_id).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!student?.sponsor_id
   });
 
   // Fetch timeline events
@@ -82,23 +105,25 @@ export default function StudentDetail() {
     enabled: !!id
   });
 
-  // Mock functions for photos and letters (would be replaced with real API calls)
-  const getStudentPhotos = () => {
-    if (!id) return [];
-    try {
-      const storedPhotos = localStorage.getItem(`student_photos_${id}`);
-      return storedPhotos ? JSON.parse(storedPhotos) : [];
-    } catch (error) {
-      console.error('Error getting photos:', error);
-      return [];
-    }
-  };
-  const [photos, setPhotos] = useState(getStudentPhotos());
-
-  // Update photos when ID changes
-  useEffect(() => {
-    setPhotos(getStudentPhotos());
-  }, [id]);
+  // Fetch letters
+  const {
+    data: studentLetters = [],
+    refetch: refetchLetters
+  } = useQuery({
+    queryKey: ['student-letters', id],
+    queryFn: async () => {
+      if (!id) throw new Error('Student ID is required');
+      const {
+        data,
+        error
+      } = await supabase.from('student_letters').select('*').eq('student_id', id).order('date', {
+        ascending: false
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id
+  });
 
   // Mutation to update student status
   const updateStatusMutation = useMutation({
@@ -183,6 +208,12 @@ export default function StudentDetail() {
     }
   };
 
+  // Function to edit timeline event
+  const handleEditTimelineEvent = (event: any) => {
+    setCurrentTimelineEvent(event);
+    setIsEditTimelineEventModalOpen(true);
+  };
+
   // Helper for formatting dates
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return "N/A";
@@ -227,7 +258,7 @@ export default function StudentDetail() {
             </h1>
           </div>
           <p className="text-muted-foreground text-left">
-            Student ID: {student.admission_number} • {student.current_grade}
+            Student ID: {student.admission_number} • {student.cbc_grade || student.current_grade}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -235,10 +266,14 @@ export default function StudentDetail() {
             <span className="text-sm font-medium">
               {student.status === "Active" ? "Active" : "Inactive"}
             </span>
-            <Switch checked={student.status === "Active"} onCheckedChange={handleToggleStatus} />
+            <Switch 
+              checked={student.status === "Active"} 
+              onCheckedChange={handleToggleStatus} 
+              className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input rounded-none"
+            />
           </div>
           
-          <StudentProfilePDF student={typedStudent} />
+          <StudentProfilePDF student={typedStudent} sponsor={sponsor} />
           
           <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
@@ -270,16 +305,37 @@ export default function StudentDetail() {
               <StudentExamsTab studentName={student.name} studentId={student.id} />
             </TabsContent>
             <TabsContent value="sponsor">
-              <StudentSponsorTab student={typedStudent} formatDate={formatDate} navigate={navigate} toast={toast} />
+              <StudentSponsorTab 
+                student={typedStudent} 
+                sponsor={sponsor} 
+                isLoading={sponsorLoading} 
+                formatDate={formatDate} 
+                navigate={navigate} 
+                toast={toast} 
+              />
             </TabsContent>
             <TabsContent value="photos">
               <StudentPhotosTab studentName={student.name} studentId={student.id} formatDate={formatDate} />
             </TabsContent>
             <TabsContent value="letters">
-              <StudentLettersTab studentName={student.name} onAddLetter={() => setIsAddLetterModalOpen(true)} formatDate={formatDate} />
+              <StudentLettersTab 
+                studentName={student.name} 
+                studentId={student.id} 
+                letters={studentLetters}
+                refetchLetters={refetchLetters}
+                onAddLetter={() => setIsAddLetterModalOpen(true)} 
+                formatDate={formatDate} 
+              />
             </TabsContent>
             <TabsContent value="timeline">
-              <StudentTimelineTab studentName={student.name} timelineEvents={timelineEvents} onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)} formatDate={formatDate} />
+              <StudentTimelineTab 
+                studentName={student.name} 
+                timelineEvents={timelineEvents} 
+                onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)} 
+                onEditTimelineEvent={handleEditTimelineEvent}
+                refetchTimeline={refetchTimeline}
+                formatDate={formatDate} 
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -295,12 +351,13 @@ export default function StudentDetail() {
       {/* Add Photo Modal */}
       <AddPhotoModal open={isAddPhotoModalOpen} onOpenChange={setIsAddPhotoModalOpen} studentId={id || ""} onSuccess={() => {
       // Update photos list
-      setPhotos(getStudentPhotos());
+      queryClient.invalidateQueries({ queryKey: ['student-photos', id] });
     }} />
 
       {/* Add Letter Modal */}
       <AddLetterModal open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen} studentId={id || ""} onSuccess={() => {
       // Refresh letters
+      refetchLetters();
     }} />
 
       {/* Add Timeline Event Modal */}
@@ -308,5 +365,18 @@ export default function StudentDetail() {
       // Refresh timeline events
       refetchTimeline();
     }} />
+
+      {/* Edit Timeline Event Modal */}
+      {currentTimelineEvent && (
+        <EditTimelineEventModal
+          open={isEditTimelineEventModalOpen}
+          onOpenChange={setIsEditTimelineEventModalOpen}
+          event={currentTimelineEvent}
+          onSuccess={() => {
+            refetchTimeline();
+            setCurrentTimelineEvent(null);
+          }}
+        />
+      )}
     </div>;
 }

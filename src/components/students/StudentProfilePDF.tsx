@@ -77,7 +77,7 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
           {/* Header with Logo */}
           <div style={{ display: "flex", borderBottom: "1px solid #000", paddingBottom: "10px", marginBottom: "20px" }}>
             <img 
-              src="/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png" 
+              src="/lovable-uploads/4fe39649-bf54-408f-9b41-7aa63810a53c.png" 
               alt="David's Hope Logo" 
               style={{ height: "60px" }}
             />
@@ -94,7 +94,7 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
               
               <div style={{ marginBottom: "15px" }}>
                 <p style={{ margin: "5px 0" }}><strong>ADM No:</strong> {student.admission_number}</p>
-                <p style={{ margin: "5px 0" }}><strong>Grade:</strong> {student.current_grade}</p>
+                <p style={{ margin: "5px 0" }}><strong>Grade:</strong> {student.cbc_grade || student.current_grade}</p>
                 <p style={{ margin: "5px 0" }}><strong>Age:</strong> {student.dob ? 
                   Math.floor((new Date().getTime() - new Date(student.dob).getTime()) / 3.15576e+10) : 'N/A'}</p>
                 <p style={{ margin: "5px 0" }}><strong>Date of Birth:</strong> {student.dob ? 
