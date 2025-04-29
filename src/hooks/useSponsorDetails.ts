@@ -319,6 +319,55 @@ export const useSponsorDetails = (sponsorId: string) => {
     },
   });
 
+  // Mutation to update a timeline event
+  const updateTimelineEventMutation = useMutation({
+    mutationFn: async (event: Partial<SponsorTimelineEvent> & { id: string }) => {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_timeline_events?id=eq.${event.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...getAuthHeaders(),
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(event),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update timeline event: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data[0] as SponsorTimelineEvent;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsor-timeline", sponsorId] });
+      toast.success("Timeline event updated successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to update timeline event: " + error.message);
+    },
+  });
+
+  // Mutation to delete a timeline event
+  const deleteTimelineEventMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/sponsor_timeline_events?id=eq.${eventId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete timeline event: ${response.statusText}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsor-timeline", sponsorId] });
+      toast.success("Timeline event deleted successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete timeline event: " + error.message);
+    },
+  });
+
   return {
     sponsor,
     availableStudents,
@@ -333,5 +382,7 @@ export const useSponsorDetails = (sponsorId: string) => {
     updateSponsorRelative: updateSponsorRelativeMutation.mutate,
     deleteSponsorRelative: deleteSponsorRelativeMutation.mutate,
     addTimelineEvent: addTimelineEventMutation.mutate,
+    updateTimelineEvent: updateTimelineEventMutation.mutate,
+    deleteTimelineEvent: deleteTimelineEventMutation.mutate,
   };
 };
