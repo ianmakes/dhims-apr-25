@@ -769,13 +769,13 @@ export default function ExamDetail() {
         <TabsContent value="analytics" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Performance Analysis</CardTitle>
-              <CardDescription>Detailed exam performance analytics</CardDescription>
+              <CardTitle className="text-left">Performance Analysis</CardTitle>
+              <CardDescription className="text-left">Detailed exam performance analytics</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Score Summary</h3>
+                  <h3 className="text-lg font-medium mb-4 text-left">Score Summary</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="flex flex-col space-y-2">
                       <div className="flex justify-between">
