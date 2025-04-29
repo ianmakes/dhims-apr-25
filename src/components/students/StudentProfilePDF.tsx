@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf"; // Fix: import jsPDF correctly with curly braces
+import { jsPDF } from "jspdf"; 
 import { format } from "date-fns";
 
 interface StudentProfilePDFProps {
@@ -13,6 +13,7 @@ interface StudentProfilePDFProps {
 
 export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("/lovable-uploads/cfaa6871-8787-452c-a86e-860d6d66e5eb.png");
 
   const generatePDF = async () => {
     setIsGenerating(true);
@@ -64,6 +65,12 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
     }
   };
 
+  // Calculate age based on DOB
+  const calculateAge = () => {
+    if (!student.dob) return 'N/A';
+    return Math.floor((new Date().getTime() - new Date(student.dob).getTime()) / 3.15576e+10);
+  };
+
   return (
     <>
       <Button onClick={generatePDF} disabled={isGenerating} className="flex gap-2">
@@ -77,7 +84,7 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
           {/* Header with Logo */}
           <div style={{ display: "flex", borderBottom: "1px solid #000", paddingBottom: "10px", marginBottom: "20px" }}>
             <img 
-              src="/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png" 
+              src={logoUrl}
               alt="David's Hope Logo" 
               style={{ height: "60px" }}
             />
@@ -94,12 +101,11 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
               
               <div style={{ marginBottom: "15px" }}>
                 <p style={{ margin: "5px 0" }}><strong>ADM No:</strong> {student.admission_number}</p>
-                <p style={{ margin: "5px 0" }}><strong>Grade:</strong> {student.current_grade}</p>
-                <p style={{ margin: "5px 0" }}><strong>Age:</strong> {student.dob ? 
-                  Math.floor((new Date().getTime() - new Date(student.dob).getTime()) / 3.15576e+10) : 'N/A'}</p>
+                <p style={{ margin: "5px 0" }}><strong>Grade:</strong> {student.cbc_category || student.current_grade}</p>
+                <p style={{ margin: "5px 0" }}><strong>Age:</strong> {calculateAge()}</p>
                 <p style={{ margin: "5px 0" }}><strong>Date of Birth:</strong> {student.dob ? 
                   format(new Date(student.dob), 'MMM dd, yyyy') : 'N/A'}</p>
-                <p style={{ margin: "5px 0" }}><strong>Student Category:</strong> {student.cbc_category}</p>
+                <p style={{ margin: "5px 0" }}><strong>Student Category:</strong> {student.school_level || 'N/A'}</p>
                 <p style={{ margin: "5px 0" }}><strong>Location:</strong> {student.location?.toUpperCase() || 'N/A'}</p>
                 <p style={{ margin: "5px 0" }}><strong>Started Scholarship:</strong> {student.sponsored_since ? 
                   format(new Date(student.sponsored_since), 'MMM dd, yyyy') : 'N/A'}</p>

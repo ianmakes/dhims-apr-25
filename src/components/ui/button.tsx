@@ -10,7 +10,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-wp-primary text-white hover:bg-wp-primary/90 shadow-sm",
+        default: "bg-black text-white hover:bg-black/90 shadow-sm",  // Changed from wp-primary to black
         destructive:
           "bg-wp-error text-white hover:bg-wp-error/90 shadow-sm",
         outline:
@@ -18,7 +18,7 @@ const buttonVariants = cva(
         secondary:
           "bg-wp-gray-200 text-wp-text-primary hover:bg-wp-gray-300",
         ghost: "hover:bg-wp-gray-100 text-wp-text-secondary hover:text-wp-text-primary",
-        link: "text-wp-primary underline-offset-4 hover:underline",
+        link: "text-black underline-offset-4 hover:underline",  // Changed from wp-primary to black
         success: "bg-wp-success text-white hover:bg-wp-success/90 shadow-sm",
         warning: "bg-wp-warning text-white hover:bg-wp-warning/90 shadow-sm",
         "wp-primary": "bg-wp-primary text-white hover:bg-wp-primary/90 shadow-sm",

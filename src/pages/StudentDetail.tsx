@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Edit, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { AddPhotoModal } from "@/components/students/AddPhotoModal";
 import { AddLetterModal } from "@/components/students/AddLetterModal";
@@ -15,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { StudentFormInput } from "@/types/database";
+import { CustomSwitch } from "@/components/ui/custom-switch";
 
 // Import components
 import { StudentProfileSidebar } from "@/components/students/StudentProfileSidebar";
@@ -24,24 +24,23 @@ import { StudentSponsorTab } from "@/components/students/StudentSponsorTab";
 import { StudentPhotosTab } from "@/components/students/StudentPhotosTab";
 import { StudentLettersTab } from "@/components/students/StudentLettersTab";
 import { StudentTimelineTab } from "@/components/students/StudentTimelineTab";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
+
 export default function StudentDetail() {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
+  // ... keep existing code (variable and state declarations)
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    user
-  } = useAuth();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { currentYear } = useAcademicYear();
   const queryClient = useQueryClient();
+  
+  // ... keep existing code (modal states)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddPhotoModalOpen, setIsAddPhotoModalOpen] = useState(false);
   const [isAddLetterModalOpen, setIsAddLetterModalOpen] = useState(false);
   const [isAddTimelineEventModalOpen, setIsAddTimelineEventModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Fetch student data
   const {
@@ -49,17 +48,18 @@ export default function StudentDetail() {
     isLoading,
     error
   } = useQuery({
-    queryKey: ['student', id],
+    queryKey: ['student', id, currentYear?.id],
     queryFn: async () => {
       if (!id) throw new Error('Student ID is required');
-      const {
-        data,
-        error
-      } = await supabase.from('students').select('*').eq('id', id).single();
+      const { data, error } = await supabase
+        .from('students')
+        .select('*, sponsors(first_name, last_name)')
+        .eq('id', id)
+        .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!id
+    enabled: !!id && !!currentYear
   });
 
   // Fetch timeline events
@@ -102,28 +102,22 @@ export default function StudentDetail() {
 
   // Mutation to update student status
   const updateStatusMutation = useMutation({
-    mutationFn: async ({
-      id,
-      status
-    }: {
-      id: string;
-      status: string;
-    }) => {
-      const {
-        data,
-        error
-      } = await supabase.from('students').update({
-        status,
-        updated_by: user?.id,
-        updated_at: new Date().toISOString()
-      }).eq('id', id).select().single();
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('students')
+        .update({
+          status,
+          updated_by: user?.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['student', id]
-      });
+      queryClient.invalidateQueries({ queryKey: ['student', id] });
       toast({
         title: "Status updated",
         description: "Student status has been updated successfully."
@@ -192,17 +186,22 @@ export default function StudentDetail() {
       day: 'numeric'
     }).format(new Date(date));
   };
+
+  // ... keep existing code (loading and error handling)
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-96">Loading student details...</div>;
   }
   if (error || !student) {
-    return <div className="flex flex-col items-center justify-center h-96">
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
         <h2 className="text-2xl font-bold">Error loading student</h2>
         <p className="text-muted-foreground">Could not find student details</p>
         <Button onClick={() => navigate('/students')} className="mt-4">
           Back to Students
         </Button>
-      </div>;
+      </div>
+    );
   }
 
   // Ensure student data has the correct types for components
@@ -211,7 +210,9 @@ export default function StudentDetail() {
     // Ensure gender is correctly typed as "Male" or "Female"
     gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const // Default to "Male" if it's not a valid value
   };
-  return <div className="space-y-6 fade-in">
+
+  return (
+    <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -227,7 +228,7 @@ export default function StudentDetail() {
             </h1>
           </div>
           <p className="text-muted-foreground text-left">
-            Student ID: {student.admission_number} • {student.current_grade}
+            Student ID: {student.admission_number} • {student.cbc_category || student.current_grade}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -235,7 +236,7 @@ export default function StudentDetail() {
             <span className="text-sm font-medium">
               {student.status === "Active" ? "Active" : "Inactive"}
             </span>
-            <Switch checked={student.status === "Active"} onCheckedChange={handleToggleStatus} />
+            <CustomSwitch checked={student.status === "Active"} onCheckedChange={handleToggleStatus} />
           </div>
           
           <StudentProfilePDF student={typedStudent} />
@@ -285,28 +286,52 @@ export default function StudentDetail() {
         </div>
       </div>
 
+      {/* ... keep existing code (modals) */}
       {/* Edit Student Modal */}
-      {isEditModalOpen && <AddEditStudentModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} student={{
-      ...student,
-      // Ensure gender is correctly typed as "Male" or "Female"
-      gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const
-    }} onSubmit={handleEditStudent} />}
+      {isEditModalOpen && (
+        <AddEditStudentModal 
+          open={isEditModalOpen} 
+          onOpenChange={setIsEditModalOpen} 
+          student={{
+            ...student,
+            // Ensure gender is correctly typed as "Male" or "Female"
+            gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const
+          }} 
+          onSubmit={handleEditStudent} 
+        />
+      )}
 
       {/* Add Photo Modal */}
-      <AddPhotoModal open={isAddPhotoModalOpen} onOpenChange={setIsAddPhotoModalOpen} studentId={id || ""} onSuccess={() => {
-      // Update photos list
-      setPhotos(getStudentPhotos());
-    }} />
+      <AddPhotoModal 
+        open={isAddPhotoModalOpen} 
+        onOpenChange={setIsAddPhotoModalOpen} 
+        studentId={id || ""} 
+        onSuccess={() => {
+          // Update photos list
+          setPhotos(getStudentPhotos());
+        }} 
+      />
 
       {/* Add Letter Modal */}
-      <AddLetterModal open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen} studentId={id || ""} onSuccess={() => {
-      // Refresh letters
-    }} />
+      <AddLetterModal 
+        open={isAddLetterModalOpen} 
+        onOpenChange={setIsAddLetterModalOpen} 
+        studentId={id || ""} 
+        onSuccess={() => {
+          // Refresh letters
+        }} 
+      />
 
       {/* Add Timeline Event Modal */}
-      <AddTimelineEventModal open={isAddTimelineEventModalOpen} onOpenChange={setIsAddTimelineEventModalOpen} studentId={id || ""} onSuccess={() => {
-      // Refresh timeline events
-      refetchTimeline();
-    }} />
-    </div>;
+      <AddTimelineEventModal 
+        open={isAddTimelineEventModalOpen} 
+        onOpenChange={setIsAddTimelineEventModalOpen} 
+        studentId={id || ""} 
+        onSuccess={() => {
+          // Refresh timeline events
+          refetchTimeline();
+        }} 
+      />
+    </div>
+  );
 }
