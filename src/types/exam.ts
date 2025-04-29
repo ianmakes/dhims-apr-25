@@ -7,6 +7,8 @@ export type StudentExamScore = Database["public"]["Tables"]["student_exam_scores
 export interface ExamWithScores extends Exam {
   studentsTaken?: number;
   averageScore?: number;
+  passRate?: number;
+  is_active?: boolean;
   student_exam_scores?: StudentExamScoreWithStudent[];
 }
 
