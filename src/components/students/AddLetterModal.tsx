@@ -67,6 +67,15 @@ export function AddLetterModal({
   };
 
   const handleSubmit = async (values: z.infer<typeof letterFormSchema>) => {
+    if (!studentId) {
+      toast({
+        title: "Error",
+        description: "Student ID is missing. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsUploading(true);
     try {
       let fileUrl = "";
@@ -77,6 +86,24 @@ export function AddLetterModal({
         const filename = `${Date.now()}_${selectedFile.name}`;
         const filePath = `${studentId}/${filename}`;
         
+        // Create student-letters bucket if it doesn't exist
+        const { data: bucketData, error: bucketError } = await supabase.storage
+          .getBucket('student-letters')
+          .catch(() => {
+            return { data: null, error: { message: 'Bucket does not exist' } };
+          });
+          
+        if (!bucketData) {
+          const { error: createError } = await supabase.storage.createBucket('student-letters', {
+            public: true
+          });
+          
+          if (createError) {
+            console.error('Error creating bucket:', createError);
+            // Continue anyway, the bucket might still exist
+          }
+        }
+        
         // Upload the file to Supabase storage
         const { data, error } = await supabase.storage
           .from('student-letters')
@@ -85,7 +112,10 @@ export function AddLetterModal({
             upsert: false
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Upload error:', error);
+          throw new Error(`File upload failed: ${error.message}`);
+        }
         
         // Get the public URL for the uploaded file
         const { data: { publicUrl } } = supabase.storage
@@ -105,11 +135,12 @@ export function AddLetterModal({
           content: values.content,
           file_url: fileUrl,
           created_by: user?.id,
-        })
-        .select()
-        .single();
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('DB insert error:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
       
       toast({
         title: "Letter added",
@@ -130,7 +161,7 @@ export function AddLetterModal({
       console.error('Error adding letter:', error);
       toast({
         title: 'Error adding letter',
-        description: 'Failed to add letter. Please try again.',
+        description: `Failed to add letter: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

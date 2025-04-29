@@ -17,38 +17,20 @@ interface StudentLettersTabProps {
   studentName: string;
   onAddLetter: () => void;
   formatDate: (date: string | Date | null | undefined) => string;
+  studentId: string; // Add studentId prop
 }
 
-export function StudentLettersTab({ studentName, onAddLetter, formatDate }: StudentLettersTabProps) {
+export function StudentLettersTab({ studentName, onAddLetter, formatDate, studentId }: StudentLettersTabProps) {
   const queryClient = useQueryClient();
   const [isViewLetterModalOpen, setIsViewLetterModalOpen] = useState(false);
   const [currentLetter, setCurrentLetter] = useState<StudentLetter | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   
-  // Fetch letters from the database
-  const { data: letters = [], isLoading, error } = useQuery({
-    queryKey: ['student-letters', currentLetter?.student_id],
+  // Fetch letters from the database for this student
+  const { data: studentLetters = [], isLoading, error, refetch: refetchLetters } = useQuery({
+    queryKey: ['student-letters', studentId],
     queryFn: async () => {
-      if (!currentLetter?.student_id) return [];
-      
-      const { data, error } = await supabase
-        .from('student_letters')
-        .select('*')
-        .eq('student_id', currentLetter.student_id)
-        .order('date', { ascending: false });
-        
-      if (error) throw error;
-      return data as StudentLetter[];
-    },
-    enabled: !!currentLetter?.student_id,
-  });
-
-  // Query to fetch all letters for a specific student
-  const { data: studentLetters = [], refetch: refetchLetters } = useQuery({
-    queryKey: ['student-letters', currentLetter?.student_id],
-    queryFn: async () => {
-      const studentId = new URL(window.location.href).pathname.split('/').pop();
       if (!studentId) return [];
       
       const { data, error } = await supabase
@@ -60,6 +42,7 @@ export function StudentLettersTab({ studentName, onAddLetter, formatDate }: Stud
       if (error) throw error;
       return data as StudentLetter[];
     },
+    enabled: !!studentId,
   });
 
   const handleViewLetter = (letter: StudentLetter) => {

@@ -276,7 +276,12 @@ export default function StudentDetail() {
               <StudentPhotosTab studentName={student.name} studentId={student.id} formatDate={formatDate} />
             </TabsContent>
             <TabsContent value="letters">
-              <StudentLettersTab studentName={student.name} onAddLetter={() => setIsAddLetterModalOpen(true)} formatDate={formatDate} />
+              <StudentLettersTab 
+                studentName={student.name} 
+                studentId={student.id} 
+                onAddLetter={() => setIsAddLetterModalOpen(true)} 
+                formatDate={formatDate} 
+              />
             </TabsContent>
             <TabsContent value="timeline">
               <StudentTimelineTab studentName={student.name} timelineEvents={timelineEvents} onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)} formatDate={formatDate} />
