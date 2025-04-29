@@ -83,7 +83,7 @@ export function StudentProfileSidebar({
         </div>
         <Separator />
         <div className="space-y-2">
-          <h3 className="font-medium">Health Information</h3>
+          <h3 className="font-medium text-left">Health Information</h3>
           <div className="flex items-center text-sm">
             <User className="mr-2 h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Health Status:</span>
