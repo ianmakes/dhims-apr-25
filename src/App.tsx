@@ -16,10 +16,12 @@ import SponsorDetail from "./pages/SponsorDetail";
 import Exams from "./pages/Exams";
 import ExamDetail from "./pages/ExamDetail";
 import Users from "./pages/Users";
-import Settings from "./pages/Settings";
+import GeneralSettings from "./pages/settings/GeneralSettings";
+import ProfileSettings from "./pages/settings/ProfileSettings";
+import SmtpSettings from "./pages/settings/SmtpSettings";
+import AuditLogSettings from "./pages/settings/AuditLogSettings";
 import UserRolesSettings from "./pages/settings/UserRolesSettings";
 import AcademicYearsSettings from "./pages/settings/AcademicYearsSettings";
-import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
@@ -69,10 +71,10 @@ const App = () => (
               {/* Settings */}
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/settings/general" replace />} />
-                <Route path="general" element={<Settings />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="smtp" element={<div>Email and SMTP Settings</div>} />
-                <Route path="audit" element={<div>Audit Logs</div>} />
+                <Route path="general" element={<GeneralSettings />} />
+                <Route path="profile" element={<ProfileSettings />} />
+                <Route path="smtp" element={<SmtpSettings />} />
+                <Route path="audit" element={<AuditLogSettings />} />
                 <Route path="roles" element={<UserRolesSettings />} />
                 <Route path="academic" element={<AcademicYearsSettings />} />
               </Route>
