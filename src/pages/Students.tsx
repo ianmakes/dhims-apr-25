@@ -1,638 +1,591 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { DataTable } from "@/components/data-display/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { cn } from "@/lib/utils";
-import { AcademicYearSelector } from "@/components/academic/AcademicYearSelector";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Student {
   id: string;
-  created_at: string;
-  updated_at: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  address: string;
-  date_of_birth: string;
+  admission_number: string;
+  name: string;
+  current_grade: string;
   gender: string;
   admission_date: string;
-  admission_number: string;
-  academic_year_id: string;
-  class_level: string;
-  profile_picture_url: string | null;
+  sponsor_id?: string;
+  status: string;
+  profile_image_url?: string;
+  [key: string]: any; // Allow for additional properties
 }
 
-const fetchStudents = async (page: number, pageSize: number, academicYearId?: string) => {
-  let query = supabase
-    .from("students")
-    .select("*", { count: "exact" })
-    .order("last_name")
-    .range((page - 1) * pageSize, page * pageSize - 1);
-
-  if (academicYearId) {
-    query = query.eq('academic_year_id', academicYearId);
-  }
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    data: data as Student[],
-    total: count || 0,
-  };
-};
-
-const deleteStudent = async (id: string) => {
-  const { error } = await supabase.from("students").delete().eq("id", id);
-  if (error) {
-    throw error;
-  }
-};
-
-const AddEditStudentModal: React.FC<{
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  student?: Student;
-  onSave?: () => void;
-}> = ({ open, onOpenChange, student, onSave }) => {
+export default function Students() {
+  const [grade, setGrade] = useState<string>("all");
+  const [status, setStatus] = useState<string>("all");
+  const [sponsored, setSponsored] = useState<string>("all");
+  const [academicYear, setAcademicYear] = useState<string>("2024");
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isSaving, setIsSaving] = useState(false);
-  const [firstName, setFirstName] = useState(student?.first_name || "");
-  const [lastName, setLastName] = useState(student?.last_name || "");
-  const [email, setEmail] = useState(student?.email || "");
-  const [phone, setPhone] = useState(student?.phone || "");
-  const [address, setAddress] = useState(student?.address || "");
-  const [dateOfBirth, setDateOfBirth] = useState(student?.date_of_birth || "");
-  const [gender, setGender] = useState(student?.gender || "");
-  const [admissionDate, setAdmissionDate] = useState(student?.admission_date || "");
-  const [admissionNumber, setAdmissionNumber] = useState(student?.admission_number || "");
-  const [classLevel, setClassLevel] = useState(student?.class_level || "");
-  const [academicYearId, setAcademicYearId] = useState(student?.academic_year_id || "");
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
 
-  const classLevels = ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
-  const genders = ["Male", "Female", "Other"];
+  // Fetch students data from Supabase
+  const {
+    data: students = [],
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['students'],
+    queryFn: async () => {
+      const {
+        data,
+        error
+      } = await supabase.from('students').select('*').order('created_at', {
+        ascending: false
+      });
+      if (error) throw error;
+      return data as Student[];
+    }
+  });
 
-  const { data: academicYears, error: academicYearsError, isLoading: academicYearsLoading } = useQuery(
-    ['academicYears'],
-    async () => {
-      const { data, error } = await supabase
-        .from('academic_years')
-        .select('*')
-        .order('year_name', { ascending: false });
-
+  // Mutation for adding a student
+  const addStudentMutation = useMutation({
+    mutationFn: async (studentData: any) => {
+      const {
+        data,
+        error
+      } = await supabase.from('students').insert([{
+        ...studentData,
+        created_by: user?.id,
+        updated_by: user?.id
+      }]).select().single();
       if (error) throw error;
       return data;
-    }
-  );
-
-  useEffect(() => {
-    if (student) {
-      setFirstName(student.first_name || "");
-      setLastName(student.last_name || "");
-      setEmail(student.email || "");
-      setPhone(student.phone || "");
-      setAddress(student.address || "");
-      setDateOfBirth(student.date_of_birth || "");
-      setGender(student.gender || "");
-      setAdmissionDate(student.admission_date || "");
-      setAdmissionNumber(student.admission_number || "");
-      setClassLevel(student.class_level || "");
-      setAcademicYearId(student.academic_year_id || "");
-    }
-  }, [student]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const payload = {
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        phone: phone,
-        address: address,
-        date_of_birth: dateOfBirth,
-        gender: gender,
-        admission_date: admissionDate,
-        admission_number: admissionNumber,
-        class_level: classLevel,
-        academic_year_id: academicYearId,
-      };
-
-      let response;
-      if (student) {
-        response = await supabase.from("students").update(payload).eq("id", student.id);
-      } else {
-        response = await supabase.from("students").insert(payload);
-      }
-
-      if (response.error) {
-        throw response.error;
-      }
-
-      toast({
-        title: "Success",
-        description: `Student ${student ? "updated" : "added"} successfully.`,
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
       });
-      queryClient.invalidateQueries({ queryKey: ["students"] });
-      onSave?.();
-      onOpenChange(false);
-    } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Student added",
+        description: "New student has been added successfully."
+      });
+    },
+    onError: error => {
+      toast({
+        title: "Error adding student",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    } finally {
-      setIsSaving(false);
     }
-  };
+  });
 
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-2xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{student ? "Edit Student" : "Add Student"}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {student ? "Edit the student details." : "Add a new student to the system."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          <div>
-            <Label htmlFor="firstName">First Name</Label>
-            <Input
-              id="firstName"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input
-              id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="address">Address</Label>
-            <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="dateOfBirth">Date of Birth</Label>
-            <Input
-              id="dateOfBirth"
-              type="date"
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="gender">Gender</Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="gender">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                {genders.map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {g}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="admissionDate">Admission Date</Label>
-            <Input
-              id="admissionDate"
-              type="date"
-              value={admissionDate}
-              onChange={(e) => setAdmissionDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="admissionNumber">Admission Number</Label>
-            <Input
-              id="admissionNumber"
-              value={admissionNumber}
-              onChange={(e) => setAdmissionNumber(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="classLevel">Class Level</Label>
-            <Select value={classLevel} onValueChange={setClassLevel}>
-              <SelectTrigger id="classLevel">
-                <SelectValue placeholder="Select class level" />
-              </SelectTrigger>
-              <SelectContent>
-                {classLevels.map((level) => (
-                  <SelectItem key={level} value={level}>
-                    {level}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="academicYear">Academic Year</Label>
-            <Select
-              value={academicYearId}
-              onValueChange={setAcademicYearId}
-              disabled={academicYearsLoading}
-            >
-              <SelectTrigger id="academicYear">
-                <SelectValue placeholder="Select academic year" />
-              </SelectTrigger>
-              <SelectContent>
-                {academicYearsLoading ? (
-                  <SelectItem value="loading" disabled>
-                    Loading...
-                  </SelectItem>
-                ) : academicYearsError ? (
-                  <SelectItem value="error" disabled>
-                    Error loading academic years
-                  </SelectItem>
-                ) : (
-                  academicYears?.map((year) => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.year_name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction disabled={isSaving} onClick={handleSave}>
-            {isSaving ? "Saving..." : "Save"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
-
-const DeleteStudentDialog: React.FC<{
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  studentId?: string;
-  studentName?: string;
-  onSuccess?: () => void;
-}> = ({ open, onOpenChange, studentId, studentName, onSuccess }) => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      if (!studentId) throw new Error("Student ID is required.");
-      await deleteStudent(studentId);
-      toast({
-        title: "Success",
-        description: "Student deleted successfully.",
+  // Mutation for updating a student
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data
+    }: {
+      id: string;
+      data: any;
+    }) => {
+      const {
+        data: updatedData,
+        error
+      } = await supabase.from('students').update({
+        ...data,
+        updated_by: user?.id,
+        updated_at: new Date().toISOString()
+      }).eq('id', id).select().single();
+      if (error) throw error;
+      return updatedData;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
       });
-      queryClient.invalidateQueries({ queryKey: ["students"] });
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Student updated",
+        description: "Student has been updated successfully."
+      });
+    },
+    onError: error => {
+      toast({
+        title: "Error updating student",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    } finally {
-      setIsDeleting(false);
     }
-  };
+  });
 
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete{" "}
-            <span className="font-medium">{studentName}</span>? This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction disabled={isDeleting} onClick={handleDelete} className="bg-destructive">
-            {isDeleting ? "Deleting..." : "Delete"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+  // Mutation for deleting a student
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const {
+        error
+      } = await supabase.from('students').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Student deleted",
+        description: "Student has been deleted successfully."
+      });
+    },
+    onError: error => {
+      toast({
+        title: "Error deleting student",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
-const Students: React.FC = () => {
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  // Mutation for bulk deleting students
+  const bulkDeleteStudentsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from('students').delete().in('id', ids);
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Students deleted",
+        description: `${selectedRowIds.length} students have been deleted successfully.`
+      });
+      setSelectedRowIds([]);
+    },
+    onError: error => {
+      toast({
+        title: "Error deleting students",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for bulk updating students status
+  const bulkUpdateStudentsStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[], status: string }) => {
+      const { error } = await supabase.from('students')
+        .update({ 
+          status, 
+          updated_by: user?.id, 
+          updated_at: new Date().toISOString() 
+        })
+        .in('id', ids);
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Students updated",
+        description: `${selectedRowIds.length} students have been updated successfully.`
+      });
+      setSelectedRowIds([]);
+    },
+    onError: error => {
+      toast({
+        title: "Error updating students",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Filter students based on filters
+  const filteredStudents = students.filter(student => {
+    if (grade && grade !== "all" && student.current_grade !== grade) return false;
+    if (status && status !== "all" && student.status !== status) return false;
+    if (sponsored === "sponsored" && !student.sponsor_id) return false;
+    if (sponsored === "unsponsored" && student.sponsor_id) return false;
+    return true;
+  });
+
+  // Updated Add Student Modal logic
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { currentYear } = useAcademicYear();
 
-  const {
-    data: { data: students, total } = { data: [], total: 0 },
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery(
-    ["students", page, pageSize, currentYear?.id],
-    () => fetchStudents(page, pageSize, currentYear?.id),
+  const handleAddStudent = (data: any) => {
+    addStudentMutation.mutate(data);
+    setIsAddStudentModalOpen(false);
+  };
+
+  const handleEditStudent = (data: any) => {
+    if (selectedStudent) {
+      updateStudentMutation.mutate({
+        id: selectedStudent.id,
+        data
+      });
+      setIsEditStudentModalOpen(false);
+    }
+  };
+
+  const handleDeleteStudent = () => {
+    if (selectedStudent) {
+      deleteStudentMutation.mutate(selectedStudent.id);
+      setIsDeleteAlertOpen(false);
+    }
+  };
+
+  const handleOpenEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    setIsEditStudentModalOpen(true);
+  };
+
+  const handleOpenDeleteAlert = (student: Student) => {
+    setSelectedStudent(student);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRowIds.length > 0) {
+      bulkDeleteStudentsMutation.mutate(selectedRowIds);
+      setIsBulkDeleteAlertOpen(false);
+    }
+  };
+
+  const handleBulkDeactivate = () => {
+    if (selectedRowIds.length > 0) {
+      bulkUpdateStudentsStatusMutation.mutate({ 
+        ids: selectedRowIds, 
+        status: "Inactive" 
+      });
+    }
+  };
+
+  // Define columns for DataTable with checkbox selection
+  const columns = [
     {
-      keepPreviousData: true,
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "admission_number",
+      header: "ADM No."
+    }, 
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => {
+        return <Link to={`/students/${row.original.id}`} className="text-primary hover:underline">
+          {row.getValue("name")}
+        </Link>;
+      }
+    }, 
+    {
+      accessorKey: "current_grade",
+      header: "Grade"
+    }, 
+    {
+      accessorKey: "gender",
+      header: "Gender",
+      cell: ({ row }) => {
+        return <div className="capitalize">{row.getValue("gender")}</div>;
+      }
+    }, 
+    {
+      accessorKey: "admission_date",
+      header: "Admission Date",
+      cell: ({ row }) => {
+        const date = row.getValue("admission_date");
+        return <div>
+          {date ? new Date(date).toLocaleDateString() : "N/A"}
+        </div>;
+      }
+    }, 
+    {
+      accessorKey: "sponsor_id",
+      header: "Sponsor",
+      cell: ({ row }) => {
+        const sponsorId = row.getValue("sponsor_id");
+        return <div>
+          {sponsorId ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
+            <span>Sponsored</span>
+          </div> : <div className="inline-flex items-center justify-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-sm font-medium text-yellow-700">
+            <span>Unsponsored</span>
+          </div>}
+        </div>;
+      }
+    }, 
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status");
+        return <div className="capitalize">
+          {status === "Active" ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
+            <span>Active</span>
+          </div> : status === "Inactive" ? <div className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
+            <span>Inactive</span>
+          </div> : <div className="inline-flex items-center justify-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-700">
+            <span>{status}</span>
+          </div>}
+        </div>;
+      }
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const student = row.original;
+        return <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(student.id)}>
+                Copy student ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Link to={`/students/${student.id}`} className="flex items-center">
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>View</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenEditModal(student)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>Edit</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => handleOpenDeleteAlert(student)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>;
+      }
     }
-  );
+  ];
 
-  useEffect(() => {
-    if (!isLoading) {
-      setIsInitialLoad(false);
-    }
-  }, [isLoading]);
-
-  const handleStudentSaved = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  const handleStudentDeleted = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  const handleEdit = (student: Student) => {
-    setSelectedStudent(student);
-    setIsAddEditModalOpen(true);
-  };
-
-  const handleDelete = (student: Student) => {
-    setSelectedStudent(student);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleViewDetails = (idOrSlug: string) => {
-    navigate(`/students/${idOrSlug}`);
-  };
-
-  const pageCount = Math.ceil(total / pageSize);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between space-y-2">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Students</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage students and their details.
-          </p>
+  return <div className="space-y-6 fade-in">
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-left">Students</h1>
+        <p className="text-muted-foreground">
+          Manage and track all students in the system
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label htmlFor="academicYear" className="text-sm font-medium">
+            Academic Year:
+          </label>
+          <Select value={academicYear} onValueChange={setAcademicYear}>
+            <SelectTrigger id="academicYear" className="w-36">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2023">2023</SelectItem>
+              <SelectItem value="2022">2022</SelectItem>
+              <SelectItem value="2021">2021</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex items-center space-x-2">
-          <AcademicYearSelector />
-          <Button onClick={() => setIsAddEditModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Student
+        <Button onClick={() => setIsAddStudentModalOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Student
+        </Button>
+      </div>
+    </div>
+
+    {/* Filter section */}
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-2">
+        <label htmlFor="grade" className="text-sm font-medium">
+          Grade:
+        </label>
+        <Select value={grade} onValueChange={setGrade}>
+          <SelectTrigger id="grade" className="w-28">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8"].map(g => <SelectItem key={g} value={g}>
+              {g}
+            </SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label htmlFor="status" className="text-sm font-medium">
+          Status:
+        </label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger id="status" className="w-32">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+            <SelectItem value="Graduated">Graduated</SelectItem>
+            <SelectItem value="Transferred">Transferred</SelectItem>
+            <SelectItem value="Suspended">Suspended</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label htmlFor="sponsored" className="text-sm font-medium">
+          Sponsored:
+        </label>
+        <Select value={sponsored} onValueChange={setSponsored}>
+          <SelectTrigger id="sponsored" className="w-40">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="sponsored">Sponsored</SelectItem>
+            <SelectItem value="unsponsored">Unsponsored</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+
+    {/* Bulk actions */}
+    {selectedRowIds.length > 0 && (
+      <div className="bg-muted p-2 rounded-md flex items-center justify-between">
+        <span className="ml-2 text-sm font-medium">
+          {selectedRowIds.length} student{selectedRowIds.length !== 1 ? 's' : ''} selected
+        </span>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleBulkDeactivate}
+            disabled={bulkUpdateStudentsStatusMutation.isPending}
+          >
+            Deactivate
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => setIsBulkDeleteAlertOpen(true)}
+            disabled={bulkDeleteStudentsMutation.isPending}
+          >
+            Delete
           </Button>
         </div>
       </div>
-      <div className="py-4">
-        <div className="container mx-auto">
-          {isError && (
-            <div className="rounded-md border p-4">
-              <p className="text-sm">
-                Error fetching students. Please try again.
-              </p>
-            </div>
-          )}
+    )}
 
-          <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">Photo</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Admission #</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isInitialLoad ? (
-                  // Render skeleton rows during initial load
-                  [...Array(pageSize)].map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <Skeleton className="h-4 w-[200px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[100px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[80px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[150px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[100px]" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : isLoading ? (
-                  // Render skeleton rows during subsequent loads
-                  [...Array(pageSize)].map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <Skeleton className="h-4 w-[200px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[100px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[80px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[150px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[100px]" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : students.length === 0 ? (
-                  // Render message when there are no students
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center">
-                      No students found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  // Render student rows
-                  students.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">
-                        <Avatar>
-                          {student.profile_picture_url ? (
-                            <AvatarImage src={student.profile_picture_url} alt={student.first_name} />
-                          ) : (
-                            <AvatarFallback>
-                              {student.first_name.charAt(0)}
-                              {student.last_name.charAt(0)}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {student.first_name} {student.last_name}
-                      </TableCell>
-                      <TableCell>{student.admission_number}</TableCell>
-                      <TableCell>{student.class_level}</TableCell>
-                      <TableCell>{student.email}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleViewDetails(student.id)}>
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(student)}>
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(student)}>
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+    {/* Students table */}
+    <DataTable 
+      columns={columns} 
+      data={filteredStudents} 
+      searchColumn="name" 
+      searchPlaceholder="Search students..." 
+      isLoading={isLoading} 
+      onRowSelectionChange={setSelectedRowIds}
+    />
 
-          {pageCount > 1 && (
-            <Pagination>
-              <PaginationContent>
-                <PaginationPrevious
-                  href="#"
-                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                />
-                {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                  <PaginationItem key={p} current={p === page}>
-                    <PaginationLink
-                      href="#"
-                      onClick={() => setPage(p)}
-                      className={cn({
-                        "bg-blue-500 text-white": p === page,
-                      })}
-                    >
-                      {p}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationNext
-                  href="#"
-                  onClick={() => setPage((prev) => Math.min(prev + 1, pageCount))}
-                />
-              </PaginationContent>
-            </Pagination>
-          )}
-        </div>
-      </div>
+    {/* Add Student Modal */}
+    <AddEditStudentModal 
+      open={isAddStudentModalOpen} 
+      onOpenChange={setIsAddStudentModalOpen} 
+      onSubmit={handleAddStudent} 
+      isLoading={addStudentMutation.isPending} 
+    />
 
-      <AddEditStudentModal
-        open={isAddEditModalOpen}
-        onOpenChange={setIsAddEditModalOpen}
-        onSave={handleStudentSaved}
-        student={selectedStudent}
+    {/* Edit Student Modal */}
+    {selectedStudent && (
+      <AddEditStudentModal 
+        open={isEditStudentModalOpen} 
+        onOpenChange={setIsEditStudentModalOpen} 
+        student={selectedStudent as any} 
+        onSubmit={handleEditStudent} 
+        isLoading={updateStudentMutation.isPending} 
       />
+    )}
 
-      <DeleteStudentDialog
-        open={isDeleteModalOpen}
-        onOpenChange={setIsDeleteModalOpen}
-        studentId={selectedStudent?.id}
-        studentName={`${selectedStudent?.first_name} ${selectedStudent?.last_name}`}
-        onSuccess={handleStudentDeleted}
-      />
-    </div>
-  );
-};
+    {/* Delete Student Alert */}
+    <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the student record
+            and remove their data from the system.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteStudent} className="bg-destructive text-destructive-foreground">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
-export default Students;
+    {/* Bulk Delete Students Alert */}
+    <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete multiple students?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to delete {selectedRowIds.length} student{selectedRowIds.length !== 1 ? 's' : ''}. 
+            This action cannot be undone and will permanently remove all selected student records from the system.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleBulkDelete} 
+            className="bg-destructive text-destructive-foreground"
+            disabled={bulkDeleteStudentsMutation.isPending}
+          >
+            {bulkDeleteStudentsMutation.isPending ? "Deleting..." : "Delete All Selected"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </div>;
+}

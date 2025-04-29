@@ -1,6 +1,4 @@
-
 import * as React from "react"
-import { create } from "zustand"
 
 const MOBILE_BREAKPOINT = 768
 
@@ -19,14 +17,3 @@ export function useIsMobile() {
 
   return !!isMobile
 }
-
-// Add the mobile store with sidebar state management
-interface MobileStoreState {
-  sidebarOpen: boolean
-  setSidebarOpen: (open: boolean) => void
-}
-
-export const useMobileStore = create<MobileStoreState>((set) => ({
-  sidebarOpen: false,
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-}))

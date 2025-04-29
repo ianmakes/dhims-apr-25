@@ -1,161 +1,127 @@
-
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { format, formatDistanceToNow } from "date-fns";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
-import { 
-  PlusCircle, 
-  UserCheck, 
-  BookOpen, 
-  Settings, 
-  Users, 
-  UserCircle
-} from "lucide-react";
-import type { AcademicYear } from "@/types";
-
-// Activity item structure
-interface ActivityItem {
+import { ActivityIcon, BookOpen, Clock, UserCircle, Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+type ActivityType = "student" | "sponsor" | "exam" | "system";
+interface Activity {
   id: string;
-  username: string;
-  action: string;
-  entity: string;
-  details: string;
+  type: ActivityType;
+  title: string;
+  description: string;
   timestamp: Date;
+  user: {
+    name: string;
+    avatar?: string;
+  };
 }
-
-// Map entity types to icons
-const entityIcons: Record<string, React.ReactNode> = {
-  "student": <Users className="h-5 w-5" />,
-  "sponsor": <UserCircle className="h-5 w-5" />,
-  "exam": <BookOpen className="h-5 w-5" />,
-  "user": <UserCheck className="h-5 w-5" />,
-  "settings": <Settings className="h-5 w-5" />,
-  "other": <PlusCircle className="h-5 w-5" />
-};
-
-export function RecentActivityCard({ academicYear }: { academicYear?: AcademicYear | null }) {
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchRecentActivity = async () => {
-      setIsLoading(true);
-      try {
-        let query = supabase
-          .from('audit_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(8);
-
-        // Filter by academic year if provided
-        if (academicYear) {
-          const startDate = new Date(academicYear.start_date);
-          const endDate = new Date(academicYear.end_date);
-          
-          query = query
-            .gte('created_at', startDate.toISOString())
-            .lte('created_at', endDate.toISOString());
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error("Error fetching audit logs:", error);
-          return;
-        }
-
-        if (data) {
-          const formattedActivities = data.map(item => ({
-            id: item.id,
-            username: item.username || "System",
-            action: item.action,
-            entity: item.entity,
-            details: item.details,
-            timestamp: new Date(item.created_at)
-          }));
-          setActivities(formattedActivities);
-        }
-      } catch (error) {
-        console.error("Error in fetching audit logs:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRecentActivity();
-  }, [academicYear]);
-
-  // Helper to get the avatar fallback text
-  const getAvatarFallback = (username: string) => {
-    return username.substring(0, 2).toUpperCase();
+interface RecentActivityCardProps {
+  activities?: Activity[];
+  className?: string;
+}
+export function RecentActivityCard({
+  activities,
+  className
+}: RecentActivityCardProps) {
+  // Provide mock data if activities are not provided
+  const displayActivities = activities || [{
+    id: "1",
+    type: "student",
+    title: "New student registered",
+    description: "John Doe has been registered as a new student",
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    // 2 hours ago
+    user: {
+      name: "Admin User"
+    }
+  }, {
+    id: "2",
+    type: "sponsor",
+    title: "New sponsor added",
+    description: "Jane Smith has been added as a new sponsor",
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    // 1 day ago
+    user: {
+      name: "Admin User"
+    }
+  }, {
+    id: "3",
+    type: "exam",
+    title: "Exam results updated",
+    description: "Term 2 exam results have been added to the system",
+    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    // 3 days ago
+    user: {
+      name: "Teacher User"
+    }
+  }, {
+    id: "4",
+    type: "system",
+    title: "System maintenance",
+    description: "System was updated to the latest version",
+    timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    // 7 days ago
+    user: {
+      name: "System"
+    }
+  }];
+  const getActivityIcon = (type: ActivityType) => {
+    switch (type) {
+      case "student":
+        return <Users className="h-4 w-4" />;
+      case "sponsor":
+        return <UserCircle className="h-4 w-4" />;
+      case "exam":
+        return <BookOpen className="h-4 w-4" />;
+      case "system":
+        return <ActivityIcon className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
   };
-
-  // Helper to get icon by entity type
-  const getEntityIcon = (entityType: string) => {
-    const lowerType = entityType.toLowerCase();
-    return entityIcons[lowerType] || entityIcons.other;
+  const getActivityColor = (type: ActivityType) => {
+    switch (type) {
+      case "student":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-700/20 dark:text-blue-400";
+      case "sponsor":
+        return "bg-green-100 text-green-700 dark:bg-green-700/20 dark:text-green-400";
+      case "exam":
+        return "bg-purple-100 text-purple-700 dark:bg-purple-700/20 dark:text-purple-400";
+      case "system":
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-700/20 dark:text-yellow-400";
+      default:
+        return "bg-gray-100 text-gray-700 dark:bg-gray-700/20 dark:text-gray-400";
+    }
   };
-
-  if (isLoading) {
-    return (
-      <div className="px-4 py-3">
-        {Array(4).fill(0).map((_, i) => (
-          <div key={i} className="flex items-center space-x-4 py-3">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (activities.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 text-center">
-        <p className="text-muted-foreground mb-2">No recent activity</p>
-        <p className="text-xs text-muted-foreground">
-          {academicYear 
-            ? `No activities found for the academic year ${academicYear.year_name}` 
-            : "Activities will appear here when users make changes to the system"}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-0 divide-y divide-border">
-      {activities.map((activity) => (
-        <div key={activity.id} className="flex items-start p-4 gap-3">
-          <Avatar className="h-9 w-9 border border-border flex-shrink-0">
-            <AvatarFallback className="bg-muted text-xs">
-              {getAvatarFallback(activity.username)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 space-y-1">
-            <p className="text-sm font-medium leading-none">
-              <span className="font-semibold">{activity.username}</span>{" "}
-              {activity.action.toLowerCase()} a{" "}
-              <span className="inline-flex items-center">
-                <span className="mr-1">{activity.entity.toLowerCase()}</span>
-                <span className="inline-flex items-center justify-center rounded-full bg-muted p-1 w-5 h-5">
-                  {getEntityIcon(activity.entity)}
-                </span>
-              </span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {activity.details}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-            </p>
-          </div>
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true
+    }).format(date);
+  };
+  return <Card className={cn("transition-all-medium h-full card-hover", className)}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-medium text-left">Recent Activity</CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-auto max-h-[400px]">
+        <div className="space-y-5">
+          {displayActivities.map(activity => <div key={activity.id} className="flex items-start space-x-3">
+              <div className={cn("flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full", getActivityColor(activity.type))}>
+                {getActivityIcon(activity.type)}
+              </div>
+              <div className="space-y-1 flex-1">
+                <p className="font-medium text-sm text-left">{activity.title}</p>
+                <p className="text-xs text-muted-foreground text-left">
+                  {activity.description}
+                </p>
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>by {activity.user.name}</span>
+                  <span>{formatDate(activity.timestamp)}</span>
+                </div>
+              </div>
+            </div>)}
         </div>
-      ))}
-    </div>
-  );
+      </CardContent>
+    </Card>;
 }

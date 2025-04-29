@@ -18,9 +18,6 @@ import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2 } from
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AcademicYearStatistics } from "@/components/academic/AcademicYearStatistics";
-import { AcademicYearCharts } from "@/components/academic/AcademicYearCharts";
 
 // Update the schema to validate single-year format
 const academicYearSchema = z.object({
@@ -115,7 +112,6 @@ export default function AcademicYearsSettings() {
   const [yearToSetCurrent, setYearToSetCurrent] = useState<AcademicYear | null>(null);
   const [copyProgress, setCopyProgress] = useState(0);
   const [isCopying, setIsCopying] = useState(false);
-  const [activeTab, setActiveTab] = useState("manage");
   
   const form = useForm<AcademicYearFormValues>({
     resolver: zodResolver(academicYearSchema),
@@ -400,18 +396,6 @@ export default function AcademicYearsSettings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[300px]">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="manage">Manage</TabsTrigger>
-              <TabsTrigger value="stats">Statistics</TabsTrigger>
-              <TabsTrigger value="charts">Trends</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-
-      <TabsContent value="manage" className="mt-0">
-        <div className="flex justify-end mb-4 gap-2">
           <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -742,172 +726,140 @@ export default function AcademicYearsSettings() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            {isLoading ? (
-              <div className="flex justify-center py-6">Loading academic years...</div>
-            ) : academicYears.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6">
-                <p className="text-muted-foreground mb-4">No academic years found</p>
-                <Button onClick={() => setIsDialogOpen(true)} variant="outline" size="sm">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create your first academic year
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Academic Year</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {academicYears.map(year => (
-                    <TableRow key={year.id}>
-                      <TableCell className="font-medium">{year.year_name}</TableCell>
-                      <TableCell>{formatDate(year.start_date)}</TableCell>
-                      <TableCell>{formatDate(year.end_date)}</TableCell>
-                      <TableCell>
-                        {year.is_current ? (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                            <Star className="mr-1 h-3 w-3" />
-                            Current
-                          </span>
-                        ) : "Inactive"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          {!year.is_current && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" onClick={() => setYearToSetCurrent(year)}>
-                                  <Star className="h-4 w-4" />
-                                  <span className="sr-only">Set as Current</span>
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Set as Current Academic Year</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    <p className="mb-2">
-                                      Are you sure you want to set {year.year_name} as the current academic year?
+      <Card>
+        <CardContent className="pt-6">
+          {isLoading ? (
+            <div className="flex justify-center py-6">Loading academic years...</div>
+          ) : academicYears.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-muted-foreground mb-4">No academic years found</p>
+              <Button onClick={() => setIsDialogOpen(true)} variant="outline" size="sm">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create your first academic year
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Academic Year</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {academicYears.map(year => (
+                  <TableRow key={year.id}>
+                    <TableCell className="font-medium">{year.year_name}</TableCell>
+                    <TableCell>{formatDate(year.start_date)}</TableCell>
+                    <TableCell>{formatDate(year.end_date)}</TableCell>
+                    <TableCell>
+                      {year.is_current ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                          <Star className="mr-1 h-3 w-3" />
+                          Current
+                        </span>
+                      ) : "Inactive"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        {!year.is_current && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => setYearToSetCurrent(year)}>
+                                <Star className="h-4 w-4" />
+                                <span className="sr-only">Set as Current</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Set as Current Academic Year</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  <p className="mb-2">
+                                    Are you sure you want to set {year.year_name} as the current academic year?
+                                  </p>
+                                  <div className="flex items-center text-amber-500 bg-amber-50 p-3 rounded-md mb-2">
+                                    <AlertTriangle className="h-5 w-5 mr-2" />
+                                    <p className="text-sm">
+                                      This will automatically update all student grades to the next level.
                                     </p>
-                                    <div className="flex items-center text-amber-500 bg-amber-50 p-3 rounded-md mb-2">
-                                      <AlertTriangle className="h-5 w-5 mr-2" />
-                                      <p className="text-sm">
-                                        This will automatically update all student grades to the next level.
-                                      </p>
-                                    </div>
-                                    <p>This action cannot be undone.</p>
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleSetCurrent}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
+                                  </div>
+                                  <p>This action cannot be undone.</p>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleSetCurrent}>Continue</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingYear(year);
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        {!year.is_current && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              setEditingYear(year);
-                              setIsDialogOpen(true);
-                            }}
+                            onClick={() => handleDelete(year)}
                           >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
                           </Button>
-                          {!year.is_current && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(year)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-left">How Academic Years Work</CardTitle>
-            <CardDescription className="text-left">Important information about academic year management</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-md bg-blue-50 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <Star className="h-5 w-5 text-blue-400" aria-hidden="true" />
-                </div>
-                <div className="ml-3 flex-1 md:flex md:justify-between">
-                  <p className="text-sm text-blue-700">
-                    Setting a new academic year as current will automatically promote all students to the next grade level.
-                  </p>
-                </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-left">How Academic Years Work</CardTitle>
+          <CardDescription className="text-left">Important information about academic year management</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-md bg-blue-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <Star className="h-5 w-5 text-blue-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3 flex-1 md:flex md:justify-between">
+                <p className="text-sm text-blue-700">
+                  Setting a new academic year as current will automatically promote all students to the next grade level.
+                </p>
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <h4 className="font-medium text-center">Academic Year Impact:</h4>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                <li>All new data entered will be associated with the current academic year</li>
-                <li>Reports will default to the current academic year</li>
-                <li>Student grades will automatically increment when changing the academic year</li>
-                <li>Previous years' data is preserved and can be accessed from reports</li>
-                <li>You can copy data between academic years using the "Copy Year Data" feature</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="stats" className="mt-0">
-        <AcademicYearStatistics />
-        <div className="py-4"></div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Academic Year Analysis</CardTitle>
-            <CardDescription>
-              This information helps track student enrollment, sponsorship and academic performance over time.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p>
-                The statistics above show the key metrics for the selected academic year. You can use these insights to:
-              </p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li>Track changes in student enrollment over the years</li>
-                <li>Monitor sponsorship rates and identify trends</li>
-                <li>Compare student performance across different academic years</li>
-                <li>Make data-driven decisions for school improvement</li>
-              </ul>
-              <p>
-                To change the academic year being viewed, use the year selector in the dashboard header.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="charts" className="mt-0">
-        <AcademicYearCharts />
-      </TabsContent>
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="font-medium text-center">Academic Year Impact:</h4>
+            <ul className="list-disc pl-5 text-sm space-y-1">
+              <li>All new data entered will be associated with the current academic year</li>
+              <li>Reports will default to the current academic year</li>
+              <li>Student grades will automatically increment when changing the academic year</li>
+              <li>Previous years' data is preserved and can be accessed from reports</li>
+              <li>You can copy data between academic years using the "Copy Year Data" feature</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
