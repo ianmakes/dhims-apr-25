@@ -24,6 +24,7 @@ import { StudentSponsorTab } from "@/components/students/StudentSponsorTab";
 import { StudentPhotosTab } from "@/components/students/StudentPhotosTab";
 import { StudentLettersTab } from "@/components/students/StudentLettersTab";
 import { StudentTimelineTab } from "@/components/students/StudentTimelineTab";
+
 export default function StudentDetail() {
   const {
     id
@@ -80,6 +81,33 @@ export default function StudentDetail() {
       return data;
     },
     enabled: !!id
+  });
+
+  // Add mutation for deleting timeline events
+  const deleteTimelineEventMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      const { error } = await supabase
+        .from('timeline_events')
+        .delete()
+        .eq('id', eventId);
+      
+      if (error) throw error;
+      return eventId;
+    },
+    onSuccess: () => {
+      refetchTimeline();
+      toast({
+        title: "Event deleted",
+        description: "Timeline event has been deleted successfully."
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting event",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   // Mock functions for photos and letters (would be replaced with real API calls)
@@ -284,7 +312,14 @@ export default function StudentDetail() {
               />
             </TabsContent>
             <TabsContent value="timeline">
-              <StudentTimelineTab studentName={student.name} timelineEvents={timelineEvents} onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)} formatDate={formatDate} />
+              <StudentTimelineTab 
+                studentName={student.name} 
+                timelineEvents={timelineEvents} 
+                onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)} 
+                formatDate={formatDate} 
+                onDeleteEvent={(eventId) => deleteTimelineEventMutation.mutate(eventId)}
+                onEditEvent={() => refetchTimeline()}
+              />
             </TabsContent>
           </Tabs>
         </div>
