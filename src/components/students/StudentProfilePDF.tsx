@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, FilePdf } from "lucide-react";
+import { Download, FileIcon } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
@@ -62,7 +62,12 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
       const imgX = (pdfWidth - imgWidth * ratio) / 2;
       const imgY = 10; // Small margin from top
       
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      // Fix for the "Invalid coordinates" error
+      if (imgWidth > 0 && imgHeight > 0 && ratio > 0) {
+        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      } else {
+        throw new Error('Invalid image dimensions or ratio');
+      }
       
       // Generate filename from student name
       const filename = `${student.name.replace(/\s+/g, '_')}_Profile.pdf`;
@@ -91,7 +96,7 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
           <>Generating...</>
         ) : (
           <>
-            <FilePdf className="h-4 w-4" />
+            <FileIcon className="h-4 w-4" />
             Download Profile
           </>
         )}
