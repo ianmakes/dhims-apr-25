@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -298,7 +297,7 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
                 value={newPhoto.url}
                 onChange={handleImageChange}
                 label="Upload Photo"
-                aspectRatio={16/9}
+                aspectRatio={1}
               />
             </div>
             <div className="grid gap-2">
@@ -346,7 +345,7 @@ export function StudentPhotosTab({ studentName, studentId, formatDate }: Student
 
       {/* Photo Gallery View */}
       {viewPhoto && (
-        <Dialog open={!!viewPhoto} onOpenChange={() => setViewPhoto(null)} className="gallery-dialog">
+        <Dialog open={!!viewPhoto} onOpenChange={() => setViewPhoto(null)}>
           <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0">
             <div className="relative w-full">
               <Carousel className="w-full">
