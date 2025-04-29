@@ -8,7 +8,7 @@ export function SettingsLayout() {
   return <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-left">Settings</h2>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-left">
           Manage your account settings and preferences.
         </p>
       </div>
