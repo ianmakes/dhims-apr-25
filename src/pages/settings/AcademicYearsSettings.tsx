@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -884,4 +885,308 @@ export default function AcademicYearsSettings() {
                 Add Academic Year
               </Button>
             </DialogTrigger>
-            <Dialog
+            <DialogContent className="sm:max-w-[450px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingYear ? "Edit" : "Add"} Academic Year
+                </DialogTitle>
+                <DialogDescription>
+                  Enter the academic year details. Years are defined as calendar years (e.g., 2024).
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="year_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Academic Year</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g. 2024" />
+                        </FormControl>
+                        <FormDescription>
+                          Enter a 4-digit year (e.g., 2024).
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="is_current"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Current Academic Year</FormLabel>
+                          <FormDescription>
+                            Set as the current academic year.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Hidden fields - we don't show these because we force Jan 1 - Dec 31 */}
+                  <input type="hidden" {...form.register("start_date")} value={`${form.watch("year_name") || new Date().getFullYear()}-01-01`} />
+                  <input type="hidden" {...form.register("end_date")} value={`${form.watch("year_name") || new Date().getFullYear()}-12-31`} />
+                  
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit">{editingYear ? "Update" : "Create"}</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      
+      {/* Statistics Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Current Year</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {academicYears.find(year => year.is_current)?.year_name || "Not Set"}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isStatsLoading ? "Loading..." : "Academic calendar year"}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Students</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isStatsLoading 
+                ? "Loading..." 
+                : yearStats.find(stat => stat.year === currentYear)?.students_count || "0"}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Enrolled students for {currentYear || "current year"}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Sponsors</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isStatsLoading 
+                ? "Loading..." 
+                : yearStats.find(stat => stat.year === currentYear)?.sponsors_count || "0"}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Active sponsors for {currentYear || "current year"}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Student-Sponsor Ratio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isStatsLoading ? "Loading..." : studentSponsorRatio()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Students per sponsor on average
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Chart Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <BarChart className="h-5 w-5 mr-2" />
+            Academic Year Statistics
+          </CardTitle>
+          <CardDescription>
+            Comparison of students and sponsors across academic years
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] w-full">
+            {isStatsLoading ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsBarChart
+                  data={[...yearStats].reverse()}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="students_count" name="Students" fill="#3b82f6" />
+                  <Bar dataKey="sponsors_count" name="Sponsors" fill="#10b981" />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Academic Years Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Academic Years</CardTitle>
+          <CardDescription>
+            Manage your academic years. The current academic year is highlighted.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="h-48 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : academicYears.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No academic years found. Click "Add Academic Year" to create one.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Academic Year</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                    <TableHead>Students</TableHead>
+                    <TableHead>Sponsors</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {academicYears.map((academicYear) => {
+                    const yearStat = yearStats.find(stat => stat.year === academicYear.year_name);
+                    
+                    return (
+                      <TableRow 
+                        key={academicYear.id}
+                        className={academicYear.is_current ? "bg-blue-50" : ""}
+                      >
+                        <TableCell className="font-medium">
+                          {academicYear.year_name}
+                        </TableCell>
+                        <TableCell>
+                          {academicYear.is_current ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Current
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {parseInt(academicYear.year_name) > new Date().getFullYear() ? "Future" : "Past"}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{formatDate(academicYear.start_date)}</TableCell>
+                        <TableCell>{formatDate(academicYear.end_date)}</TableCell>
+                        <TableCell>{yearStat?.students_count || 0}</TableCell>
+                        <TableCell>{yearStat?.sponsors_count || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {!academicYear.is_current && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setYearToSetCurrent(academicYear)}
+                                  >
+                                    <Star className="h-4 w-4 mr-1" />
+                                    Set Current
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Set Current Academic Year</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to set {academicYear.year_name} as the current academic year? This will update all relevant data to reflect this change.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleSetCurrent}>
+                                      Continue
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingYear(academicYear);
+                                setIsDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Academic Year</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the {academicYear.year_name} academic year? This action cannot be undone, and may affect student records and other data.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(academicYear)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
