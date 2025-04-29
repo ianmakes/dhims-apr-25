@@ -45,6 +45,138 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          app_version: string | null
+          favicon_url: string | null
+          footer_text: string | null
+          id: string
+          logo_url: string | null
+          organization_name: string
+          primary_color: string
+          secondary_color: string
+          theme_mode: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
+          id: string
+          logo_url?: string | null
+          organization_name?: string
+          primary_color?: string
+          secondary_color?: string
+          theme_mode?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          organization_name?: string
+          primary_color?: string
+          secondary_color?: string
+          theme_mode?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: string | null
+          entity: string
+          entity_id: string
+          id: string
+          ip_address: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: string | null
+          entity: string
+          entity_id: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: string | null
+          entity?: string
+          entity_id?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      email_settings: {
+        Row: {
+          from_email: string
+          from_name: string
+          id: string
+          notifications_enabled: boolean | null
+          notify_new_sponsor: boolean | null
+          notify_new_student: boolean | null
+          notify_sponsorship_change: boolean | null
+          provider: string
+          resend_api_key: string | null
+          smtp_host: string | null
+          smtp_password: string | null
+          smtp_port: string | null
+          smtp_username: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          from_email: string
+          from_name: string
+          id: string
+          notifications_enabled?: boolean | null
+          notify_new_sponsor?: boolean | null
+          notify_new_student?: boolean | null
+          notify_sponsorship_change?: boolean | null
+          provider?: string
+          resend_api_key?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: string | null
+          smtp_username?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          from_email?: string
+          from_name?: string
+          id?: string
+          notifications_enabled?: boolean | null
+          notify_new_sponsor?: boolean | null
+          notify_new_student?: boolean | null
+          notify_sponsorship_change?: boolean | null
+          provider?: string
+          resend_api_key?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: string | null
+          smtp_username?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       exams: {
         Row: {
           academic_year: string

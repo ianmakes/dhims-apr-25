@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface AuditLog {
   id: string;
-  user: string;
+  username: string;
   user_id: string;
   action: string;
   entity: string;
@@ -73,40 +73,17 @@ export default function AuditLogSettings() {
     try {
       setIsLoading(true);
       
-      let query = supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
-      
-      // Apply filters
-      if (actionFilter) {
-        query = query.eq('action', actionFilter);
-      }
-      
-      if (entityFilter) {
-        query = query.eq('entity', entityFilter);
-      }
-      
-      if (userFilter) {
-        query = query.eq('user_id', userFilter);
-      }
-      
-      if (startDate) {
-        query = query.gte('created_at', startDate.toISOString());
-      }
-      
-      if (endDate) {
-        const nextDay = new Date(endDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-        query = query.lt('created_at', nextDay.toISOString());
-      }
-      
-      // Pagination
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
-      
-      const { data, error, count } = await query;
+      // Using rpc to avoid type issues
+      const { data, error, count } = await supabase
+        .rpc('get_audit_logs', {
+          p_action: actionFilter || null,
+          p_entity: entityFilter || null,
+          p_user_id: userFilter || null,
+          p_start_date: startDate?.toISOString() || null,
+          p_end_date: endDate ? new Date(endDate.setHours(23, 59, 59, 999)).toISOString() : null,
+          p_limit: pageSize,
+          p_offset: (page - 1) * pageSize
+        });
       
       if (error) throw error;
       
@@ -114,9 +91,21 @@ export default function AuditLogSettings() {
         setAuditLogs(data as AuditLog[]);
         setFilteredLogs(data as AuditLog[]);
         
+        // Get total count for pagination
+        const { count: totalCount, error: countError } = await supabase
+          .rpc('count_audit_logs', {
+            p_action: actionFilter || null,
+            p_entity: entityFilter || null,
+            p_user_id: userFilter || null,
+            p_start_date: startDate?.toISOString() || null,
+            p_end_date: endDate ? new Date(endDate.setHours(23, 59, 59, 999)).toISOString() : null
+          });
+        
+        if (countError) throw countError;
+        
         // Calculate total pages
-        if (count) {
-          setTotalPages(Math.ceil(count / pageSize));
+        if (totalCount) {
+          setTotalPages(Math.ceil(totalCount / pageSize));
         }
       }
       
@@ -138,34 +127,28 @@ export default function AuditLogSettings() {
     try {
       // Get unique actions
       const { data: actionData } = await supabase
-        .from('audit_logs')
-        .select('action')
-        .limit(100);
+        .rpc('get_distinct_audit_log_actions');
       
       if (actionData) {
-        const uniqueActions = [...new Set(actionData.map(item => item.action))].filter(Boolean).sort();
+        const uniqueActions = actionData.filter(Boolean).sort();
         setActionOptions(uniqueActions as string[]);
       }
       
       // Get unique entities
       const { data: entityData } = await supabase
-        .from('audit_logs')
-        .select('entity')
-        .limit(100);
+        .rpc('get_distinct_audit_log_entities');
       
       if (entityData) {
-        const uniqueEntities = [...new Set(entityData.map(item => item.entity))].filter(Boolean).sort();
+        const uniqueEntities = entityData.filter(Boolean).sort();
         setEntityOptions(uniqueEntities as string[]);
       }
       
       // Get unique users
       const { data: userData } = await supabase
-        .from('audit_logs')
-        .select('user, user_id')
-        .limit(100);
+        .rpc('get_distinct_audit_log_users');
       
       if (userData) {
-        const uniqueUsers = [...new Set(userData.map(item => item.user))].filter(Boolean).sort();
+        const uniqueUsers = userData.filter(Boolean).sort();
         setUserOptions(uniqueUsers as string[]);
       }
     } catch (error) {
@@ -182,7 +165,7 @@ export default function AuditLogSettings() {
     }
     
     const filtered = auditLogs.filter(log => 
-      log.user?.toLowerCase().includes(term.toLowerCase()) ||
+      log.username?.toLowerCase().includes(term.toLowerCase()) ||
       log.action?.toLowerCase().includes(term.toLowerCase()) ||
       log.entity?.toLowerCase().includes(term.toLowerCase()) ||
       log.details?.toLowerCase().includes(term.toLowerCase()) ||
@@ -200,7 +183,7 @@ export default function AuditLogSettings() {
       const csvContent = [
         headers.join(','),
         ...filteredLogs.map(log => [
-          `"${log.user || ""}"`,
+          `"${log.username || ""}"`,
           `"${log.action || ""}"`,
           `"${log.entity || ""}"`,
           `"${log.entity_id || ""}"`,
@@ -383,6 +366,7 @@ export default function AuditLogSettings() {
                             selected={startDate}
                             onSelect={setStartDate}
                             initialFocus
+                            className="p-3 pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
@@ -405,6 +389,7 @@ export default function AuditLogSettings() {
                             selected={endDate}
                             onSelect={setEndDate}
                             initialFocus
+                            className="p-3 pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
@@ -488,7 +473,7 @@ export default function AuditLogSettings() {
                 ) : (
                   filteredLogs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell>{log.user || "System"}</TableCell>
+                      <TableCell>{log.username || "System"}</TableCell>
                       <TableCell>
                         <Badge className={getActionBadgeColor(log.action)}>
                           {log.action}

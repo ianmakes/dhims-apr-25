@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { logUpdate } from "@/utils/auditLog";
 
 const emailSettingsSchema = z.object({
   provider: z.enum(["smtp", "resend"]),
@@ -102,6 +103,45 @@ export default function SmtpSettings() {
 
   const watchProvider = form.watch("provider");
 
+  useEffect(() => {
+    loadSettings();
+  }, []); // Empty dependency array means this effect runs once on mount
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_settings')
+        .select('*')
+        .eq('id', 'default')
+        .single();
+      
+      if (error) {
+        // If no settings found, use defaults
+        if (error.code === 'PGRST116') return;
+        throw error;
+      }
+      
+      if (data) {
+        form.reset({
+          provider: data.provider as "smtp" | "resend",
+          emailFromName: data.from_name,
+          emailFromAddress: data.from_email,
+          smtpHost: data.smtp_host || "",
+          smtpPort: data.smtp_port || "",
+          smtpUsername: data.smtp_username || "",
+          smtpPassword: data.smtp_password || "",
+          resendApiKey: data.resend_api_key || "",
+          emailNotifications: data.notifications_enabled,
+          notifyOnNewStudent: data.notify_new_student,
+          notifyOnNewSponsor: data.notify_new_sponsor,
+          notifyOnSponsorshipChange: data.notify_sponsorship_change,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading email settings:', error);
+    }
+  };
+
   const onSubmit = async (data: EmailSettingsValues) => {
     try {
       setIsSubmitting(true);
@@ -126,6 +166,9 @@ export default function SmtpSettings() {
         });
       
       if (error) throw error;
+
+      // Log the update
+      await logUpdate('email_settings', 'default', 'Updated email settings');
 
       toast({
         title: "Settings updated",
@@ -180,47 +223,6 @@ export default function SmtpSettings() {
       setIsTesting(false);
     }
   };
-
-  // Load stored settings
-  const loadSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('email_settings')
-        .select('*')
-        .eq('id', 'default')
-        .single();
-      
-      if (error) {
-        // If no settings found, use defaults
-        if (error.code === 'PGRST116') return;
-        throw error;
-      }
-      
-      if (data) {
-        form.reset({
-          provider: data.provider as "smtp" | "resend",
-          emailFromName: data.from_name,
-          emailFromAddress: data.from_email,
-          smtpHost: data.smtp_host || "",
-          smtpPort: data.smtp_port || "",
-          smtpUsername: data.smtp_username || "",
-          smtpPassword: data.smtp_password || "",
-          resendApiKey: data.resend_api_key || "",
-          emailNotifications: data.notifications_enabled,
-          notifyOnNewStudent: data.notify_new_student,
-          notifyOnNewSponsor: data.notify_new_sponsor,
-          notifyOnSponsorshipChange: data.notify_sponsorship_change,
-        });
-      }
-    } catch (error) {
-      console.error('Error loading email settings:', error);
-    }
-  };
-
-  // Load settings on component mount
-  useState(() => {
-    loadSettings();
-  });
 
   return (
     <div className="space-y-6">

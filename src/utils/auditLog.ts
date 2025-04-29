@@ -28,7 +28,7 @@ export const recordAuditLog = async (params: AuditLogParams): Promise<void> => {
     
     // Create audit log entry
     await supabase.from('audit_logs').insert({
-      user: user?.email || 'System',
+      username: user?.email || 'System',
       user_id: user?.id || null,
       action,
       entity,

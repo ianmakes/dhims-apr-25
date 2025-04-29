@@ -21,7 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ImageUploadCropper } from "@/components/students/ImageUploadCropper";
+import { ImageUploadCropper } from "@/components/ui/image-upload-cropper";
+import { logUpdate } from "@/utils/auditLog";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -113,6 +114,17 @@ export default function ProfileSettings() {
       const url = await uploadAvatar(blob);
       if (url) {
         setAvatarUrl(url);
+        
+        // Update the profile with the avatar URL
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: url })
+          .eq('id', user?.id);
+        
+        if (profileError) throw profileError;
+        
+        await logUpdate('profiles', user?.id || '', 'Updated profile avatar');
+        
         toast({
           title: "Avatar updated",
           description: "Your profile picture has been updated successfully.",
@@ -141,11 +153,13 @@ export default function ProfileSettings() {
         .update({
           name: data.name,
           role: data.role,
-          avatar_url: avatarUrl,
         })
         .eq('id', user?.id);
 
       if (profileError) throw profileError;
+      
+      // Log the update
+      await logUpdate('profiles', user?.id || '', 'Updated profile information');
       
       // Update email if changed
       if (data.email !== user?.email) {
@@ -153,6 +167,8 @@ export default function ProfileSettings() {
           .updateUser({ email: data.email });
           
         if (emailError) throw emailError;
+        
+        await logUpdate('auth', user?.id || '', 'Updated email address');
       }
       
       // Update password if provided
@@ -161,6 +177,8 @@ export default function ProfileSettings() {
           .updateUser({ password: data.password });
           
         if (passwordError) throw passwordError;
+        
+        await logUpdate('auth', user?.id || '', 'Updated password');
       }
 
       toast({
@@ -331,6 +349,7 @@ export default function ProfileSettings() {
           </DialogHeader>
           <ImageUploadCropper 
             aspectRatio={1}
+            circularCrop={true}
             onImageCropped={handleImageCropped}
             onCancel={() => setIsCropperOpen(false)}
           />

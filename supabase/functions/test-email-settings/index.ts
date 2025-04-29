@@ -120,15 +120,9 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error sending test email:", error);
     
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: error instanceof Error ? error.message : "Unknown error occurred",
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    return new Response(JSON.stringify({ success: false, message: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
 });

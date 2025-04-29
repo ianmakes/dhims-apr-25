@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logUpdate } from "@/utils/auditLog";
 
 const generalSettingsSchema = z.object({
   organizationName: z.string().min(2, {
@@ -50,6 +51,7 @@ export default function GeneralSettings() {
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
   
   // Default form values
   const defaultValues: GeneralSettingsValues = {
@@ -65,6 +67,47 @@ export default function GeneralSettings() {
     resolver: zodResolver(generalSettingsSchema),
     defaultValues,
   });
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('id', 'general')
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      if (data) {
+        setSettings(data);
+        
+        form.reset({
+          organizationName: data.organization_name,
+          primaryColor: data.primary_color,
+          secondaryColor: data.secondary_color,
+          themeMode: data.theme_mode as "light" | "dark" | "system",
+          footerText: data.footer_text || "",
+          version: data.app_version || "",
+        });
+        
+        if (data.logo_url) {
+          setLogoPreview(data.logo_url);
+        }
+        
+        if (data.favicon_url) {
+          setFaviconPreview(data.favicon_url);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading app settings:', error);
+    }
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -104,8 +147,8 @@ export default function GeneralSettings() {
       setIsSubmitting(true);
       
       // Upload logo and favicon if provided
-      let logoUrl = null;
-      let faviconUrl = null;
+      let logoUrl = settings?.logo_url || null;
+      let faviconUrl = settings?.favicon_url || null;
       
       if (logoFile) {
         logoUrl = await uploadImage(logoFile, 'app-assets', 'logos');
@@ -124,16 +167,22 @@ export default function GeneralSettings() {
         theme_mode: data.themeMode,
         footer_text: data.footerText,
         app_version: data.version,
-        logo_url: logoUrl || undefined,
-        favicon_url: faviconUrl || undefined,
+        logo_url: logoUrl,
+        favicon_url: faviconUrl,
       });
 
       if (error) throw error;
+      
+      // Log the update to audit log
+      await logUpdate('app_settings', 'general', 'Updated general settings');
       
       toast({
         title: "Settings updated",
         description: "General settings have been updated successfully.",
       });
+      
+      // Fetch updated settings
+      fetchSettings();
     } catch (error: any) {
       console.error("Error saving settings:", error);
       toast({
