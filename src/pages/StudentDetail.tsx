@@ -24,60 +24,62 @@ import { StudentSponsorTab } from "@/components/students/StudentSponsorTab";
 import { StudentPhotosTab } from "@/components/students/StudentPhotosTab";
 import { StudentLettersTab } from "@/components/students/StudentLettersTab";
 import { StudentTimelineTab } from "@/components/students/StudentTimelineTab";
-
 export default function StudentDetail() {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user
+  } = useAuth();
   const queryClient = useQueryClient();
-  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddPhotoModalOpen, setIsAddPhotoModalOpen] = useState(false);
   const [isAddLetterModalOpen, setIsAddLetterModalOpen] = useState(false);
   const [isAddTimelineEventModalOpen, setIsAddTimelineEventModalOpen] = useState(false);
-  
+
   // Fetch student data
-  const { 
-    data: student, 
-    isLoading, 
-    error 
+  const {
+    data: student,
+    isLoading,
+    error
   } = useQuery({
     queryKey: ['student', id],
     queryFn: async () => {
       if (!id) throw new Error('Student ID is required');
-      
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
+      const {
+        data,
+        error
+      } = await supabase.from('students').select('*').eq('id', id).single();
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !!id
   });
 
   // Fetch timeline events
-  const { 
-    data: timelineEvents = [], 
-    refetch: refetchTimeline 
+  const {
+    data: timelineEvents = [],
+    refetch: refetchTimeline
   } = useQuery({
     queryKey: ['timeline-events', id],
     queryFn: async () => {
       if (!id) throw new Error('Student ID is required');
-      
-      const { data, error } = await supabase
-        .from('timeline_events')
-        .select('*')
-        .eq('student_id', id)
-        .order('date', { ascending: false });
-      
+      const {
+        data,
+        error
+      } = await supabase.from('timeline_events').select('*').eq('student_id', id).order('date', {
+        ascending: false
+      });
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !!id
   });
 
   // Mock functions for photos and letters (would be replaced with real API calls)
@@ -91,9 +93,8 @@ export default function StudentDetail() {
       return [];
     }
   };
-
   const [photos, setPhotos] = useState(getStudentPhotos());
-  
+
   // Update photos when ID changes
   useEffect(() => {
     setPhotos(getStudentPhotos());
@@ -101,35 +102,40 @@ export default function StudentDetail() {
 
   // Mutation to update student status
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { data, error } = await supabase
-        .from('students')
-        .update({
-          status,
-          updated_by: user?.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      
+    mutationFn: async ({
+      id,
+      status
+    }: {
+      id: string;
+      status: string;
+    }) => {
+      const {
+        data,
+        error
+      } = await supabase.from('students').update({
+        status,
+        updated_by: user?.id,
+        updated_at: new Date().toISOString()
+      }).eq('id', id).select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['student', id]
+      });
       toast({
         title: "Status updated",
-        description: "Student status has been updated successfully.",
+        description: "Student status has been updated successfully."
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error updating status",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
 
   // Handler for editing student
@@ -138,33 +144,30 @@ export default function StudentDetail() {
       // Update student in database
       const updateStudent = async () => {
         try {
-          const { error } = await supabase
-            .from('students')
-            .update({
-              ...data,
-              updated_by: user?.id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id);
-          
+          const {
+            error
+          } = await supabase.from('students').update({
+            ...data,
+            updated_by: user?.id,
+            updated_at: new Date().toISOString()
+          }).eq('id', id);
           if (error) throw error;
-          
-          queryClient.invalidateQueries({ queryKey: ['student', id] });
-          
+          queryClient.invalidateQueries({
+            queryKey: ['student', id]
+          });
           toast({
             title: "Student updated",
-            description: "Student has been updated successfully.",
+            description: "Student has been updated successfully."
           });
         } catch (error) {
           console.error('Error updating student:', error);
           toast({
             title: "Error updating student",
             description: "Failed to update student. Please try again.",
-            variant: "destructive",
+            variant: "destructive"
           });
         }
       };
-      
       updateStudent();
     }
   };
@@ -173,7 +176,10 @@ export default function StudentDetail() {
   const handleToggleStatus = () => {
     if (student && id) {
       const newStatus = student.status === "Active" ? "Inactive" : "Active";
-      updateStatusMutation.mutate({ id, status: newStatus });
+      updateStatusMutation.mutate({
+        id,
+        status: newStatus
+      });
     }
   };
 
@@ -186,34 +192,26 @@ export default function StudentDetail() {
       day: 'numeric'
     }).format(new Date(date));
   };
-
   if (isLoading) {
     return <div className="flex items-center justify-center h-96">Loading student details...</div>;
   }
-
   if (error || !student) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96">
+    return <div className="flex flex-col items-center justify-center h-96">
         <h2 className="text-2xl font-bold">Error loading student</h2>
         <p className="text-muted-foreground">Could not find student details</p>
         <Button onClick={() => navigate('/students')} className="mt-4">
           Back to Students
         </Button>
-      </div>
-    );
+      </div>;
   }
 
   // Ensure student data has the correct types for components
   const typedStudent = {
     ...student,
     // Ensure gender is correctly typed as "Male" or "Female"
-    gender: (student.gender === "Male" || student.gender === "Female") 
-      ? student.gender as "Male" | "Female"
-      : "Male" as const // Default to "Male" if it's not a valid value
+    gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const // Default to "Male" if it's not a valid value
   };
-
-  return (
-    <div className="space-y-6 fade-in">
+  return <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -228,7 +226,7 @@ export default function StudentDetail() {
               {student.name}
             </h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-left">
             Student ID: {student.admission_number} • {student.current_grade}
           </p>
         </div>
@@ -237,10 +235,7 @@ export default function StudentDetail() {
             <span className="text-sm font-medium">
               {student.status === "Active" ? "Active" : "Inactive"}
             </span>
-            <Switch 
-              checked={student.status === "Active"} 
-              onCheckedChange={handleToggleStatus}
-            />
+            <Switch checked={student.status === "Active"} onCheckedChange={handleToggleStatus} />
           </div>
           
           <StudentProfilePDF student={typedStudent} />
@@ -275,87 +270,43 @@ export default function StudentDetail() {
               <StudentExamsTab studentName={student.name} studentId={student.id} />
             </TabsContent>
             <TabsContent value="sponsor">
-              <StudentSponsorTab
-                student={typedStudent}
-                formatDate={formatDate}
-                navigate={navigate}
-                toast={toast}
-              />
+              <StudentSponsorTab student={typedStudent} formatDate={formatDate} navigate={navigate} toast={toast} />
             </TabsContent>
             <TabsContent value="photos">
-              <StudentPhotosTab
-                studentName={student.name}
-                studentId={student.id}
-                formatDate={formatDate}
-              />
+              <StudentPhotosTab studentName={student.name} studentId={student.id} formatDate={formatDate} />
             </TabsContent>
             <TabsContent value="letters">
-              <StudentLettersTab
-                studentName={student.name}
-                onAddLetter={() => setIsAddLetterModalOpen(true)}
-                formatDate={formatDate}
-              />
+              <StudentLettersTab studentName={student.name} onAddLetter={() => setIsAddLetterModalOpen(true)} formatDate={formatDate} />
             </TabsContent>
             <TabsContent value="timeline">
-              <StudentTimelineTab
-                studentName={student.name}
-                timelineEvents={timelineEvents}
-                onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)}
-                formatDate={formatDate}
-              />
+              <StudentTimelineTab studentName={student.name} timelineEvents={timelineEvents} onAddTimelineEvent={() => setIsAddTimelineEventModalOpen(true)} formatDate={formatDate} />
             </TabsContent>
           </Tabs>
         </div>
       </div>
 
       {/* Edit Student Modal */}
-      {isEditModalOpen && (
-        <AddEditStudentModal
-          open={isEditModalOpen}
-          onOpenChange={setIsEditModalOpen}
-          student={{
-            ...student,
-            // Ensure gender is correctly typed as "Male" or "Female"
-            gender:
-              student.gender === "Male" || student.gender === "Female"
-                ? student.gender as "Male" | "Female"
-                : "Male" as const,
-          }}
-          onSubmit={handleEditStudent}
-        />
-      )}
+      {isEditModalOpen && <AddEditStudentModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} student={{
+      ...student,
+      // Ensure gender is correctly typed as "Male" or "Female"
+      gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const
+    }} onSubmit={handleEditStudent} />}
 
       {/* Add Photo Modal */}
-      <AddPhotoModal
-        open={isAddPhotoModalOpen}
-        onOpenChange={setIsAddPhotoModalOpen}
-        studentId={id || ""}
-        onSuccess={() => {
-          // Update photos list
-          setPhotos(getStudentPhotos());
-        }}
-      />
+      <AddPhotoModal open={isAddPhotoModalOpen} onOpenChange={setIsAddPhotoModalOpen} studentId={id || ""} onSuccess={() => {
+      // Update photos list
+      setPhotos(getStudentPhotos());
+    }} />
 
       {/* Add Letter Modal */}
-      <AddLetterModal
-        open={isAddLetterModalOpen}
-        onOpenChange={setIsAddLetterModalOpen}
-        studentId={id || ""}
-        onSuccess={() => {
-          // Refresh letters
-        }}
-      />
+      <AddLetterModal open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen} studentId={id || ""} onSuccess={() => {
+      // Refresh letters
+    }} />
 
       {/* Add Timeline Event Modal */}
-      <AddTimelineEventModal
-        open={isAddTimelineEventModalOpen}
-        onOpenChange={setIsAddTimelineEventModalOpen}
-        studentId={id || ""}
-        onSuccess={() => {
-          // Refresh timeline events
-          refetchTimeline();
-        }}
-      />
-    </div>
-  );
+      <AddTimelineEventModal open={isAddTimelineEventModalOpen} onOpenChange={setIsAddTimelineEventModalOpen} studentId={id || ""} onSuccess={() => {
+      // Refresh timeline events
+      refetchTimeline();
+    }} />
+    </div>;
 }
