@@ -20,9 +20,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TablePagination } from "./TablePagination";
-import { TableSearch } from "./TableSearch";
-import { TableBulkActions } from "./TableBulkActions";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Loader2,
+  SearchIcon,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -85,19 +105,56 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       {/* Table actions */}
       <div className="flex items-center justify-between">
-        <TableSearch
-          searchColumn={searchColumn}
-          table={table}
-          searchPlaceholder={searchPlaceholder}
-          isLoading={isLoading}
-        />
-        
-        <TableBulkActions
-          table={table}
-          bulkActions={bulkActions}
-          data={data}
-          rowSelection={rowSelection}
-        />
+        <div className="flex items-center space-x-2">
+          {searchColumn && (
+            <div className="relative w-64">
+              <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={(table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""}
+                onChange={(event) =>
+                  table.getColumn(searchColumn)?.setFilterValue(event.target.value)
+                }
+                className="pl-8"
+                disabled={isLoading}
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          {bulkActions && bulkActions.length > 0 && table.getFilteredSelectedRowModel().rows.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Bulk Actions ({table.getFilteredSelectedRowModel().rows.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {bulkActions.map((action, index) => (
+                  <DropdownMenuItem 
+                    key={index}
+                    onClick={() => {
+                      const selectedRowKeys = Object.keys(rowSelection).filter(
+                        (key) => rowSelection[key]
+                      );
+                      const selectedRowIds = selectedRowKeys.map((idx) => {
+                        const rowData = data[parseInt(idx)];
+                        return (rowData as any).id;
+                      });
+                      action.action(selectedRowIds);
+                    }}
+                  >
+                    {action.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {table.getFilteredRowModel().rows.length} row(s) selected
+          </p>
+        </div>
       </div>
 
       {/* Table */}
@@ -163,10 +220,75 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Pagination */}
-      <TablePagination table={table} isLoading={isLoading} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <p className="text-sm text-muted-foreground">
+            Showing {table.getRowModel().rows?.length} of{" "}
+            {table.getFilteredRowModel().rows.length} result(s)
+          </p>
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">Rows per page</p>
+            <Select
+              value={table.getState().pagination.pageSize.toString()}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value));
+              }}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="h-8 w-16">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={pageSize.toString()}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage() || isLoading}
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage() || isLoading}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage() || isLoading}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage() || isLoading}
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
-
-// Make sure to import Loader2
-import { Loader2 } from "lucide-react";

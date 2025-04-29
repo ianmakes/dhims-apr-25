@@ -35,7 +35,7 @@ interface AddLetterModalProps {
 }
 
 const letterFormSchema = z.object({
-  content: z.string().optional(),
+  content: z.string().min(1, { message: "Content is required" }),
   date: z.string().optional(),
 });
 
@@ -65,16 +65,6 @@ export function AddLetterModal({
   };
 
   const handleSubmit = async (values: z.infer<typeof letterFormSchema>) => {
-    // Validate that either content or file is provided
-    if (!values.content && !selectedFile) {
-      toast({
-        title: "Validation error",
-        description: "Please provide either letter content or upload a file",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsUploading(true);
     try {
       let fileUrl = "";
@@ -104,14 +94,13 @@ export function AddLetterModal({
       }
       
       // Add the letter to the student's letters list in the database
-      // Fix: Remove the 'title' field as it doesn't exist in the database schema
       const { data, error } = await supabase
         .from('student_letters')
         .insert({
           student_id: studentId,
           date: values.date ? new Date(values.date).toISOString() : new Date().toISOString(),
-          content: values.content || null,
-          file_url: fileUrl || null,
+          content: values.content,
+          file_url: fileUrl,
           created_by: user?.id,
         })
         .select()
