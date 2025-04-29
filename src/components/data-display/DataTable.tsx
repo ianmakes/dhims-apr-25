@@ -10,6 +10,7 @@ import {
   useReactTable,
   ColumnFiltersState,
   getFilteredRowModel,
+  RowSelectionState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -43,6 +44,7 @@ interface DataTableProps<TData, TValue> {
   searchColumn?: string;
   searchPlaceholder?: string;
   isLoading?: boolean;
+  onRowSelectionChange?: (selectedRowIds: string[]) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -51,10 +53,11 @@ export function DataTable<TData, TValue>({
   searchColumn,
   searchPlaceholder = "Search...",
   isLoading = false,
+  onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [rowSelection, setRowSelection] = useState({});
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const table = useReactTable({
     data,
@@ -65,12 +68,26 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: (updatedRowSelection) => {
+      setRowSelection(updatedRowSelection);
+      if (onRowSelectionChange) {
+        // Extract the IDs of selected rows and pass to the callback
+        const selectedRowKeys = Object.keys(updatedRowSelection).filter(
+          (key) => updatedRowSelection[key]
+        );
+        const selectedRowIds = selectedRowKeys.map((idx) => {
+          const rowData = data[parseInt(idx)];
+          return (rowData as any).id;
+        });
+        onRowSelectionChange(selectedRowIds);
+      }
+    },
     state: {
       sorting,
       columnFilters,
       rowSelection,
     },
+    enableRowSelection: true,
   });
 
   return (

@@ -11,19 +11,24 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 
-const SCHOOL_LEVELS = [
-  "SNE",
-  "Pre-Primary (Playgroup, PP1 and PP2)",
-  "Lower Primary (Grade 1-3)",
-  "Upper Primary (Grade 4-6)",
-  "Junior School (Grade 7-9)",
-  "Senior School (Grade 10-12)",
-];
 const CBC_CATEGORIES = [
-  "Playgroup", "PP1", "PP2", "Grade 1", "Grade 2", "Grade 3",
-  "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", 
-  "Grade 10", "Grade 11", "Grade 12", "SNE"
+  "Pre-Primary",
+  "Lower Primary",
+  "Upper Primary", 
+  "Junior Secondary",
+  "Senior Secondary",
+  "Special Needs Education (SNE)",
 ];
+
+const CBC_GRADES = {
+  "Pre-Primary": ["Playgroup", "PP1", "PP2"],
+  "Lower Primary": ["Grade 1", "Grade 2", "Grade 3"],
+  "Upper Primary": ["Grade 4", "Grade 5", "Grade 6"],
+  "Junior Secondary": ["Grade 7", "Grade 8", "Grade 9"],
+  "Senior Secondary": ["Grade 10", "Grade 11", "Grade 12"],
+  "Special Needs Education (SNE)": ["SNE"]
+};
+
 const ACCOMMODATION = ["Boarder", "Day Scholar"];
 const GENDERS = ["Male", "Female"];
 const HEALTH_STATUS = ["Healthy", "Disabled", "Cognitive Disorder"];
@@ -90,6 +95,7 @@ export function AddEditStudentModal({
   );
   
   const [currentStep, setCurrentStep] = useState(0);
+  const [formValid, setFormValid] = useState(false);
   const steps = ["Basic Info", "Academic Info", "Additional Info"];
   
   const containerFixedHeight = "h-[500px]";
@@ -108,10 +114,54 @@ export function AddEditStudentModal({
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    onSubmit(form);
+    // Only submit if we're on the last step
+    if (currentStep === steps.length - 1) {
+      onSubmit(form);
+    }
   };
 
-  const nextStep = () => setCurrentStep((current) => Math.min(current + 1, steps.length - 1));
+  const handleCbcCategoryChange = (category: string) => {
+    setForm(f => {
+      // When selecting a category, default to the first grade in that category
+      const grades = CBC_GRADES[category as keyof typeof CBC_GRADES] || [];
+      const defaultGrade = grades.length > 0 ? grades[0] : "";
+      
+      return {
+        ...f,
+        school_level: category,
+        cbc_category: defaultGrade,
+        current_grade: defaultGrade // For backward compatibility
+      };
+    });
+  };
+  
+  const handleCbcGradeChange = (grade: string) => {
+    setForm(f => ({
+      ...f,
+      cbc_category: grade,
+      current_grade: grade // For backward compatibility
+    }));
+  };
+
+  const validateCurrentStep = () => {
+    switch(currentStep) {
+      case 0:
+        return !!form.name && !!form.admission_number && !!form.dob && !!form.gender;
+      case 1:
+        return !!form.school_level && !!form.cbc_category && !!form.admission_date;
+      case 2:
+        return true; // Additional info can be optional
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep((current) => Math.min(current + 1, steps.length - 1));
+    }
+  };
+  
   const prevStep = () => setCurrentStep((current) => Math.max(current - 1, 0));
   
   return (
@@ -190,34 +240,39 @@ export function AddEditStudentModal({
                 <Card className="p-4 border rounded-lg shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <Label htmlFor="school_level">School Level</Label>
-                      <Select value={form.school_level || ""} onValueChange={v => setForm(f => ({...f, school_level: v}))}>
+                      <Label htmlFor="school_level">CBC Category</Label>
+                      <Select 
+                        value={form.school_level || ""} 
+                        onValueChange={handleCbcCategoryChange}
+                      >
                         <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select level" />
+                          <SelectValue placeholder="Select CBC category" />
                         </SelectTrigger>
                         <SelectContent>
-                          {SCHOOL_LEVELS.map((l) => (
-                            <SelectItem key={l} value={l}>{l}</SelectItem>
+                          {CBC_CATEGORIES.map((category) => (
+                            <SelectItem key={category} value={category}>{category}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="cbc_category">CBC Category</Label>
-                      <Select value={form.cbc_category || ""} onValueChange={v => setForm(f => ({...f, cbc_category: v}))}>
+                      <Label htmlFor="cbc_category">Grade</Label>
+                      <Select 
+                        value={form.cbc_category || ""} 
+                        onValueChange={handleCbcGradeChange}
+                        disabled={!form.school_level}
+                      >
                         <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select CBC" />
+                          <SelectValue placeholder="Select Grade" />
                         </SelectTrigger>
                         <SelectContent>
-                          {CBC_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
+                          {form.school_level && 
+                            CBC_GRADES[form.school_level as keyof typeof CBC_GRADES]?.map((grade) => (
+                              <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                            ))
+                          }
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="current_grade">Current Grade</Label>
-                      <Input name="current_grade" value={form.current_grade || ""} onChange={handleChange} className="mt-1" />
                     </div>
                     <div>
                       <Label htmlFor="admission_date">Admission Date</Label>
