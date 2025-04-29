@@ -1,371 +1,200 @@
+
 import { useState } from 'react';
-import { User } from "@/types/user";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User as UserIcon, Search, MoreHorizontal, Plus } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
+import { User } from '@/types/user';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { MoreVertical } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox"
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 export default function Users() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUserToDelete, setSelectedUserToDelete] = useState<User | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedUserToEdit, setSelectedUserToEdit] = useState<User | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const { data: users, isLoading, isError } = useQuery({
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Fetch profiles (users) from Supabase
+  const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
-
+      
       if (error) {
         throw new Error(error.message);
       }
-      return data as User[];
-    },
+      
+      // Map profiles to User type
+      return data.map(profile => ({
+        id: profile.id,
+        email: profile.email || "", // This may need to be fetched separately from auth.users
+        role: profile.role || "viewer",
+        created_at: profile.created_at,
+        avatar_url: profile.avatar_url,
+        name: profile.name,
+        is_active: true // Default to active
+      })) as User[];
+    }
   });
 
+  // Delete user mutation
   const deleteUserMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase
+    mutationFn: async (userId: string) => {
+      // Deleting a user requires admin privileges in Supabase
+      // This is just a placeholder - in a real app you might call a serverless function
+      const { error } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', id);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      return data;
+        .eq('id', userId);
+      
+      if (error) throw error;
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast({
-        title: "Success",
-        description: "User deleted successfully.",
+        title: "User deleted",
+        description: "User has been deleted successfully",
       });
-      setIsDeleteModalOpen(false);
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-      setIsDeleteModalOpen(false);
-    },
+    }
   });
 
-  const updateUserMutation = useMutation({
-    mutationFn: async (user: User) => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          first_name: user.first_name,
-          last_name: user.last_name,
-          is_active: user.is_active,
-          role: user.role,
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast({
-        title: "Success",
-        description: "User updated successfully.",
-      });
-      setIsEditModalOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      setIsEditModalOpen(false);
-    },
-  });
-
-  const filteredUsers = users?.filter(user =>
-    user.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleOpenDeleteModal = (user: User) => {
-    setSelectedUserToDelete(user);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (selectedUserToDelete) {
-      deleteUserMutation.mutate(selectedUserToDelete.id);
+  const handleDeleteUser = (userId: string) => {
+    if (confirm("Are you sure you want to delete this user?")) {
+      deleteUserMutation.mutate(userId);
     }
   };
 
-  const handleOpenEditModal = (user: User) => {
-    setSelectedUserToEdit(user);
-    setIsEditModalOpen(true);
-  };
-
-  const handleUpdateUser = (updatedUser: User) => {
-    updateUserMutation.mutate(updatedUser);
-  };
-
-  if (isLoading) {
-    return <div>Loading users...</div>;
-  }
-
-  if (isError) {
-    return <div>Error fetching users.</div>;
-  }
+  // Filter users based on search query
+  const filteredUsers = users?.filter(user => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      (user.name?.toLowerCase().includes(query)) || 
+      (user.email?.toLowerCase().includes(query)) ||
+      (user.role?.toLowerCase().includes(query))
+    );
+  });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Users</CardTitle>
-        <CardDescription>Manage users and their roles.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4">
-          <Input
+    <div className="container mx-auto py-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Users & Permissions</h1>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
+      </div>
+      
+      <div className="bg-white shadow rounded-lg">
+        <div className="p-4 border-b flex items-center">
+          <Search className="h-4 w-4 mr-2 text-gray-500" />
+          <input
             type="text"
             placeholder="Search users..."
+            className="w-full bg-transparent border-none focus:outline-none"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers?.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
-                    <Avatar>
-                      <AvatarImage src={user.avatar_url} />
-                      <AvatarFallback>{user.first_name?.[0]}{user.last_name?.[0]}</AvatarFallback>
-                    </Avatar>
-                    <span>{user.first_name} {user.last_name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.role}</TableCell>
-                <TableCell>
-                  <Badge variant={user.is_active ? "default" : "secondary"}>
-                    {user.is_active ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleOpenEditModal(user)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleOpenDeleteModal(user)} className="text-red-500">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+        
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Date Added</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-
-      {/* Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {selectedUserToDelete?.first_name} {selectedUserToDelete?.last_name}? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteUserMutation.isLoading}
-            >
-              {deleteUserMutation.isLoading ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={() => setIsEditModalOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Edit user details for {selectedUserToEdit?.first_name} {selectedUserToEdit?.last_name}.
-            </DialogDescription>
-          </DialogHeader>
-          <EditUserForm
-            user={selectedUserToEdit}
-            onUpdate={handleUpdateUser}
-            onCancel={() => setIsEditModalOpen(false)}
-            isLoading={updateUserMutation.isLoading}
-          />
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-interface EditUserFormProps {
-  user: User | null | undefined;
-  onUpdate: (user: User) => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}
-
-function EditUserForm({ user, onUpdate, onCancel, isLoading }: EditUserFormProps) {
-  const [firstName, setFirstName] = useState(user?.first_name || "");
-  const [lastName, setLastName] = useState(user?.last_name || "");
-  const [role, setRole] = useState(user?.role || "user");
-  const [isActive, setIsActive] = useState(user?.is_active || false);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (user) {
-      const updatedUser: User = {
-        ...user,
-        first_name: firstName,
-        last_name: lastName,
-        role: role,
-        is_active: isActive,
-      };
-      onUpdate(updatedUser);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="first_name" className="text-right">
-          First Name
-        </Label>
-        <Input
-          id="first_name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          className="col-span-3"
-        />
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10">
+                    Loading users...
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers?.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar_url || ""} />
+                          <AvatarFallback>
+                            <UserIcon className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{user.name || "User"}</p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="capitalize">{user.role}</span>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => alert(`Edit user ${user.id}`)}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={deleteUserMutation.isPending}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="last_name" className="text-right">
-          Last Name
-        </Label>
-        <Input
-          id="last_name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          className="col-span-3"
-        />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="role" className="text-right">
-          Role
-        </Label>
-        <Input
-          id="role"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="col-span-3"
-        />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="active" className="text-right">
-          Active
-        </Label>
-        <Checkbox
-          id="active"
-          checked={isActive}
-          onCheckedChange={(checked) => setIsActive(!!checked)}
-          className="col-span-3"
-        />
-      </div>
-      <DialogFooter>
-        <Button variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Updating..." : "Update User"}
-        </Button>
-      </DialogFooter>
-    </form>
+    </div>
   );
 }

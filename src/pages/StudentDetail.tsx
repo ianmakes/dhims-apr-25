@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User } from "@/types/user";
@@ -132,9 +133,13 @@ export default function StudentDetail() {
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </Button>
-          <Button variant="destructive" onClick={handleDeleteStudent} disabled={deleteStudentMutation.isLoading}>
+          <Button 
+            variant="destructive" 
+            onClick={handleDeleteStudent} 
+            disabled={deleteStudentMutation.isPending}
+          >
             <Trash2 className="mr-2 h-4 w-4" />
-            {deleteStudentMutation.isLoading ? 'Deleting...' : 'Delete'}
+            {deleteStudentMutation.isPending ? 'Deleting...' : 'Delete'}
           </Button>
         </div>
       </div>
@@ -181,19 +186,19 @@ export default function StudentDetail() {
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
                 <h3 className="font-medium text-gray-700">Email</h3>
-                <p className="text-sm text-gray-500">{student.email}</p>
+                <p className="text-sm text-gray-500">{student.email || 'N/A'}</p>
               </div>
               <div>
                 <h3 className="font-medium text-gray-700">Date of Birth</h3>
-                <p className="text-sm text-gray-500">{formatDate(student.date_of_birth)}</p>
+                <p className="text-sm text-gray-500">{formatDate(student.dob || student.date_of_birth)}</p>
               </div>
               <div>
                 <h3 className="font-medium text-gray-700">Gender</h3>
-                <p className="text-sm text-gray-500">{student.gender}</p>
+                <p className="text-sm text-gray-500">{student.gender || 'N/A'}</p>
               </div>
               <div>
                 <h3 className="font-medium text-gray-700">Address</h3>
-                <p className="text-sm text-gray-500">{student.address}</p>
+                <p className="text-sm text-gray-500">{student.address || student.location || 'N/A'}</p>
               </div>
             </CardContent>
           </Card>
