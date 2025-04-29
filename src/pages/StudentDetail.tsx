@@ -258,7 +258,7 @@ export default function StudentDetail() {
             </h1>
           </div>
           <p className="text-muted-foreground text-left">
-            Student ID: {student.admission_number} • {student.cbc_grade || student.current_grade}
+            Student ID: {student.admission_number} • {student.cbc_grade || student.current_grade || "N/A"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -269,7 +269,7 @@ export default function StudentDetail() {
             <Switch 
               checked={student.status === "Active"} 
               onCheckedChange={handleToggleStatus} 
-              className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input rounded-none"
+              className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
             />
           </div>
           

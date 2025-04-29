@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Download, FileImage, FilePdf, FileText, ChevronRight, ChevronLeft, ZoomIn, ZoomOut } from "lucide-react";
+import { Download, FileImage, FileText, ChevronRight, ChevronLeft, ZoomIn, ZoomOut } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,11 @@ import html2canvas from "html2canvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import * as XLSX from 'xlsx';
+
+// Refactored components
+import { GradeIndicator } from "./exam-components/GradeIndicator";
+import { ExamResultsTable } from "./exam-components/ExamResultsTable";
+import { ExportPreview } from "./exam-components/ExportPreview";
 
 const gradeColors = {
   "A": "#4ade80",
@@ -32,6 +37,7 @@ const gradeColors = {
   "E": "#b91c1c",
 };
 
+// Helper functions
 const calculateGrade = (score: number) => {
   if (score >= 80) return "A";
   if (score >= 75) return "A-";
@@ -428,7 +434,7 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setIsPdfPreviewOpen(true)}>
-                  <FilePdf className="mr-2 h-4 w-4" /> Export as PDF
+                  <FileText className="mr-2 h-4 w-4" /> Export as PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportImage}>
                   <FileImage className="mr-2 h-4 w-4" /> Export as Image
@@ -454,91 +460,12 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : examScores.length > 0 ? (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam Name</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Performance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {examScores.map((score, idx) => {
-                      // Only render if we have exam data
-                      if (!score.exam) {
-                        return null;
-                      }
-                      
-                      // Calculate percentage 
-                      const percentage = score.exam?.max_score 
-                        ? Math.round((score.score / score.exam.max_score) * 100) 
-                        : 0;
-                      
-                      // Determine performance category
-                      const performanceCategory = getGradeCategory(percentage);
-                      
-                      // Determine badge color based on performance category
-                      const badgeVariant = 
-                        performanceCategory === "Exceeding Expectation" ? "success" :
-                        performanceCategory === "Meeting Expectation" ? "default" :
-                        performanceCategory === "Approaching Expectation" ? "warning" : "destructive";
-                        
-                      return (
-                        <tr key={score.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {score.exam?.name || "Unknown"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {score.exam?.term || "Unknown"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {score.exam?.exam_date 
-                              ? new Date(score.exam.exam_date).toLocaleDateString() 
-                              : "Unknown date"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {score.did_not_sit ? (
-                              <Badge variant="destructive">Did not sit</Badge>
-                            ) : (
-                              <span>{score.score} / {score.exam?.max_score || "?"}</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {score.did_not_sit ? "-" : (
-                              <span>{percentage}%</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {!score.did_not_sit && (
-                              <div 
-                                className="text-xs font-medium px-2 py-1 rounded-full text-center w-8"
-                                style={{ 
-                                  color: 'white', 
-                                  backgroundColor: gradeColors[calculateGrade(percentage)] 
-                                }}
-                              >
-                                {calculateGrade(percentage)}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {!score.did_not_sit && (
-                              <Badge variant={badgeVariant as any}>
-                                {performanceCategory}
-                              </Badge>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ExamResultsTable 
+                examScores={examScores}
+                calculateGrade={calculateGrade}
+                getGradeCategory={getGradeCategory}
+                gradeColors={gradeColors}
+              />
             ) : (
               <div className="text-center p-10 border rounded-lg bg-muted/10">
                 <p className="text-muted-foreground">No exam records found for {studentName}</p>
@@ -611,179 +538,19 @@ export function StudentExamsTab({ studentName, studentId }: StudentExamsTabProps
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto flex justify-center p-4 bg-gray-100 rounded-md">
-            <div 
-              style={{ 
-                transform: `scale(${zoomLevel})`, 
-                transformOrigin: 'top center',
-                transition: 'transform 0.2s'
-              }}
-              className="bg-white shadow-lg"
-            >
-              <div ref={pdfExportRef} className="p-8 w-[210mm]">
-                <div className="flex justify-between items-center border-b pb-4">
-                  <div className="flex items-center gap-4">
-                    <img 
-                      src="/lovable-uploads/4fe39649-bf54-408f-9b41-7aa63810a53c.png" 
-                      alt="School Logo" 
-                      className="h-16"
-                    />
-                    <div>
-                      <h1 className="text-2xl font-bold">David's Hope</h1>
-                      <p className="text-sm text-gray-500">Student Exam Report</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">{new Date().toLocaleDateString()}</p>
-                    <p className="text-sm text-gray-500">Academic Year: {selectedYear}</p>
-                  </div>
-                </div>
-                
-                <div className="my-6">
-                  <h2 className="text-xl font-bold">{studentName}</h2>
-                  <div className="flex gap-6 mt-2">
-                    <p><span className="font-medium">Admission #:</span> {examScores[0]?.student_id}</p>
-                    <p><span className="font-medium">Year:</span> {selectedYear}</p>
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  <h3 className="font-bold border-b mb-2 pb-1">Performance Summary</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border rounded p-3">
-                      <p className="text-sm text-gray-500">Average Score</p>
-                      <p className="text-2xl font-bold">{overallStats.averagePercentage}%</p>
-                      <p className="text-sm">
-                        Grade: <span className="font-medium">{calculateGrade(overallStats.averagePercentage)}</span>
-                      </p>
-                      <p className="text-sm">
-                        Performance: <span className="font-medium">{getGradeCategory(overallStats.averagePercentage)}</span>
-                      </p>
-                    </div>
-                    <div className="border rounded p-3">
-                      <p className="text-sm text-gray-500">Score Range</p>
-                      <p className="text-lg font-bold">Highest: {overallStats.highestScore}%</p>
-                      <p className="text-lg font-bold">Lowest: {overallStats.lowestScore}%</p>
-                      <p className="text-sm">Total Exams: {overallStats.total}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  <h3 className="font-bold border-b mb-4 pb-1">Performance Trends</h3>
-                  <div className="h-64 mb-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={trendData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis domain={[0, 100]} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="percentage" name="Score %" stroke="#8884d8" activeDot={{ r: 8 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-medium mb-2">Term Performance</h4>
-                      <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={termData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="term" />
-                            <YAxis domain={[0, 100]} />
-                            <Tooltip />
-                            <Bar dataKey="average" name="Term Average %" fill="#8884d8" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium mb-2">Performance Distribution</h4>
-                      <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={categoryDistributionData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="category" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="count" name="Number of Exams" fill="#82ca9d" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-bold border-b mb-4 pb-1">Detailed Exam Results</h3>
-                  <table className="min-w-full divide-y divide-gray-200 border">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Performance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {examScores.filter(score => score.exam).map((score, idx) => {
-                        const percentage = score.exam?.max_score 
-                          ? Math.round((score.score / score.exam.max_score) * 100) 
-                          : 0;
-                          
-                        return (
-                          <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="px-3 py-2 whitespace-nowrap text-xs">{score.exam?.name || "Unknown"}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-xs">{score.exam?.term || "Unknown"}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-xs">
-                              {score.did_not_sit ? "DNP" : `${score.score}/${score.exam?.max_score}`}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-xs">
-                              {score.did_not_sit ? "-" : `${percentage}%`}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-xs">
-                              {score.did_not_sit ? "-" : calculateGrade(percentage)}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-xs">
-                              {score.did_not_sit ? "-" : getGradeCategory(percentage)}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                
-                <div className="mt-8 border-t pt-4">
-                  <div className="flex justify-between text-sm">
-                    <div>
-                      <p className="mb-1"><span className="font-medium">Grading System:</span></p>
-                      <p>Exceeding Expectation: 80-100%</p>
-                      <p>Meeting Expectation: 50-79%</p>
-                      <p>Approaching Expectation: 40-49%</p>
-                      <p>Below Expectation: 0-39%</p>
-                    </div>
-                    <div className="text-right">
-                      <p><span className="font-medium">Report Generated:</span> {new Date().toLocaleString()}</p>
-                      <p><span className="font-medium">David's Hope</span></p>
-                      <p>www.davidshope.org</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ExportPreview 
+              pdfExportRef={pdfExportRef}
+              zoomLevel={zoomLevel}
+              studentName={studentName}
+              selectedYear={selectedYear}
+              examScores={examScores}
+              trendData={trendData}
+              termData={termData}
+              overallStats={overallStats}
+              categoryDistributionData={categoryDistributionData}
+              calculateGrade={calculateGrade}
+              getGradeCategory={getGradeCategory}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)}>
