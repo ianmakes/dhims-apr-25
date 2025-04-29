@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -167,7 +166,7 @@ export function AddEditSponsorModal({
       }
       
       const fileName = `sponsor-${Date.now()}.${file.name.split('.').pop()}`;
-      const filePath = `sponsors/${fileName}`;
+      const filePath = `${fileName}`;
       
       // Upload the image to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -178,6 +177,7 @@ export function AddEditSponsorModal({
         });
       
       if (uploadError) {
+        console.error("Storage upload error:", uploadError);
         throw uploadError;
       }
 
