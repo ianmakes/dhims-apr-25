@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -916,7 +915,7 @@ export default function ExamDetail() {
                   </Card>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-6 grid-cols-1">
                   <Card>
                     <CardHeader>
                       <CardTitle>Score Distribution</CardTitle>
@@ -974,9 +973,42 @@ export default function ExamDetail() {
                             },
                           }}
                         >
-                          <RadarChart data={performanceData} margin={{ top: 20, right: 30, bottom: 0, left: 0 }}>
-                            <PolarGrid stroke="#e5e7eb" />
-                            <PolarAngleAxis dataKey="category" tick={false} />
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: ExamGrade.EXCEEDING, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= 80).length },
+                                { name: ExamGrade.MEETING, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= 50 && (s.score || 0) < 80).length },
+                                { name: ExamGrade.APPROACHING, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= 40 && (s.score || 0) < 50).length },
+                                { name: ExamGrade.BELOW, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) < 40).length },
+                                { name: "Did Not Sit", value: studentsWithScores.filter(s => s.didNotSit).length }
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={80}
+                              outerRadius={100}
+                              dataKey="value"
+                              nameKey="name"
+                              labelLine={false}
+                            >
+                              {[
+                                { name: ExamGrade.EXCEEDING, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= 80).length },
+                                { name: ExamGrade.MEETING, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= 50 && (s.score || 0) < 80).length },
+                                { name: ExamGrade.APPROACHING, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) >= 40 && (s.score || 0) < 50).length },
+                                { name: ExamGrade.BELOW, value: studentsWithScores.filter(s => !s.didNotSit && (s.score || 0) < 40).length },
+                                { name: "Did Not Sit", value: studentsWithScores.filter(s => s.didNotSit).length }
+                              ].map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={
+                                    entry.name === ExamGrade.EXCEEDING ? "var(--color-exceeding)" :
+                                    entry.name === ExamGrade.MEETING ? "var(--color-meeting)" :
+                                    entry.name === ExamGrade.APPROACHING ? "var(--color-approaching)" :
+                                    entry.name === ExamGrade.BELOW ? "var(--color-below)" : 
+                                    "var(--color-didNotSit)"
+                                  } 
+                                />
+                              ))}
+                            </Pie>
                             <RechartsTooltip 
                               content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
@@ -990,43 +1022,8 @@ export default function ExamDetail() {
                                 return null;
                               }}
                             />
-                            <Radar 
-                              name="exceeding" 
-                              dataKey={ExamGrade.EXCEEDING} 
-                              stroke="var(--color-exceeding)" 
-                              fill="var(--color-exceeding)" 
-                              fillOpacity={0.6} 
-                            />
-                            <Radar 
-                              name="meeting" 
-                              dataKey={ExamGrade.MEETING} 
-                              stroke="var(--color-meeting)" 
-                              fill="var(--color-meeting)" 
-                              fillOpacity={0.6} 
-                            />
-                            <Radar 
-                              name="approaching" 
-                              dataKey={ExamGrade.APPROACHING} 
-                              stroke="var(--color-approaching)" 
-                              fill="var(--color-approaching)" 
-                              fillOpacity={0.6} 
-                            />
-                            <Radar 
-                              name="below" 
-                              dataKey={ExamGrade.BELOW} 
-                              stroke="var(--color-below)" 
-                              fill="var(--color-below)" 
-                              fillOpacity={0.6} 
-                            />
-                            <Radar 
-                              name="didNotSit" 
-                              dataKey="Did Not Sit" 
-                              stroke="var(--color-didNotSit)" 
-                              fill="var(--color-didNotSit)" 
-                              fillOpacity={0.6} 
-                            />
                             <Legend />
-                          </RadarChart>
+                          </PieChart>
                         </ChartContainer>
                       </div>
                     </CardContent>
@@ -1130,4 +1127,3 @@ export default function ExamDetail() {
     </div>
   );
 }
-
