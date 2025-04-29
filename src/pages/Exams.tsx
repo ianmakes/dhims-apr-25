@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,18 +86,18 @@ export default function Exams() {
                     <CardTitle>{exam.name}</CardTitle>
                     <CardDescription className="flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
-                      {new Date(exam.date).toLocaleDateString()}
+                      {new Date(exam.exam_date).toLocaleDateString()}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-sm text-muted-foreground">Term: {exam.term}</p>
-                        <p className="text-sm text-muted-foreground">Academic Year: {exam.academicYear}</p>
+                        <p className="text-sm text-muted-foreground">Academic Year: {exam.academic_year}</p>
                       </div>
                       <div className="flex items-center bg-primary/10 p-2 rounded-md">
                         <BarChart2 className="h-4 w-4 text-primary mr-1" />
-                        <span className="text-sm font-medium">{exam.grades?.length || 0} Results</span>
+                        <span className="text-sm font-medium">Results</span>
                       </div>
                     </div>
                   </CardContent>
@@ -127,10 +128,10 @@ export default function Exams() {
                       <Card key={exam.id} className="cursor-pointer hover:shadow-md transition-shadow">
                         <CardHeader className="pb-2">
                           <CardTitle>{exam.name}</CardTitle>
-                          <CardDescription>{new Date(exam.date).toLocaleDateString()}</CardDescription>
+                          <CardDescription>{new Date(exam.exam_date).toLocaleDateString()}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm text-muted-foreground">Academic Year: {exam.academicYear}</p>
+                          <p className="text-sm text-muted-foreground">Academic Year: {exam.academic_year}</p>
                         </CardContent>
                       </Card>
                     ))}
@@ -161,10 +162,10 @@ export default function Exams() {
                       <Card key={exam.id} className="cursor-pointer hover:shadow-md transition-shadow">
                         <CardHeader className="pb-2">
                           <CardTitle>{exam.name}</CardTitle>
-                          <CardDescription>{new Date(exam.date).toLocaleDateString()}</CardDescription>
+                          <CardDescription>{new Date(exam.exam_date).toLocaleDateString()}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm text-muted-foreground">Academic Year: {exam.academicYear}</p>
+                          <p className="text-sm text-muted-foreground">Academic Year: {exam.academic_year}</p>
                         </CardContent>
                       </Card>
                     ))}
@@ -195,10 +196,10 @@ export default function Exams() {
                       <Card key={exam.id} className="cursor-pointer hover:shadow-md transition-shadow">
                         <CardHeader className="pb-2">
                           <CardTitle>{exam.name}</CardTitle>
-                          <CardDescription>{new Date(exam.date).toLocaleDateString()}</CardDescription>
+                          <CardDescription>{new Date(exam.exam_date).toLocaleDateString()}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm text-muted-foreground">Academic Year: {exam.academicYear}</p>
+                          <p className="text-sm text-muted-foreground">Academic Year: {exam.academic_year}</p>
                         </CardContent>
                       </Card>
                     ))}

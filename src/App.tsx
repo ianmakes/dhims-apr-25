@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate, RouterProvider, createBrowserRouter } from "react-router-dom";
+
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AcademicYearProvider } from "@/contexts/AcademicYearContext";
@@ -17,13 +18,10 @@ import GeneralSettings from "@/pages/settings/GeneralSettings";
 import ProfileSettings from "@/pages/settings/ProfileSettings";
 import SmtpSettings from "@/pages/settings/SmtpSettings";
 import AcademicYearsSettings from "@/pages/settings/AcademicYearsSettings";
-import AuditLogsSettings from "@/pages/settings/AuditLogsSettings";
+import AuditLogSettings from "@/pages/settings/AuditLogSettings";
 import UserRolesSettings from "@/pages/settings/UserRolesSettings";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
 
+// Create a client
 const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
@@ -55,28 +53,12 @@ const router = createBrowserRouter([
           { path: "profile", element: <ProfileSettings /> },
           { path: "smtp", element: <SmtpSettings /> },
           { path: "academic", element: <AcademicYearsSettings /> },
-          { path: "audit", element: <AuditLogsSettings /> },
+          { path: "audit", element: <AuditLogSettings /> },
           { path: "roles", element: <UserRolesSettings /> },
         ],
       },
     ],
-  },
-  {
-    path: "/login",
-    element: <Login />,
-  },
-  {
-    path: "/register",
-    element: <Register />,
-  },
-  {
-    path: "/forgot-password",
-    element: <ForgotPassword />,
-  },
-  {
-    path: "/reset-password",
-    element: <ResetPassword />,
-  },
+  }
 ]);
 
 function App() {
