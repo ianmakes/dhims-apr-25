@@ -55,7 +55,7 @@ export function AppHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile?.avatar_url || ""} alt={profile?.name || user?.email?.charAt(0) || "User"} />
+                  <AvatarImage src={profile?.avatar_url || ""} alt={profile?.name || "User"} />
                   <AvatarFallback>
                     {profile?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
                   </AvatarFallback>
@@ -75,7 +75,7 @@ export function AppHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>

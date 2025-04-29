@@ -1,130 +1,84 @@
 
-export interface Student {
-  id: string;
-  created_at?: string;
-  name: string;
-  date_of_birth?: string;
-  gender?: string;
-  address?: string;
-  phone_number?: string;
-  email?: string;
-  class?: string;
-  admission_date?: string;
-  photo_url?: string;
-  father_name?: string;
-  mother_name?: string;
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
-  sponsor_id?: string;
-  sponsored_since?: string;
-  updated_at?: string;
-  updated_by?: string;
-}
+import { Database } from "@/integrations/supabase/types";
+import { Json } from "@/integrations/supabase/types";
 
-export interface Sponsor {
-  id: string;
-  created_at?: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  email2?: string;
-  phone?: string;
-  address?: string;
-  country?: string;
-  photo_url?: string;
-  profile_image_url?: string;
-  occupation?: string;
-  additional_info?: string;
-  start_date?: string;
-  status?: string;
-  notes?: string;
-  primary_email_for_updates?: string;
-  updated_at?: string;
-  students?: any[];
-}
+// Export specific table types for easier usage
+export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Student = Database['public']['Tables']['students']['Row'];
+export type TimelineEvent = Database['public']['Tables']['timeline_events']['Row'];
+export type StudentLetter = Database['public']['Tables']['student_letters']['Row'];
+export type StudentPhoto = Database['public']['Tables']['student_photos']['Row'];
+export type StudentRelative = Database['public']['Tables']['student_relatives']['Row'];
 
-export interface StudentRelative {
-  id: string;
-  created_at?: string;
-  student_id: string;
-  name: string;
-  relationship: string;
-  phone_number?: string;
-  photo_url?: string;
-}
+// Define the StudentExamScore type with proper exam property
+export type StudentExamScore = Database['public']['Tables']['student_exam_scores']['Row'] & {
+  exam: {
+    id: string;
+    name: string;
+    term: string;
+    academic_year: string;
+    exam_date: string;
+    max_score: number;
+    passing_score: number;
+  };
+};
 
-export interface Profile {
-  id: string;
-  updated_at?: string;
-  username?: string;
-  full_name?: string;
-  avatar_url?: string;
-  website?: string;
-  name?: string;
-  role?: string;
-}
-
-export interface ImageUploadCropperProps {
-  value?: string;
-  onChange?: (url: string) => void;
-  aspectRatio?: number;
-  label?: string;
-  onImageCropped?: (croppedImage: Blob) => Promise<void>;
-  onCancel?: () => void;
-  isUploading?: boolean;
-}
-
-export interface SponsorRelative {
-  id: string;
-  sponsor_id: string;
-  name: string;
-  relationship: string;
-  phone_number?: string;
-  photo_url?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface SponsorTimelineEvent {
+// Define sponsor-related types for tables
+export type SponsorTimelineEvent = {
   id: string;
   sponsor_id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   type: string;
+  student_id?: string | null;
   date: string;
-  created_at?: string;
-  updated_at?: string;
-  student_id?: string;
-}
+  created_at: string;
+  updated_at?: string | null;
+};
 
-export interface StudentFormInput {
-  id?: string;
-  name: string;
-  date_of_birth?: string;
-  gender?: string;
-  address?: string;
-  phone_number?: string;
-  email?: string;
-  class?: string;
-  admission_date?: string;
-  photo_url?: string;
-  father_name?: string;
-  mother_name?: string;
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
-}
-
-export interface StudentExamScore {
+// Define the SponsorRelative type
+export type SponsorRelative = {
   id: string;
-  student_id: string;
-  exam_id: string;
-  score: number;
-  did_not_sit: boolean;
-  created_at?: string;
-  updated_at?: string;
-  student?: {
-    id: string;
-    name: string;
-    admission_number?: string;
-  };
+  sponsor_id: string;
+  name: string;
+  relationship: string;
+  email: string;
+  phone_number?: string | null;
+  photo_url?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+// New student form input type
+export interface StudentFormInput {
+  name: string;
+  admission_number: string;
+  dob?: string | null;
+  gender: 'Male' | 'Female';
+  status: string;
+  accommodation_status?: string | null;
+  health_status?: string | null;
+  location?: string | null;
+  description?: string | null;
+  school_level?: string | null;
+  cbc_category?: string | null;
+  current_grade?: string | null;
+  current_academic_year?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  admission_date?: string | null;
+  sponsor_id?: string | null;
+  sponsored_since?: string | null;
+  profile_image_url?: string | null;
+  slug?: string | null;
+  students?: Student[]; // Add this to resolve type issues
+  createdAt?: string;   // Add this to resolve type issues
+  updatedAt?: string;   // Add this to resolve type issues
 }
+
+// Add Sponsor type
+export type Sponsor = Database['public']['Tables']['sponsors']['Row'] & {
+  students?: Student[];
+  profile_image_url?: string | null;
+  primary_email_for_updates?: string | null;
+};
