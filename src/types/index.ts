@@ -1,4 +1,3 @@
-
 // Type definitions for DHIMS
 
 // User roles type
@@ -36,6 +35,7 @@ export interface Student {
   updatedAt: Date;
   createdBy?: string;
   lastModifiedBy?: string;
+  currentAcademicYear?: number; // Added to track academic year
 }
 
 // Sponsor interface
@@ -57,6 +57,7 @@ export interface Sponsor {
   updatedAt: Date;
   createdBy?: string;
   lastModifiedBy?: string;
+  academicYear?: string; // Added to track academic year
 }
 
 // Exam interface
@@ -194,4 +195,15 @@ export interface UserRoleWithPermissions {
   updated_at: string;
   created_by?: string;
   updated_by?: string;
+}
+
+// Academic year statistics interface
+export interface AcademicYearStatistics {
+  year: string;
+  studentCount: number;
+  sponsorCount: number;
+  examCount: number;
+  unassignedStudentCount: number;
+  isSelected?: boolean;
+  isCurrent?: boolean;
 }

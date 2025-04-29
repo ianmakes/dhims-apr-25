@@ -8,65 +8,87 @@ import {
   Users, 
   UserCircle,
   BarChart2,
-  Calendar,
+  CalendarDays,
   RefreshCcw
 } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AcademicYearSelector } from "@/components/dashboard/AcademicYearSelector";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
+import { AcademicYearStats } from "@/components/dashboard/AcademicYearStats";
 
 export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { selectedYear } = useAcademicYear();
+  const selectedYearNumber = selectedYear ? parseInt(selectedYear.year_name) : undefined;
 
-  // Stats queries
+  // Stats queries with academic year filtering
   const { data: studentCount = 0, refetch: refetchStudents } = useQuery({
-    queryKey: ["student-count"],
+    queryKey: ["student-count", selectedYearNumber],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("students")
-        .select("*", { count: "exact", head: true });
-      
-      if (error) throw error;
-      return count || 0;
-    },
-  });
+      if (!selectedYearNumber) return 0;
 
-  const { data: sponsorCount = 0, refetch: refetchSponsors } = useQuery({
-    queryKey: ["sponsor-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("sponsors")
-        .select("*", { count: "exact", head: true });
-      
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  const { data: examCount = 0, refetch: refetchExams } = useQuery({
-    queryKey: ["exam-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("exams")
-        .select("*", { count: "exact", head: true });
-      
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  const { data: unassignedStudents = 0, refetch: refetchUnassigned } = useQuery({
-    queryKey: ["unassigned-students"],
-    queryFn: async () => {
       const { count, error } = await supabase
         .from("students")
         .select("*", { count: "exact", head: true })
-        .is("sponsor_id", null);
+        .eq("current_academic_year", selectedYearNumber);
       
       if (error) throw error;
       return count || 0;
     },
+    enabled: !!selectedYearNumber,
+  });
+
+  const { data: sponsorCount = 0, refetch: refetchSponsors } = useQuery({
+    queryKey: ["sponsor-count", selectedYear?.id],
+    queryFn: async () => {
+      if (!selectedYear) return 0;
+
+      const { count, error } = await supabase
+        .from("sponsors")
+        .select("*", { count: "exact", head: true })
+        .gte("start_date", selectedYear.start_date)
+        .lte("start_date", selectedYear.end_date);
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!selectedYear,
+  });
+
+  const { data: examCount = 0, refetch: refetchExams } = useQuery({
+    queryKey: ["exam-count", selectedYear?.year_name],
+    queryFn: async () => {
+      if (!selectedYear?.year_name) return 0;
+
+      const { count, error } = await supabase
+        .from("exams")
+        .select("*", { count: "exact", head: true })
+        .eq("academic_year", selectedYear.year_name);
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!selectedYear?.year_name,
+  });
+
+  const { data: unassignedStudents = 0, refetch: refetchUnassigned } = useQuery({
+    queryKey: ["unassigned-students", selectedYearNumber],
+    queryFn: async () => {
+      if (!selectedYearNumber) return 0;
+
+      const { count, error } = await supabase
+        .from("students")
+        .select("*", { count: "exact", head: true })
+        .is("sponsor_id", null)
+        .eq("current_academic_year", selectedYearNumber);
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!selectedYearNumber,
   });
 
   const refreshAll = async () => {
@@ -86,15 +108,18 @@ export default function Dashboard() {
         title="Dashboard" 
         description="Welcome to David's Hope International Management System"
         actions={
-          <Button 
-            onClick={refreshAll} 
-            disabled={isRefreshing}
-            variant="outline"
-            className="text-wp-primary"
-          >
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center space-x-4">
+            <AcademicYearSelector />
+            <Button 
+              onClick={refreshAll} 
+              disabled={isRefreshing}
+              variant="outline"
+              className="text-wp-primary"
+            >
+              <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -102,32 +127,33 @@ export default function Dashboard() {
         <StatsCard
           title="Total Students"
           value={studentCount}
-          description="Students in the system"
+          description={selectedYear ? `Students in ${selectedYear.year_name}` : "Students in the system"}
           icon={<Users className="h-5 w-5 text-wp-primary" />}
-          trend={{ value: 12, isPositive: true, label: "from last month" }}
         />
         <StatsCard
-          title="Total Sponsors"
+          title="Sponsors"
           value={sponsorCount}
-          description="Active sponsors"
+          description={selectedYear ? `Sponsors in ${selectedYear.year_name}` : "Active sponsors"}
           icon={<UserCircle className="h-5 w-5 text-wp-primary" />}
         />
         <StatsCard
           title="Exams Recorded"
           value={examCount}
-          description="Total exams in the system"
+          description={selectedYear ? `Exams in ${selectedYear.year_name}` : "Total exams recorded"}
           icon={<BookOpen className="h-5 w-5 text-wp-primary" />}
         />
         <StatsCard
           title="Unassigned Students"
           value={unassignedStudents}
           description="Students needing sponsors"
-          icon={<Calendar className="h-5 w-5 text-wp-warning" />}
+          icon={<CalendarDays className="h-5 w-5 text-wp-warning" />}
           color="warning"
         />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <AcademicYearStats />
+
         <Card className="wp-card">
           <CardHeader className="border-b border-wp-gray-200">
             <CardTitle className="text-wp-text-primary">Recent Activity</CardTitle>
@@ -135,21 +161,6 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-0">
             <RecentActivityCard />
-          </CardContent>
-        </Card>
-
-        <Card className="wp-card">
-          <CardHeader className="border-b border-wp-gray-200">
-            <CardTitle className="text-wp-text-primary">Student Performance</CardTitle>
-            <CardDescription>Average exam scores by subject</CardDescription>
-          </CardHeader>
-          <CardContent className="p-5">
-            <div className="h-[300px] flex items-center justify-center border border-dashed border-wp-gray-300 rounded p-4 bg-wp-gray-50">
-              <div className="text-center">
-                <BarChart2 className="h-10 w-10 text-wp-gray-400 mx-auto mb-2" />
-                <p className="text-wp-text-secondary text-sm">Chart data will appear here</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
