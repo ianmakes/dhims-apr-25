@@ -288,8 +288,8 @@ export default function Exams() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Exams</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-left">Exams</CardTitle>
+          <CardDescription className="text-left">
             Manage all exams in the system. Click on an exam to see details and student scores.
           </CardDescription>
         </CardHeader>
