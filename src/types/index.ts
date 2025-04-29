@@ -96,3 +96,24 @@ export interface AcademicYear {
   created_at?: string;
   updated_at?: string;
 }
+
+// Add User and UserRole types
+export type User = {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+export type UserRole = {
+  id: string;
+  name: string;
+  description: string;
+  permissions: any;
+  created_at: string;
+  updated_at?: string | null;
+  created_by: string;
+  updated_by?: string | null;
+  is_system?: boolean;
+};

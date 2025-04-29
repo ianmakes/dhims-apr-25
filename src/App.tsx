@@ -1,23 +1,24 @@
+
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Home from "./pages/Home";
-import Students from "./pages/Students";
-import Sponsors from "./pages/Sponsors";
-import Timeline from "./pages/Timeline";
-import Settings from "./pages/Settings";
-import GeneralSettings from "./pages/settings/GeneralSettings";
-import ProfileSettings from "./pages/settings/ProfileSettings";
-import SmtpSettings from "./pages/settings/SmtpSettings";
-import AuditLogSettings from "./pages/settings/AuditLogSettings";
-import UserRolesSettings from "./pages/settings/UserRolesSettings";
-import { SettingsLayout } from "./components/settings/SettingsLayout";
-import AcademicYearsSettings from "./pages/settings/AcademicYearsSettings";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import Home from "@/pages/Home";
+import Students from "@/pages/Students";
+import Sponsors from "@/pages/Sponsors";
+import Timeline from "@/pages/Timeline";
+import Settings from "@/pages/Settings";
+import GeneralSettings from "@/pages/settings/GeneralSettings";
+import ProfileSettings from "@/pages/settings/ProfileSettings";
+import SmtpSettings from "@/pages/settings/SmtpSettings";
+import AuditLogSettings from "@/pages/settings/AuditLogSettings";
+import UserRolesSettings from "@/pages/settings/UserRolesSettings";
+import { SettingsLayout } from "@/components/settings/SettingsLayout";
+import AcademicYearsSettings from "@/pages/settings/AcademicYearsSettings";
 
 export default function App() {
   return (
