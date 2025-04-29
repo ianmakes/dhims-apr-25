@@ -1,8 +1,8 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateSlug } from "@/utils/slugUtils";
+import { Sponsor } from "@/types/database";
 
 // Database model for Sponsor
 export interface Sponsor {
@@ -60,7 +60,7 @@ export const useSponsors = () => {
       if (sponsorsToUpdate.length > 0) {
         const existingSlugs = data
           .filter(sponsor => sponsor.slug)
-          .map(sponsor => sponsor.slug);
+          .map(sponsor => sponsor.slug || "");
           
         for (const sponsor of sponsorsToUpdate) {
           const slug = generateSlug(`${sponsor.first_name}-${sponsor.last_name}`, existingSlugs);
@@ -185,7 +185,7 @@ export const useSponsors = () => {
       toast.error("Failed to delete sponsor: " + error.message);
     },
   });
-
+  
   return {
     sponsors,
     isLoading,

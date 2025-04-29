@@ -1,3 +1,4 @@
+
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSponsorDetails, StudentRemovalForm } from "@/hooks/useSponsorDetails";
 import { AddEditSponsorModal } from "@/components/sponsors/AddEditSponsorModal";
@@ -19,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { isUuid } from "@/utils/slugUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export default function SponsorDetail() {
   const {
