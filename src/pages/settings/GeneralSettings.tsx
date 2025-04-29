@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -23,23 +24,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { logUpdate } from "@/utils/auditLog";
+import { Loader2, Upload } from "lucide-react";
 
 const generalSettingsSchema = z.object({
-  organizationName: z.string().min(2, {
+  organization_name: z.string().min(2, {
     message: "Organization name must be at least 2 characters.",
   }),
-  primaryColor: z.string().min(1, {
+  primary_color: z.string().min(1, {
     message: "Primary color is required.",
   }),
-  secondaryColor: z.string().min(1, {
+  secondary_color: z.string().min(1, {
     message: "Secondary color is required.",
   }),
-  themeMode: z.enum(["light", "dark", "system"], {
+  theme_mode: z.enum(["light", "dark", "system"], {
     required_error: "Please select a theme mode.",
   }),
-  footerText: z.string().optional(),
-  version: z.string().optional(),
+  footer_text: z.string().optional(),
+  app_version: z.string().optional(),
 });
 
 type GeneralSettingsValues = z.infer<typeof generalSettingsSchema>;
@@ -53,14 +56,17 @@ export default function GeneralSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+  
   // Default form values
   const defaultValues: GeneralSettingsValues = {
-    organizationName: "David's Hope International",
-    primaryColor: "#9b87f5",
-    secondaryColor: "#7E69AB",
-    themeMode: "light",
-    footerText: "© 2025 David's Hope International. All rights reserved.",
-    version: "1.0.0",
+    organization_name: "David's Hope International",
+    primary_color: "#9b87f5",
+    secondary_color: "#7E69AB",
+    theme_mode: "light",
+    footer_text: "© 2025 David's Hope International. All rights reserved.",
+    app_version: "1.0.0",
   };
 
   const form = useForm<GeneralSettingsValues>({
@@ -88,12 +94,12 @@ export default function GeneralSettings() {
         setSettings(data);
         
         form.reset({
-          organizationName: data.organization_name,
-          primaryColor: data.primary_color,
-          secondaryColor: data.secondary_color,
-          themeMode: data.theme_mode as "light" | "dark" | "system",
-          footerText: data.footer_text || "",
-          version: data.app_version || "",
+          organization_name: data.organization_name,
+          primary_color: data.primary_color,
+          secondary_color: data.secondary_color,
+          theme_mode: data.theme_mode as "light" | "dark" | "system",
+          footer_text: data.footer_text || "",
+          app_version: data.app_version || "",
         });
         
         if (data.logo_url) {
@@ -107,6 +113,14 @@ export default function GeneralSettings() {
     } catch (error) {
       console.error('Error loading app settings:', error);
     }
+  };
+
+  const handleLogoClick = () => {
+    logoInputRef.current?.click();
+  };
+  
+  const handleFaviconClick = () => {
+    faviconInputRef.current?.click();
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,17 +172,22 @@ export default function GeneralSettings() {
         faviconUrl = await uploadImage(faviconFile, 'app-assets', 'favicons');
       }
       
+      // Get current user for audit log
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // Save settings to database
       const { error } = await supabase.from('app_settings').upsert({
         id: 'general',
-        organization_name: data.organizationName,
-        primary_color: data.primaryColor,
-        secondary_color: data.secondaryColor,
-        theme_mode: data.themeMode,
-        footer_text: data.footerText,
-        app_version: data.version,
+        organization_name: data.organization_name,
+        primary_color: data.primary_color,
+        secondary_color: data.secondary_color,
+        theme_mode: data.theme_mode,
+        footer_text: data.footer_text,
+        app_version: data.app_version,
         logo_url: logoUrl,
         favicon_url: faviconUrl,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id
       });
 
       if (error) throw error;
@@ -180,6 +199,10 @@ export default function GeneralSettings() {
         title: "Settings updated",
         description: "General settings have been updated successfully.",
       });
+      
+      // Apply theme changes to document
+      document.documentElement.style.setProperty('--color-primary', data.primary_color);
+      document.documentElement.style.setProperty('--color-secondary', data.secondary_color);
       
       // Fetch updated settings
       fetchSettings();
@@ -208,7 +231,7 @@ export default function GeneralSettings() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField
             control={form.control}
-            name="organizationName"
+            name="organization_name"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Organization Name</FormLabel>
@@ -226,53 +249,101 @@ export default function GeneralSettings() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Application Logo</label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-4">
                 {logoPreview && (
-                  <div className="h-16 w-auto border rounded flex items-center justify-center p-2">
+                  <div className="h-16 w-auto border rounded flex items-center justify-center p-2 bg-white">
                     <img src={logoPreview} alt="Logo preview" className="h-full w-auto object-contain" />
                   </div>
                 )}
-                <div className="flex-1">
-                  <Input 
+                <div className="flex items-center gap-2">
+                  <input 
+                    ref={logoInputRef}
                     id="logo-upload" 
                     type="file" 
                     accept="image/*" 
                     onChange={handleLogoChange}
+                    className="hidden"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended size: 200x60px. PNG or SVG with transparent background.
-                  </p>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={handleLogoClick}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {logoPreview ? "Change Logo" : "Upload Logo"}
+                  </Button>
+                  {logoPreview && (
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => {
+                        setLogoPreview(null);
+                        setLogoFile(null);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recommended size: 200x60px. PNG or SVG with transparent background.
+                </p>
               </div>
             </div>
             
             <div className="space-y-2">
               <label className="text-sm font-medium">Application Favicon</label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-4">
                 {faviconPreview && (
-                  <div className="h-10 w-10 border rounded flex items-center justify-center p-1">
+                  <div className="h-16 w-16 border rounded flex items-center justify-center p-1 bg-white">
                     <img src={faviconPreview} alt="Favicon preview" className="h-full w-full object-contain" />
                   </div>
                 )}
-                <div className="flex-1">
-                  <Input 
+                <div className="flex items-center gap-2">
+                  <input 
+                    ref={faviconInputRef}
                     id="favicon-upload" 
                     type="file" 
-                    accept="image/png,image/jpeg" 
+                    accept="image/png,image/jpeg,image/x-icon" 
                     onChange={handleFaviconChange}
+                    className="hidden"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended size: 32x32px or 64x64px. PNG or JPG format.
-                  </p>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={handleFaviconClick}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {faviconPreview ? "Change Favicon" : "Upload Favicon"}
+                  </Button>
+                  {faviconPreview && (
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => {
+                        setFaviconPreview(null);
+                        setFaviconFile(null);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recommended size: 32x32px or 64x64px. PNG, JPG or ICO format.
+                </p>
               </div>
             </div>
           </div>
 
+          <Separator />
+
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <FormField
               control={form.control}
-              name="primaryColor"
+              name="primary_color"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Primary Color</FormLabel>
@@ -296,7 +367,7 @@ export default function GeneralSettings() {
             
             <FormField
               control={form.control}
-              name="secondaryColor"
+              name="secondary_color"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Secondary Color</FormLabel>
@@ -321,7 +392,7 @@ export default function GeneralSettings() {
           
           <FormField
             control={form.control}
-            name="themeMode"
+            name="theme_mode"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Theme Mode</FormLabel>
@@ -350,12 +421,16 @@ export default function GeneralSettings() {
           
           <FormField
             control={form.control}
-            name="footerText"
+            name="footer_text"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Footer Text</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Textarea
+                    {...field}
+                    placeholder="© 2025 Your Organization. All rights reserved."
+                    rows={2}
+                  />
                 </FormControl>
                 <FormDescription>
                   Text displayed in the footer of the application.
@@ -367,12 +442,12 @@ export default function GeneralSettings() {
           
           <FormField
             control={form.control}
-            name="version"
+            name="app_version"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>App Version</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input {...field} placeholder="1.0.0" />
                 </FormControl>
                 <FormDescription>
                   Version number displayed in the sidebar and login page.
@@ -382,9 +457,18 @@ export default function GeneralSettings() {
             )}
           />
           
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save General Settings"}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save General Settings"
+              )}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

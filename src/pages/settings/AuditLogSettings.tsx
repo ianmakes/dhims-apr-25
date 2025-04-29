@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,514 +17,389 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { FileText, Filter, Search, Download, RefreshCw } from "lucide-react";
-import { format } from "date-fns";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { Skeleton } from "@/components/ui/skeleton";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Download, Filter, MoreHorizontal, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuditLog {
   id: string;
   username: string;
-  user_id: string;
+  user_id: string | null;
   action: string;
   entity: string;
   entity_id: string;
   details: string;
-  ip_address: string;
+  ip_address: string | null;
   created_at: string;
 }
 
 export default function AuditLogSettings() {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  
-  // Filters
-  const [actionFilter, setActionFilter] = useState<string>("");
-  const [entityFilter, setEntityFilter] = useState<string>("");
-  const [userFilter, setUserFilter] = useState<string>("");
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  
-  // Filter options
-  const [actionOptions, setActionOptions] = useState<string[]>([]);
-  const [entityOptions, setEntityOptions] = useState<string[]>([]);
-  const [userOptions, setUserOptions] = useState<string[]>([]);
-  
-  const fetchAuditLogs = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Using rpc to avoid type issues
-      const { data, error, count } = await supabase
-        .rpc('get_audit_logs', {
-          p_action: actionFilter || null,
-          p_entity: entityFilter || null,
-          p_user_id: userFilter || null,
-          p_start_date: startDate?.toISOString() || null,
-          p_end_date: endDate ? new Date(endDate.setHours(23, 59, 59, 999)).toISOString() : null,
-          p_limit: pageSize,
-          p_offset: (page - 1) * pageSize
-        });
-      
-      if (error) throw error;
-      
-      if (data) {
-        setAuditLogs(data as AuditLog[]);
-        setFilteredLogs(data as AuditLog[]);
-        
-        // Get total count for pagination
-        const { count: totalCount, error: countError } = await supabase
-          .rpc('count_audit_logs', {
-            p_action: actionFilter || null,
-            p_entity: entityFilter || null,
-            p_user_id: userFilter || null,
-            p_start_date: startDate?.toISOString() || null,
-            p_end_date: endDate ? new Date(endDate.setHours(23, 59, 59, 999)).toISOString() : null
-          });
-        
-        if (countError) throw countError;
-        
-        // Calculate total pages
-        if (totalCount) {
-          setTotalPages(Math.ceil(totalCount / pageSize));
-        }
-      }
-      
-      // Load filter options
-      loadFilterOptions();
-    } catch (error: any) {
-      console.error('Error fetching audit logs:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch audit logs",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const loadFilterOptions = async () => {
-    try {
-      // Get unique actions
-      const { data: actionData } = await supabase
-        .rpc('get_distinct_audit_log_actions');
-      
-      if (actionData) {
-        const uniqueActions = actionData.filter(Boolean).sort();
-        setActionOptions(uniqueActions as string[]);
-      }
-      
-      // Get unique entities
-      const { data: entityData } = await supabase
-        .rpc('get_distinct_audit_log_entities');
-      
-      if (entityData) {
-        const uniqueEntities = entityData.filter(Boolean).sort();
-        setEntityOptions(uniqueEntities as string[]);
-      }
-      
-      // Get unique users
-      const { data: userData } = await supabase
-        .rpc('get_distinct_audit_log_users');
-      
-      if (userData) {
-        const uniqueUsers = userData.filter(Boolean).sort();
-        setUserOptions(uniqueUsers as string[]);
-      }
-    } catch (error) {
-      console.error('Error loading filter options:', error);
-    }
-  };
-  
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    
-    if (!term.trim()) {
-      setFilteredLogs(auditLogs);
-      return;
-    }
-    
-    const filtered = auditLogs.filter(log => 
-      log.username?.toLowerCase().includes(term.toLowerCase()) ||
-      log.action?.toLowerCase().includes(term.toLowerCase()) ||
-      log.entity?.toLowerCase().includes(term.toLowerCase()) ||
-      log.details?.toLowerCase().includes(term.toLowerCase()) ||
-      log.entity_id?.toLowerCase().includes(term.toLowerCase()) ||
-      log.ip_address?.toLowerCase().includes(term.toLowerCase())
-    );
-    
-    setFilteredLogs(filtered);
-  };
-  
-  const handleExport = () => {
-    try {
-      const headers = ["User", "Action", "Entity", "Entity ID", "Details", "IP Address", "Timestamp"];
-      
-      const csvContent = [
-        headers.join(','),
-        ...filteredLogs.map(log => [
-          `"${log.username || ""}"`,
-          `"${log.action || ""}"`,
-          `"${log.entity || ""}"`,
-          `"${log.entity_id || ""}"`,
-          `"${log.details || ""}"`,
-          `"${log.ip_address || ""}"`,
-          `"${log.created_at ? format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss') : ""}"`
-        ].join(','))
-      ].join('\n');
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Export successful",
-        description: "Audit logs have been exported to CSV.",
-      });
-    } catch (error: any) {
-      console.error('Error exporting logs:', error);
-      toast({
-        title: "Export failed",
-        description: error.message || "Failed to export audit logs",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const resetFilters = () => {
-    setActionFilter("");
-    setEntityFilter("");
-    setUserFilter("");
-    setStartDate(undefined);
-    setEndDate(undefined);
-    setSearchTerm("");
-    setPage(1);
-  };
-  
-  const getActionBadgeColor = (action: string) => {
-    switch (action?.toLowerCase()) {
-      case 'create':
-      case 'created':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'update':
-      case 'updated':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'delete':
-      case 'deleted':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'login':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'logout':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    }
-  };
-  
+  const [filters, setFilters] = useState<{
+    action: string[];
+    entity: string[];
+    date: string;
+  }>({
+    action: [],
+    entity: [],
+    date: "all",
+  });
+
+  // Get unique actions and entities for filters
+  const uniqueActions = [...new Set(auditLogs.map((log) => log.action))].sort();
+  const uniqueEntities = [...new Set(auditLogs.map((log) => log.entity))].sort();
+
   useEffect(() => {
     fetchAuditLogs();
-  }, [page, pageSize, actionFilter, entityFilter, userFilter, startDate, endDate]);
-  
+  }, []);
+
+  const fetchAuditLogs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setAuditLogs(data);
+      }
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = () => {
+    const csvContent = [
+      [
+        "ID",
+        "User",
+        "Action",
+        "Entity",
+        "Entity ID",
+        "Details",
+        "IP Address",
+        "Timestamp",
+      ].join(","),
+      ...filteredLogs.map((log) => [
+        log.id,
+        log.username,
+        log.action,
+        log.entity,
+        log.entity_id,
+        `"${log.details?.replace(/"/g, '""') || ""}"`,
+        log.ip_address || "",
+        new Date(log.created_at).toLocaleString(),
+      ].join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `audit-logs-export-${new Date().toISOString().split("T")[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Toggle filter selection
+  const toggleActionFilter = (action: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      action: prev.action.includes(action)
+        ? prev.action.filter((a) => a !== action)
+        : [...prev.action, action],
+    }));
+  };
+
+  const toggleEntityFilter = (entity: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      entity: prev.entity.includes(entity)
+        ? prev.entity.filter((e) => e !== entity)
+        : [...prev.entity, entity],
+    }));
+  };
+
+  // Apply date filtering
+  const getDateFilteredLogs = (logs: AuditLog[]) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    switch (filters.date) {
+      case "today":
+        return logs.filter(
+          (log) => new Date(log.created_at) >= today
+        );
+      case "yesterday":
+        return logs.filter(
+          (log) =>
+            new Date(log.created_at) >= yesterday &&
+            new Date(log.created_at) < today
+        );
+      case "thisWeek":
+        return logs.filter(
+          (log) => new Date(log.created_at) >= thisWeekStart
+        );
+      case "thisMonth":
+        return logs.filter(
+          (log) => new Date(log.created_at) >= thisMonthStart
+        );
+      default:
+        return logs;
+    }
+  };
+
+  // Filter logs based on search term and filters
+  const filteredLogs = getDateFilteredLogs(auditLogs).filter((log) => {
+    // Apply search filter
+    const searchMatch =
+      searchTerm === "" ||
+      log.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.entity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.entity_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.ip_address?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Apply action filter
+    const actionMatch =
+      filters.action.length === 0 || filters.action.includes(log.action);
+
+    // Apply entity filter
+    const entityMatch =
+      filters.entity.length === 0 || filters.entity.includes(log.entity);
+
+    return searchMatch && actionMatch && entityMatch;
+  });
+
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const getActionBadgeColor = (action: string) => {
+    switch (action.toLowerCase()) {
+      case "create":
+        return "bg-green-100 text-green-800";
+      case "update":
+        return "bg-blue-100 text-blue-800";
+      case "delete":
+        return "bg-red-100 text-red-800";
+      case "login":
+        return "bg-purple-100 text-purple-800";
+      case "logout":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium">Audit Logs</h3>
-        <p className="text-sm text-muted-foreground">
-          View and search system activity logs.
+        <p className="text-muted-foreground text-sm">
+          View system activity logs and user actions
         </p>
       </div>
-      
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-        <div className="flex-1 w-full md:max-w-sm relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search audit logs..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
+
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex-1 min-w-[280px]">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search logs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-        
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="h-9">
-                <Filter className="mr-2 h-4 w-4" />
-                Filters
+
+        <div className="flex flex-wrap gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="h-3.5 w-3.5 mr-2" />
+                Actions
+                {filters.action.length > 0 && (
+                  <Badge className="ml-1 bg-primary" variant="secondary">
+                    {filters.action.length}
+                  </Badge>
+                )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4">
-              <div className="space-y-4">
-                <h4 className="font-medium">Filter Audit Logs</h4>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Action</label>
-                  <Select
-                    value={actionFilter}
-                    onValueChange={setActionFilter}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select action" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Actions</SelectItem>
-                      {actionOptions.map((action) => (
-                        <SelectItem key={action} value={action}>
-                          {action}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Entity</label>
-                  <Select
-                    value={entityFilter}
-                    onValueChange={setEntityFilter}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select entity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Entities</SelectItem>
-                      {entityOptions.map((entity) => (
-                        <SelectItem key={entity} value={entity}>
-                          {entity}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">User</label>
-                  <Select
-                    value={userFilter}
-                    onValueChange={setUserFilter}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select user" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Users</SelectItem>
-                      {userOptions.map((user) => (
-                        <SelectItem key={user} value={user}>
-                          {user}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Date Range</label>
-                  <div className="flex flex-col space-y-2">
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">From</span>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal h-9"
-                          >
-                            {startDate ? format(startDate, 'PP') : 'Select date'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={startDate}
-                            onSelect={setStartDate}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">To</span>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal h-9"
-                          >
-                            {endDate ? format(endDate, 'PP') : 'Select date'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={endDate}
-                            onSelect={setEndDate}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full" 
-                  onClick={resetFilters}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {uniqueActions.map((action) => (
+                <DropdownMenuItem
+                  key={action}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    toggleActionFilter(action);
+                  }}
+                  className="flex items-center gap-2"
                 >
-                  Reset Filters
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          
-          <Button variant="outline" onClick={fetchAuditLogs}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          
+                  <Checkbox
+                    id={`action-${action}`}
+                    checked={filters.action.includes(action)}
+                  />
+                  <span>{action}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="h-3.5 w-3.5 mr-2" />
+                Entities
+                {filters.entity.length > 0 && (
+                  <Badge className="ml-1 bg-primary" variant="secondary">
+                    {filters.entity.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {uniqueEntities.map((entity) => (
+                <DropdownMenuItem
+                  key={entity}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    toggleEntityFilter(entity);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Checkbox
+                    id={`entity-${entity}`}
+                    checked={filters.entity.includes(entity)}
+                  />
+                  <span>{entity}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Select
-            value={pageSize.toString()}
-            onValueChange={(value) => {
-              setPageSize(Number(value));
-              setPage(1);
-            }}
+            value={filters.date}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, date: value }))}
           >
-            <SelectTrigger className="w-[100px] h-9">
-              <SelectValue placeholder="Page size" />
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Time period" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="10">10 per page</SelectItem>
-              <SelectItem value="20">20 per page</SelectItem>
-              <SelectItem value="50">50 per page</SelectItem>
-              <SelectItem value="100">100 per page</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="thisWeek">This week</SelectItem>
+              <SelectItem value="thisMonth">This month</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-3.5 w-3.5 mr-2" />
+            Export
+          </Button>
         </div>
       </div>
-      
-      <Card>
-        <CardContent className="p-0">
-          <div className="rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Entity ID</TableHead>
-                  <TableHead>Details</TableHead>
-                  <TableHead>IP Address</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={index}>
-                      {Array.from({ length: 7 }).map((_, cellIndex) => (
-                        <TableCell key={cellIndex}>
-                          <Skeleton className="h-5 w-full" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : filteredLogs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No audit logs found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{log.username || "System"}</TableCell>
-                      <TableCell>
-                        <Badge className={getActionBadgeColor(log.action)}>
-                          {log.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{log.entity}</TableCell>
-                      <TableCell className="font-mono text-xs">{log.entity_id}</TableCell>
-                      <TableCell className="max-w-xs truncate" title={log.details}>
-                        {log.details}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {log.ip_address || "-"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {log.created_at ? format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss') : "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between p-4">
-          <div className="text-sm text-muted-foreground">
-            {isLoading ? (
-              <Skeleton className="h-5 w-24" />
+
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Entity</TableHead>
+              <TableHead className="hidden md:table-cell">Details</TableHead>
+              <TableHead className="hidden md:table-cell">IP Address</TableHead>
+              <TableHead>Timestamp</TableHead>
+              <TableHead className="w-12"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  Loading audit logs...
+                </TableCell>
+              </TableRow>
+            ) : filteredLogs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No audit logs found
+                </TableCell>
+              </TableRow>
             ) : (
-              `Page ${page} of ${totalPages}`
+              filteredLogs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="font-medium">{log.username}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={getActionBadgeColor(log.action)}
+                    >
+                      {log.action}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{log.entity}</TableCell>
+                  <TableCell className="hidden md:table-cell max-w-xs truncate">
+                    {log.details}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {log.ip_address}
+                  </TableCell>
+                  <TableCell>{formatDate(log.created_at)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>View details</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={isLoading || page <= 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={isLoading || page >= totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </CardFooter>
-      </Card>
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

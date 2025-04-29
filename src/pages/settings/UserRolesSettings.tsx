@@ -1,537 +1,583 @@
-import React, { useEffect, useState } from "react";
+
+import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Edit, Trash2, Save } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 
-// Types
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Plus, PenLine, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { logCreate, logUpdate, logDelete } from "@/utils/auditLog";
+
+const roleSchema = z.object({
+  name: z.string().min(2, { message: "Role name must be at least 2 characters" }),
+  description: z.string().min(2, { message: "Description must be at least 2 characters" }),
+  is_system: z.boolean().default(false),
+  permissions: z.array(z.string()).default([]),
+});
+
+type RoleFormValues = z.infer<typeof roleSchema>;
+
 interface Role {
   id: string;
   name: string;
   description: string;
-  permissions: {
-    students?: {
-      read?: boolean;
-      write?: boolean;
-      delete?: boolean;
-    };
-    sponsors?: {
-      read?: boolean;
-      write?: boolean;
-      delete?: boolean;
-    };
-    exams?: {
-      read?: boolean;
-      write?: boolean;
-      delete?: boolean;
-    };
-    settings?: {
-      read?: boolean;
-      write?: boolean;
-      delete?: boolean;
-    };
-  };
+  is_system: boolean;
   created_at: string;
-  updated_at: string;
+  permissions?: string[];
 }
 
-// Form Schemas
-const RoleSchema = z.object({
-  name: z.string().min(1, {
-    message: "Role name is required"
-  }),
-  description: z.string().optional(),
-  permissions: z.object({
-    students: z.object({
-      read: z.boolean().default(false),
-      write: z.boolean().default(false),
-      delete: z.boolean().default(false)
-    }),
-    sponsors: z.object({
-      read: z.boolean().default(false),
-      write: z.boolean().default(false),
-      delete: z.boolean().default(false)
-    }),
-    exams: z.object({
-      read: z.boolean().default(false),
-      write: z.boolean().default(false),
-      delete: z.boolean().default(false)
-    }),
-    settings: z.object({
-      read: z.boolean().default(false),
-      write: z.boolean().default(false),
-      delete: z.boolean().default(false)
-    })
-  })
-});
-type RoleFormValues = z.infer<typeof RoleSchema>;
+// Default permissions that can be assigned to roles
+const availablePermissions = [
+  { id: "students.view", label: "View Students" },
+  { id: "students.create", label: "Create Students" },
+  { id: "students.edit", label: "Edit Students" },
+  { id: "students.delete", label: "Delete Students" },
+  { id: "sponsors.view", label: "View Sponsors" },
+  { id: "sponsors.create", label: "Create Sponsors" },
+  { id: "sponsors.edit", label: "Edit Sponsors" },
+  { id: "sponsors.delete", label: "Delete Sponsors" },
+  { id: "academic.view", label: "View Academic Records" },
+  { id: "academic.create", label: "Create Academic Records" },
+  { id: "academic.edit", label: "Edit Academic Records" },
+  { id: "settings.view", label: "View Settings" },
+  { id: "settings.edit", label: "Edit Settings" },
+  { id: "users.view", label: "View Users" },
+  { id: "users.create", label: "Create Users" },
+  { id: "users.edit", label: "Edit Users" },
+  { id: "users.delete", label: "Delete Users" },
+  { id: "reports.view", label: "View Reports" },
+  { id: "reports.export", label: "Export Reports" },
+];
+
 export default function UserRolesSettings() {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+
   const form = useForm<RoleFormValues>({
-    resolver: zodResolver(RoleSchema),
+    resolver: zodResolver(roleSchema),
     defaultValues: {
       name: "",
       description: "",
-      permissions: {
-        students: {
-          read: false,
-          write: false,
-          delete: false
-        },
-        sponsors: {
-          read: false,
-          write: false,
-          delete: false
-        },
-        exams: {
-          read: false,
-          write: false,
-          delete: false
-        },
-        settings: {
-          read: false,
-          write: false,
-          delete: false
-        }
-      }
-    }
+      is_system: false,
+      permissions: [],
+    },
   });
 
-  // Fetch roles on component mount
   useEffect(() => {
     fetchRoles();
   }, []);
 
-  // Reset form when dialog is opened or closed
-  useEffect(() => {
-    if (!isDialogOpen) {
-      setEditingRole(null);
-      form.reset({
-        name: "",
-        description: "",
-        permissions: {
-          students: {
-            read: false,
-            write: false,
-            delete: false
-          },
-          sponsors: {
-            read: false,
-            write: false,
-            delete: false
-          },
-          exams: {
-            read: false,
-            write: false,
-            delete: false
-          },
-          settings: {
-            read: false,
-            write: false,
-            delete: false
-          }
-        }
-      });
-    }
-  }, [isDialogOpen, form]);
-
-  // Set form values when editing a role
   useEffect(() => {
     if (editingRole) {
       form.reset({
         name: editingRole.name,
         description: editingRole.description,
-        permissions: {
-          students: {
-            read: editingRole.permissions.students?.read || false,
-            write: editingRole.permissions.students?.write || false,
-            delete: editingRole.permissions.students?.delete || false
-          },
-          sponsors: {
-            read: editingRole.permissions.sponsors?.read || false,
-            write: editingRole.permissions.sponsors?.write || false,
-            delete: editingRole.permissions.sponsors?.delete || false
-          },
-          exams: {
-            read: editingRole.permissions.exams?.read || false,
-            write: editingRole.permissions.exams?.write || false,
-            delete: editingRole.permissions.exams?.delete || false
-          },
-          settings: {
-            read: editingRole.permissions.settings?.read || false,
-            write: editingRole.permissions.settings?.write || false,
-            delete: editingRole.permissions.settings?.delete || false
-          }
-        }
+        is_system: editingRole.is_system,
+        permissions: editingRole.permissions || [],
+      });
+    } else {
+      form.reset({
+        name: "",
+        description: "",
+        is_system: false,
+        permissions: [],
       });
     }
   }, [editingRole, form]);
+
   const fetchRoles = async () => {
-    setIsLoading(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.from("user_roles").select("*").order("name");
+      setLoading(true);
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("*")
+        .order("name");
+
       if (error) {
         throw error;
       }
 
-      // Parse the JSON permissions if needed
-      const formattedRoles = data?.map(role => ({
-        ...role,
-        permissions: typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions
-      })) as Role[];
-      setRoles(formattedRoles || []);
-    } catch (error: any) {
+      // Fetch role permissions
+      let rolesWithPermissions = [];
+      for (const role of roleData || []) {
+        const { data: permissions } = await supabase
+          .from("role_permissions")
+          .select("permission_name")
+          .eq("role_id", role.id);
+
+        rolesWithPermissions.push({
+          ...role,
+          permissions: permissions ? permissions.map(p => p.permission_name) : [],
+        });
+      }
+
+      setRoles(rolesWithPermissions);
+    } catch (error) {
       console.error("Error fetching roles:", error);
       toast({
-        title: "Error fetching roles",
-        description: error.message,
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to load user roles",
+        variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-  const handleSubmit = async (values: RoleFormValues) => {
+
+  const openCreateDialog = () => {
+    setEditingRole(null);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (role: Role) => {
+    setEditingRole(role);
+    setDialogOpen(true);
+  };
+
+  const openDeleteDialog = (role: Role) => {
+    setRoleToDelete(role);
+    setDeleteDialogOpen(true);
+  };
+
+  const onSubmit = async (data: RoleFormValues) => {
     try {
-      let response;
+      setIsSubmitting(true);
+
       if (editingRole) {
         // Update existing role
-        response = await supabase.from("user_roles").update({
-          name: values.name,
-          description: values.description,
-          permissions: values.permissions,
-          updated_at: new Date().toISOString()
-        }).eq("id", editingRole.id);
-        if (response.error) throw response.error;
+        const { error } = await supabase
+          .from("user_roles")
+          .update({
+            name: data.name,
+            description: data.description,
+            is_system: data.is_system,
+          })
+          .eq("id", editingRole.id);
+
+        if (error) throw error;
+
+        // Delete existing permissions
+        const { error: deleteError } = await supabase
+          .from("role_permissions")
+          .delete()
+          .eq("role_id", editingRole.id);
+
+        if (deleteError) throw deleteError;
+
+        // Insert new permissions
+        if (data.permissions.length > 0) {
+          const permissionsToInsert = data.permissions.map(permission => ({
+            role_id: editingRole.id,
+            permission_name: permission,
+          }));
+
+          const { error: insertError } = await supabase
+            .from("role_permissions")
+            .insert(permissionsToInsert);
+
+          if (insertError) throw insertError;
+        }
+
+        await logUpdate("user_roles", editingRole.id, `Updated role: ${data.name}`);
+
         toast({
           title: "Role updated",
-          description: `The role "${values.name}" has been updated successfully.`
+          description: "The role has been updated successfully",
         });
       } else {
         // Create new role
-        response = await supabase.from("user_roles").insert([{
-          name: values.name,
-          description: values.description,
-          permissions: values.permissions
-        }]);
-        if (response.error) throw response.error;
+        const { data: newRole, error } = await supabase
+          .from("user_roles")
+          .insert({
+            name: data.name,
+            description: data.description,
+            is_system: data.is_system,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Insert permissions
+        if (data.permissions.length > 0) {
+          const permissionsToInsert = data.permissions.map(permission => ({
+            role_id: newRole.id,
+            permission_name: permission,
+          }));
+
+          const { error: insertError } = await supabase
+            .from("role_permissions")
+            .insert(permissionsToInsert);
+
+          if (insertError) throw insertError;
+        }
+
+        await logCreate("user_roles", newRole.id, `Created role: ${data.name}`);
+
         toast({
           title: "Role created",
-          description: `The role "${values.name}" has been created successfully.`
+          description: "The new role has been created successfully",
         });
       }
 
-      // Refresh roles list
-      await fetchRoles();
-      setIsDialogOpen(false);
+      setDialogOpen(false);
+      fetchRoles();
     } catch (error: any) {
       console.error("Error saving role:", error);
       toast({
-        title: "Error saving role",
-        description: error.message,
-        variant: "destructive"
+        title: "Error",
+        description: error.message || "Failed to save role",
+        variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  const handleEdit = (role: Role) => {
-    setEditingRole(role);
-    setIsDialogOpen(true);
-  };
-  const handleDelete = async (role: Role) => {
-    if (confirm(`Are you sure you want to delete the role "${role.name}"?`)) {
-      try {
-        const {
-          error
-        } = await supabase.from("user_roles").delete().eq("id", role.id);
-        if (error) throw error;
-        toast({
-          title: "Role deleted",
-          description: `The role "${role.name}" has been deleted successfully.`
-        });
 
-        // Refresh roles list
-        await fetchRoles();
-      } catch (error: any) {
-        console.error("Error deleting role:", error);
-        toast({
-          title: "Error deleting role",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
+  const handleDeleteRole = async () => {
+    if (!roleToDelete) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // Delete permissions first
+      const { error: permError } = await supabase
+        .from("role_permissions")
+        .delete()
+        .eq("role_id", roleToDelete.id);
+
+      if (permError) throw permError;
+
+      // Then delete the role
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("id", roleToDelete.id);
+
+      if (error) throw error;
+
+      await logDelete("user_roles", roleToDelete.id, `Deleted role: ${roleToDelete.name}`);
+
+      toast({
+        title: "Role deleted",
+        description: "The role has been deleted successfully",
+      });
+
+      setDeleteDialogOpen(false);
+      setRoleToDelete(null);
+      fetchRoles();
+    } catch (error: any) {
+      console.error("Error deleting role:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete role",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-left">User Roles</h3>
-          <p className="text-sm text-muted-foreground text-left">
-            Manage user roles and permissions in the system.
+          <h3 className="text-lg font-medium">User Roles</h3>
+          <p className="text-muted-foreground text-sm">
+            Manage user roles and permissions
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Role
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>{editingRole ? "Edit Role" : "Create New Role"}</DialogTitle>
-              <DialogDescription>
-                {editingRole ? "Update the role details and permissions." : "Define a new user role and its permissions."}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                <FormField control={form.control} name="name" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>Role Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g. Administrator" />
-                      </FormControl>
-                      <FormDescription>
-                        A unique name for this role.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>} />
-                <FormField control={form.control} name="description" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} placeholder="Describe the purpose and responsibilities of this role" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>} />
-                <Separator />
-                <div className="space-y-4">
-                  <h4 className="font-medium">Permissions</h4>
-                  
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium">Students Module</h5>
-                    <div className="flex space-x-4">
-                      <FormField control={form.control} name="permissions.students.read" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Read</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.students.write" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Write</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.students.delete" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Delete</FormLabel>
-                          </FormItem>} />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium">Sponsors Module</h5>
-                    <div className="flex space-x-4">
-                      <FormField control={form.control} name="permissions.sponsors.read" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Read</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.sponsors.write" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Write</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.sponsors.delete" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Delete</FormLabel>
-                          </FormItem>} />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium">Exams Module</h5>
-                    <div className="flex space-x-4">
-                      <FormField control={form.control} name="permissions.exams.read" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Read</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.exams.write" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Write</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.exams.delete" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Delete</FormLabel>
-                          </FormItem>} />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium">Settings Module</h5>
-                    <div className="flex space-x-4">
-                      <FormField control={form.control} name="permissions.settings.read" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Read</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.settings.write" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Write</FormLabel>
-                          </FormItem>} />
-                      <FormField control={form.control} name="permissions.settings.delete" render={({
-                      field
-                    }) => <FormItem className="flex flex-row items-center space-x-2">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">Delete</FormLabel>
-                          </FormItem>} />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <Button type="submit">
-                    {editingRole ? <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Update Role
-                      </> : <>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Create Role
-                      </>}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={openCreateDialog}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Role
+        </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? <div className="flex justify-center py-6">Loading roles...</div> : roles.length === 0 ? <div className="flex flex-col items-center justify-center py-6">
-              <p className="text-muted-foreground mb-4">No roles found</p>
-              <Button onClick={() => setIsDialogOpen(true)} variant="outline" size="sm">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create your first role
-              </Button>
-            </div> : <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Role Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Students</TableHead>
-                  <TableHead>Sponsors</TableHead>
-                  <TableHead>Exams</TableHead>
-                  <TableHead>Settings</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Role Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Permissions</TableHead>
+              <TableHead className="w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    Loading roles...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : roles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  No roles found. Create your first role to get started.
+                </TableCell>
+              </TableRow>
+            ) : (
+              roles.map((role) => (
+                <TableRow key={role.id}>
+                  <TableCell className="font-medium">{role.name}</TableCell>
+                  <TableCell>{role.description}</TableCell>
+                  <TableCell>
+                    {role.is_system ? (
+                      <Badge variant="secondary">System</Badge>
+                    ) : (
+                      <Badge variant="outline">Custom</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {role.permissions && role.permissions.length > 0 ? (
+                        <span className="text-sm text-muted-foreground">
+                          {role.permissions.length} permission{role.permissions.length !== 1 ? "s" : ""}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No permissions</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(role)}
+                      >
+                        <PenLine className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={role.is_system}
+                        onClick={() => openDeleteDialog(role)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roles.map(role => <TableRow key={role.id}>
-                    <TableCell className="font-medium">{role.name}</TableCell>
-                    <TableCell>{role.description || "-"}</TableCell>
-                    <TableCell>
-                      {renderPermissions(role.permissions.students)}
-                    </TableCell>
-                    <TableCell>
-                      {renderPermissions(role.permissions.sponsors)}
-                    </TableCell>
-                    <TableCell>
-                      {renderPermissions(role.permissions.exams)}
-                    </TableCell>
-                    <TableCell>
-                      {renderPermissions(role.permissions.settings)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(role)}>
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(role)}>
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>)}
-              </TableBody>
-            </Table>}
-        </CardContent>
-      </Card>
-    </div>;
-}
-function renderPermissions(permissionsObj: any) {
-  if (!permissionsObj) return "-";
-  const permissions = [];
-  if (permissionsObj.read) permissions.push("R");
-  if (permissionsObj.write) permissions.push("W");
-  if (permissionsObj.delete) permissions.push("D");
-  return permissions.length ? permissions.join("/") : "-";
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingRole ? "Edit Role" : "Create New Role"}</DialogTitle>
+            <DialogDescription>
+              {editingRole
+                ? "Update the role details and permissions"
+                : "Add a new role to assign to users"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      A unique name for this role
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Brief description of this role's purpose
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_system"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>System Role</FormLabel>
+                      <FormDescription>
+                        System roles cannot be deleted and have special privileges
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-2">
+                <FormLabel>Permissions</FormLabel>
+                <FormDescription>
+                  Select the permissions for this role
+                </FormDescription>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-md p-4">
+                  {availablePermissions.map((permission) => (
+                    <FormField
+                      key={permission.id}
+                      control={form.control}
+                      name="permissions"
+                      render={({ field }) => (
+                        <FormItem
+                          key={permission.id}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(permission.id)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...field.value, permission.id])
+                                  : field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== permission.id
+                                      )
+                                    );
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {permission.label}
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {editingRole ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>{editingRole ? "Update Role" : "Create Role"}</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the{" "}
+              <strong>{roleToDelete?.name}</strong> role and remove it from all users
+              who have this role assigned.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRole}
+              disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Role"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 }

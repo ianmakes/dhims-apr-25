@@ -23,7 +23,6 @@ export function SettingsLayout() {
           <TabsTrigger value="smtp">Email & SMTP</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           <TabsTrigger value="roles">User Roles</TabsTrigger>
-          <TabsTrigger value="academic">Academic Years</TabsTrigger>
         </TabsList>
       </Tabs>
       <Card className="p-6">
