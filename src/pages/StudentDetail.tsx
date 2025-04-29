@@ -222,6 +222,7 @@ export default function StudentDetail() {
       day: 'numeric'
     }).format(new Date(date));
   };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-96">Loading student details...</div>;
   }
@@ -241,6 +242,10 @@ export default function StudentDetail() {
     // Ensure gender is correctly typed as "Male" or "Female"
     gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const // Default to "Male" if it's not a valid value
   };
+
+  // FIX: Use current_grade or cbc_category instead of non-existent cbc_grade
+  const studentGradeDisplay = student.current_grade || student.cbc_category || "N/A";
+
   return <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -257,7 +262,7 @@ export default function StudentDetail() {
             </h1>
           </div>
           <p className="text-muted-foreground text-left">
-            Student ID: {student.admission_number} • {student.cbc_grade || student.current_grade || "N/A"}
+            Student ID: {student.admission_number} • {studentGradeDisplay}
           </p>
         </div>
         <div className="flex items-center gap-2">
