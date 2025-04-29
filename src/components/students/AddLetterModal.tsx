@@ -86,24 +86,6 @@ export function AddLetterModal({
         const filename = `${Date.now()}_${selectedFile.name}`;
         const filePath = `${studentId}/${filename}`;
         
-        // Create student-letters bucket if it doesn't exist
-        const { data: bucketData, error: bucketError } = await supabase.storage
-          .getBucket('student-letters')
-          .catch(() => {
-            return { data: null, error: { message: 'Bucket does not exist' } };
-          });
-          
-        if (!bucketData) {
-          const { error: createError } = await supabase.storage.createBucket('student-letters', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error('Error creating bucket:', createError);
-            // Continue anyway, the bucket might still exist
-          }
-        }
-        
         // Upload the file to Supabase storage
         const { data, error } = await supabase.storage
           .from('student-letters')
@@ -126,7 +108,7 @@ export function AddLetterModal({
       }
       
       // Add the letter to the student's letters list in the database
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('student_letters')
         .insert({
           student_id: studentId,
