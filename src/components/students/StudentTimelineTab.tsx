@@ -114,16 +114,16 @@ export function StudentTimelineTab({
         </CardHeader>
         <CardContent>
           {timelineEvents.length > 0 ? (
-            <div className="relative border-l border-gray-200 dark:border-gray-700 ml-6">
+            <div className="relative border-l border-gray-200 dark:border-gray-700 ml-3">
               {timelineEvents.map((event) => {
                 const eventColors = getEventTypeColor(event.type);
                 return (
                 <div key={event.id} className="mb-8 relative group">
-                  {/* Updated dot design with different colors based on event type */}
+                  {/* Smaller dot design with different colors based on event type */}
                   <div
-                    className={`absolute -left-[26px] top-1 h-12 w-12 rounded-full ${eventColors.lightBg} flex items-center justify-center shadow-sm border ${eventColors.border}`}
+                    className={`absolute -left-[14px] top-1.5 h-6 w-6 rounded-full ${eventColors.lightBg} flex items-center justify-center shadow-sm border ${eventColors.border}`}
                   >
-                    <div className={`h-6 w-6 rounded-full ${eventColors.bg}`}></div>
+                    <div className={`h-3 w-3 rounded-full ${eventColors.bg}`}></div>
                   </div>
                   
                   <div className="ml-4">

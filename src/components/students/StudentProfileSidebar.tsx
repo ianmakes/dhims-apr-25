@@ -1,9 +1,10 @@
 
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { StudentFormInput } from "@/types/database";
+import { Calendar, MapPin, School, User } from "lucide-react";
 
 interface StudentProfileSidebarProps {
   student: StudentFormInput & {
@@ -13,12 +14,6 @@ interface StudentProfileSidebarProps {
 }
 
 export function StudentProfileSidebar({ student, formatDate }: StudentProfileSidebarProps) {
-  // Calculate age from date of birth
-  const calculateAge = (dob: string | undefined | null) => {
-    if (!dob) return "N/A";
-    return Math.floor((new Date().getTime() - new Date(dob).getTime()) / 3.15576e10) + " years";
-  };
-
   // Generate initials from student name
   const getInitials = (name: string) => {
     return name
@@ -33,102 +28,135 @@ export function StudentProfileSidebar({ student, formatDate }: StudentProfileSid
     <div className="lg:col-span-2 space-y-4">
       {/* Student Profile Card */}
       <Card className="overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-primary/20 to-primary/30 relative">
-          <div className="absolute -bottom-12 left-4">
-            <Avatar className="h-24 w-24 border-4 border-background">
-              <AvatarImage src={student.profile_image_url || undefined} alt={student.name} />
-              <AvatarFallback className="text-lg">{getInitials(student.name)}</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-        <CardContent className="pt-14 pb-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-2xl font-bold">{student.name}</h2>
-              <p className="text-muted-foreground text-sm">{student.admission_number}</p>
-            </div>
+        <div className="flex flex-col items-center pt-6 pb-2">
+          <Avatar className="h-24 w-24 border-4 border-background mb-4">
+            <AvatarImage src={student.profile_image_url || undefined} alt={student.name} />
+            <AvatarFallback className="text-lg">{getInitials(student.name)}</AvatarFallback>
+          </Avatar>
+          <h2 className="text-2xl font-bold">{student.name}</h2>
+          <div className="mt-2 mb-4">
             <Badge variant={student.status === "Active" ? "default" : "outline"}>
               {student.status}
             </Badge>
           </div>
+        </div>
 
-          {/* Student Details */}
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <h3 className="font-semibold text-sm">Basic Information</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">CBC Category</p>
-                  <p>{student.cbc_category || "N/A"}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Current Grade</p>
-                  <p>{student.current_grade || "N/A"}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Gender</p>
-                  <p>{student.gender}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Age</p>
-                  <p>{calculateAge(student.dob)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Date of Birth</p>
-                  <p>{formatDate(student.dob)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Academic Year</p>
-                  <p>{student.current_academic_year || new Date().getFullYear()}</p>
-                </div>
+        <CardContent className="px-6 py-0">
+          {/* Basic Information */}
+          <div className="space-y-3 py-4 border-t border-border">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>Gender:</span>
               </div>
+              <span className="text-right">{student.gender}</span>
             </div>
 
-            <div className="grid gap-2">
-              <h3 className="font-semibold text-sm">Physical Details</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Height</p>
-                  <p>{student.height_cm ? `${student.height_cm} cm` : "N/A"}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Weight</p>
-                  <p>{student.weight_kg ? `${student.weight_kg} kg` : "N/A"}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Health Status</p>
-                  <p>{student.health_status || "Healthy"}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Location</p>
-                  <p>{student.location || "N/A"}</p>
-                </div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>Date of Birth:</span>
               </div>
+              <span className="text-right">{formatDate(student.dob)}</span>
             </div>
 
-            <div className="grid gap-2">
-              <h3 className="font-semibold text-sm">Enrollment Information</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Admission Date</p>
-                  <p>{formatDate(student.admission_date)}</p>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <School className="h-4 w-4" />
+                <span>Grade:</span>
+              </div>
+              <span className="text-right">{student.current_grade || "N/A"}</span>
+            </div>
+
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>Admission Date:</span>
+              </div>
+              <span className="text-right">{formatDate(student.admission_date)}</span>
+            </div>
+
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>Location:</span>
+              </div>
+              <span className="text-right">{student.location || "N/A"}</span>
+            </div>
+          </div>
+
+          {/* Academic Information */}
+          <div className="border-t border-border pt-4 pb-4">
+            <h3 className="font-semibold mb-3">Academic Information</h3>
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>CBC Category:</span>
                 </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Accommodation</p>
-                  <p>{student.accommodation_status || "N/A"}</p>
+                <span className="text-right">{student.cbc_category || "N/A"}</span>
+              </div>
+
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>School Level:</span>
                 </div>
-                <div className="space-y-0.5 col-span-2">
-                  <p className="text-muted-foreground">Sponsorship Status</p>
-                  <p>{student.sponsor_id ? "Sponsored" : "Unsponsored"}</p>
+                <span className="text-right">{student.school_level || "N/A"}</span>
+              </div>
+
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Academic Year:</span>
                 </div>
-                {student.sponsor_id && (
-                  <div className="space-y-0.5 col-span-2">
-                    <p className="text-muted-foreground">Sponsored Since</p>
-                    <p>{formatDate(student.sponsored_since)}</p>
-                  </div>
-                )}
+                <span className="text-right">{student.current_academic_year || new Date().getFullYear()}</span>
+              </div>
+
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Accommodation:</span>
+                </div>
+                <span className="text-right">{student.accommodation_status || "N/A"}</span>
               </div>
             </div>
+          </div>
+
+          {/* Health Information */}
+          <div className="border-t border-border pt-4 pb-4">
+            <h3 className="font-semibold mb-3">Health Information</h3>
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Health Status:</span>
+                </div>
+                <span className="text-right">{student.health_status || "Healthy"}</span>
+              </div>
+
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Height:</span>
+                </div>
+                <span className="text-right">{student.height_cm ? `${student.height_cm} cm` : "N/A"}</span>
+              </div>
+
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Weight:</span>
+                </div>
+                <span className="text-right">{student.weight_kg ? `${student.weight_kg} kg` : "N/A"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Created/Modified Info */}
+          <div className="border-t border-border py-4 text-center text-xs text-muted-foreground">
+            <div>Created: {formatDate(student.created_at)}</div>
+            <div>Last modified: {formatDate(student.updated_at)}</div>
           </div>
         </CardContent>
       </Card>
