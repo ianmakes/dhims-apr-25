@@ -90,6 +90,7 @@ export default function Users() {
         return {
           ...profile,
           email: authUser?.email || "",
+          user_metadata: authUser?.user_metadata || {}
         };
       });
       

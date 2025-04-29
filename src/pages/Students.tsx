@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -100,7 +99,7 @@ export default function Students() {
   const [isBulkActionAlertOpen, setIsBulkActionAlertOpen] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<"delete" | "deactivate">("deactivate");
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const { currentAcademicYear } = useAcademicYear();
+  const { currentAcademicYear, academicYears, setCurrentAcademicYear } = useAcademicYear();
 
   // Fetch students data from Supabase
   const {
@@ -114,7 +113,8 @@ export default function Students() {
         data,
         error
       } = await supabase.from('students').select('*')
-        .eq('current_academic_year', currentAcademicYear?.year_name?.split("-")[0] || new Date().getFullYear())
+        .eq('current_academic_year', currentAcademicYear?.year_name?.split("-")[0] ? 
+             parseInt(currentAcademicYear.year_name.split("-")[0]) : new Date().getFullYear())
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as Student[];

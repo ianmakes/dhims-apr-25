@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 import { Json } from "@/integrations/supabase/types";
 
@@ -99,4 +98,11 @@ export type User = {
   avatar_url?: string | null;
   created_at?: string;
   updated_at?: string;
+  user_metadata?: {
+    active?: boolean;
+    name?: string;
+    role?: string;
+    avatar_url?: string;
+    [key: string]: any;
+  };
 };
