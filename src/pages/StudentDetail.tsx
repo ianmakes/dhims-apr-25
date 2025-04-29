@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { StudentFormInput } from "@/types/database";
+import { isUuid, generateSlug } from "@/utils/slugUtils";
 
 // Import components
 import { StudentProfileSidebar } from "@/components/students/StudentProfileSidebar";
@@ -27,9 +28,9 @@ import { StudentTimelineTab } from "@/components/students/StudentTimelineTab";
 
 export default function StudentDetail() {
   const {
-    id
+    idOrSlug
   } = useParams<{
-    id: string;
+    idOrSlug: string;
   }>();
   const navigate = useNavigate();
   const {
@@ -44,23 +45,46 @@ export default function StudentDetail() {
   const [isAddLetterModalOpen, setIsAddLetterModalOpen] = useState(false);
   const [isAddTimelineEventModalOpen, setIsAddTimelineEventModalOpen] = useState(false);
 
-  // Fetch student data
+  // Fetch student data by ID or slug
   const {
     data: student,
     isLoading,
     error
   } = useQuery({
-    queryKey: ['student', id],
+    queryKey: ['student', idOrSlug],
     queryFn: async () => {
-      if (!id) throw new Error('Student ID is required');
-      const {
-        data,
-        error
-      } = await supabase.from('students').select('*').eq('id', id).single();
+      if (!idOrSlug) throw new Error('Student ID or slug is required');
+      
+      let query = supabase.from('students').select('*');
+      
+      // Check if the parameter is a UUID or a slug
+      if (isUuid(idOrSlug)) {
+        query = query.eq('id', idOrSlug);
+      } else {
+        query = query.eq('slug', idOrSlug);
+      }
+      
+      const { data, error } = await query.single();
+      
       if (error) throw error;
+      
+      // If slug doesn't exist, generate and update it
+      if (!data.slug) {
+        const slug = generateSlug(data.name);
+        await supabase.from('students').update({ slug }).eq('id', data.id);
+        // Update URL to use slug instead of ID
+        navigate(`/students/${slug}`, { replace: true });
+      } else if (!isUuid(idOrSlug) && idOrSlug !== data.slug) {
+        // If URL has an old slug, update to the current one
+        navigate(`/students/${data.slug}`, { replace: true });
+      } else if (isUuid(idOrSlug) && data.slug) {
+        // If URL has ID but slug exists, redirect to slug URL
+        navigate(`/students/${data.slug}`, { replace: true });
+      }
+      
       return data;
     },
-    enabled: !!id
+    enabled: !!idOrSlug
   });
 
   // Fetch timeline events
@@ -68,19 +92,19 @@ export default function StudentDetail() {
     data: timelineEvents = [],
     refetch: refetchTimeline
   } = useQuery({
-    queryKey: ['timeline-events', id],
+    queryKey: ['timeline-events', idOrSlug],
     queryFn: async () => {
-      if (!id) throw new Error('Student ID is required');
+      if (!student?.id) throw new Error('Student ID is required');
       const {
         data,
         error
-      } = await supabase.from('timeline_events').select('*').eq('student_id', id).order('date', {
+      } = await supabase.from('timeline_events').select('*').eq('student_id', student.id).order('date', {
         ascending: false
       });
       if (error) throw error;
       return data;
     },
-    enabled: !!id
+    enabled: !!student?.id
   });
 
   // Add mutation for deleting timeline events
@@ -112,9 +136,9 @@ export default function StudentDetail() {
 
   // Mock functions for photos and letters (would be replaced with real API calls)
   const getStudentPhotos = () => {
-    if (!id) return [];
+    if (!student?.id) return [];
     try {
-      const storedPhotos = localStorage.getItem(`student_photos_${id}`);
+      const storedPhotos = localStorage.getItem(`student_photos_${student.id}`);
       return storedPhotos ? JSON.parse(storedPhotos) : [];
     } catch (error) {
       console.error('Error getting photos:', error);
@@ -126,7 +150,7 @@ export default function StudentDetail() {
   // Update photos when ID changes
   useEffect(() => {
     setPhotos(getStudentPhotos());
-  }, [id]);
+  }, [student?.id]);
 
   // Mutation to update student status
   const updateStatusMutation = useMutation({
@@ -150,7 +174,7 @@ export default function StudentDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['student', id]
+        queryKey: ['student', idOrSlug]
       });
       toast({
         title: "Status updated",
@@ -165,47 +189,64 @@ export default function StudentDetail() {
       });
     }
   });
-
-  // Handler for editing student
+  
+  // Update mutation to ensure slug is also updated when student is updated
   const handleEditStudent = (data: any) => {
-    if (id) {
-      // Update student in database
-      const updateStudent = async () => {
-        try {
-          const {
-            error
-          } = await supabase.from('students').update({
-            ...data,
-            updated_by: user?.id,
-            updated_at: new Date().toISOString()
-          }).eq('id', id);
-          if (error) throw error;
-          queryClient.invalidateQueries({
-            queryKey: ['student', id]
-          });
-          toast({
-            title: "Student updated",
-            description: "Student has been updated successfully."
-          });
-        } catch (error) {
-          console.error('Error updating student:', error);
-          toast({
-            title: "Error updating student",
-            description: "Failed to update student. Please try again.",
-            variant: "destructive"
-          });
-        }
-      };
-      updateStudent();
+    if (!student?.id) return;
+    
+    // Generate slug if name changed
+    const shouldUpdateSlug = data.name !== student.name;
+    const updatedData = {
+      ...data,
+      updated_by: user?.id,
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (shouldUpdateSlug) {
+      updatedData.slug = generateSlug(data.name);
     }
+    
+    // Update student in database
+    const updateStudent = async () => {
+      try {
+        const {
+          error
+        } = await supabase.from('students').update(updatedData).eq('id', student.id);
+        
+        if (error) throw error;
+        
+        queryClient.invalidateQueries({
+          queryKey: ['student', idOrSlug]
+        });
+        
+        // If slug was updated, update the URL
+        if (shouldUpdateSlug && updatedData.slug) {
+          navigate(`/students/${updatedData.slug}`, { replace: true });
+        }
+        
+        toast({
+          title: "Student updated",
+          description: "Student has been updated successfully."
+        });
+      } catch (error) {
+        console.error('Error updating student:', error);
+        toast({
+          title: "Error updating student",
+          description: "Failed to update student. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    updateStudent();
   };
 
   // Handler for toggling student status
   const handleToggleStatus = () => {
-    if (student && id) {
+    if (student && student.id) {
       const newStatus = student.status === "Active" ? "Inactive" : "Active";
       updateStatusMutation.mutate({
-        id,
+        id: student.id,
         status: newStatus
       });
     }
@@ -333,18 +374,18 @@ export default function StudentDetail() {
     }} onSubmit={handleEditStudent} />}
 
       {/* Add Photo Modal */}
-      <AddPhotoModal open={isAddPhotoModalOpen} onOpenChange={setIsAddPhotoModalOpen} studentId={id || ""} onSuccess={() => {
+      <AddPhotoModal open={isAddPhotoModalOpen} onOpenChange={setIsAddPhotoModalOpen} studentId={student?.id || ""} onSuccess={() => {
       // Update photos list
       setPhotos(getStudentPhotos());
     }} />
 
       {/* Add Letter Modal */}
-      <AddLetterModal open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen} studentId={id || ""} onSuccess={() => {
+      <AddLetterModal open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen} studentId={student?.id || ""} onSuccess={() => {
       // Refresh letters
     }} />
 
       {/* Add Timeline Event Modal */}
-      <AddTimelineEventModal open={isAddTimelineEventModalOpen} onOpenChange={setIsAddTimelineEventModalOpen} studentId={id || ""} onSuccess={() => {
+      <AddTimelineEventModal open={isAddTimelineEventModalOpen} onOpenChange={setIsAddTimelineEventModalOpen} studentId={student?.id || ""} onSuccess={() => {
       // Refresh timeline events
       refetchTimeline();
     }} />

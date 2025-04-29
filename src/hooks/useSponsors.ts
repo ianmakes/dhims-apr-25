@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateSlug } from "@/utils/slugUtils";
 
 // Database model for Sponsor
 export interface Sponsor {
@@ -21,6 +22,7 @@ export interface Sponsor {
   profile_image_url?: string | null;
   students?: any[];
   primary_email_for_updates?: string;
+  slug?: string;
 }
 
 // Form values for Sponsor (used in forms)
@@ -52,12 +54,31 @@ export const useSponsors = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      
+      // Generate slugs for sponsors without them
+      const sponsorsToUpdate = data.filter(sponsor => !sponsor.slug);
+      if (sponsorsToUpdate.length > 0) {
+        const existingSlugs = data
+          .filter(sponsor => sponsor.slug)
+          .map(sponsor => sponsor.slug);
+          
+        for (const sponsor of sponsorsToUpdate) {
+          const slug = generateSlug(`${sponsor.first_name}-${sponsor.last_name}`, existingSlugs);
+          await supabase.from("sponsors").update({ slug }).eq("id", sponsor.id);
+          sponsor.slug = slug;
+          existingSlugs.push(slug);
+        }
+      }
+      
       return data as Sponsor[];
     },
   });
 
   const addSponsorMutation = useMutation({
     mutationFn: async (values: SponsorFormValues) => {
+      // Generate a slug for the new sponsor
+      const slug = generateSlug(`${values.firstName}-${values.lastName}`);
+      
       // Transform form values to match the database schema
       const sponsorData = {
         first_name: values.firstName,
@@ -71,7 +92,8 @@ export const useSponsors = () => {
         status: values.status,
         notes: values.notes || null,
         profile_image_url: values.profileImageUrl || null,
-        primary_email_for_updates: values.primaryEmailForUpdates || null
+        primary_email_for_updates: values.primaryEmailForUpdates || null,
+        slug: slug
       };
 
       const { data, error } = await supabase
@@ -94,8 +116,19 @@ export const useSponsors = () => {
 
   const updateSponsorMutation = useMutation({
     mutationFn: async ({ id, ...values }: SponsorFormValues & { id: string }) => {
+      // Check if name changed
+      const { data: currentSponsor } = await supabase
+        .from("sponsors")
+        .select("first_name, last_name, slug")
+        .eq("id", id)
+        .single();
+        
+      const nameChanged = currentSponsor && 
+        (currentSponsor.first_name !== values.firstName || 
+         currentSponsor.last_name !== values.lastName);
+      
       // Transform form values to match the database schema
-      const sponsorData = {
+      const sponsorData: any = {
         first_name: values.firstName,
         last_name: values.lastName,
         email: values.email,
@@ -109,6 +142,11 @@ export const useSponsors = () => {
         profile_image_url: values.profileImageUrl || null,
         primary_email_for_updates: values.primaryEmailForUpdates || null
       };
+      
+      // Update slug if name changed
+      if (nameChanged) {
+        sponsorData.slug = generateSlug(`${values.firstName}-${values.lastName}`);
+      }
 
       const { data, error } = await supabase
         .from("sponsors")
@@ -120,8 +158,9 @@ export const useSponsors = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["sponsors"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsors", data.id] });
       toast.success("Sponsor updated successfully");
     },
     onError: (error) => {

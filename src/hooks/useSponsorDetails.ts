@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sponsor, SponsorRelative, SponsorTimelineEvent } from "@/types/database";
 import { SUPABASE_URL, getAuthHeaders } from "@/utils/supabaseHelpers";
+import { generateSlug } from "@/utils/slugUtils";
 
 // Interface for the student removal reason form
 export interface StudentRemovalForm {
@@ -40,6 +41,14 @@ export const useSponsorDetails = (sponsorId: string) => {
         .single();
 
       if (error) throw error;
+      
+      // Generate slug if it doesn't exist
+      if (!data.slug && data.first_name && data.last_name) {
+        const slug = generateSlug(`${data.first_name}-${data.last_name}`);
+        await supabase.from("sponsors").update({ slug }).eq("id", sponsorId);
+        data.slug = slug;
+      }
+      
       return data as Sponsor;
     },
     enabled: !!sponsorId,

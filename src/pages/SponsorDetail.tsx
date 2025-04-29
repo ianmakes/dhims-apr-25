@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Edit, Mail, MapPin, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSponsors, SponsorFormValues } from "@/hooks/useSponsors";
 import { SponsorRelativesSection } from "@/components/sponsors/SponsorRelativesSection";
 import { SponsorTimelineTab } from "@/components/sponsors/SponsorTimelineTab";
@@ -17,11 +17,14 @@ import { RemoveStudentDialog } from "@/components/sponsors/RemoveStudentDialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { isUuid } from "@/utils/slugUtils";
+import { supabase } from "@/integrations/supabase/client";
+
 export default function SponsorDetail() {
   const {
-    id
+    idOrSlug
   } = useParams<{
-    id: string;
+    idOrSlug: string;
   }>();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -32,12 +35,39 @@ export default function SponsorDetail() {
     id: string;
     name: string;
   } | null>(null);
+  
+  // First, get the actual sponsor ID from slug or ID
+  const { data: sponsorIdData, isLoading: isLoadingSponsorId } = useQuery({
+    queryKey: ['sponsor-id', idOrSlug],
+    queryFn: async () => {
+      if (!idOrSlug) throw new Error('Sponsor ID or slug is required');
+      
+      if (isUuid(idOrSlug)) {
+        // If it's already a UUID, just return it
+        return { id: idOrSlug };
+      } else {
+        // Otherwise query by slug
+        const { data, error } = await supabase
+          .from('sponsors')
+          .select('id, slug')
+          .eq('slug', idOrSlug)
+          .single();
+          
+        if (error) throw error;
+        return data;
+      }
+    },
+    enabled: !!idOrSlug
+  });
+  
+  const sponsorId = sponsorIdData?.id;
+  
   const {
     sponsor,
     availableStudents,
     sponsorRelatives,
     timelineEvents,
-    isLoading,
+    isLoading: isLoadingSponsorDetails,
     isLoadingRelatives,
     isLoadingTimeline,
     assignStudents,
@@ -46,28 +76,42 @@ export default function SponsorDetail() {
     updateSponsorRelative,
     deleteSponsorRelative,
     addTimelineEvent
-  } = useSponsorDetails(id!);
+  } = useSponsorDetails(sponsorId || '');
+  
   const {
     updateSponsor
   } = useSponsors();
   const {
     toast
   } = useToast();
+  
+  // Effect to update URL with slug if we loaded with ID
+  useEffect(() => {
+    if (sponsor && isUuid(idOrSlug as string) && sponsor.slug) {
+      navigate(`/sponsors/${sponsor.slug}`, { replace: true });
+    }
+  }, [sponsor, idOrSlug, navigate]);
+  
   const handleEditSponsor = (data: SponsorFormValues) => {
-    if (id) {
+    if (sponsorId) {
       updateSponsor({
-        id,
+        id: sponsorId,
         ...data
       });
       setIsEditModalOpen(false);
     }
   };
+  
+  const isLoading = isLoadingSponsorId || isLoadingSponsorDetails;
+  
   if (isLoading) {
     return <div>Loading...</div>;
   }
+  
   if (!sponsor) {
     return <div>Sponsor not found</div>;
   }
+  
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "";
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -303,7 +347,7 @@ export default function SponsorDetail() {
                 </Card>}
 
               {/* Sponsor Relatives Section */}
-              <SponsorRelativesSection sponsorId={id!} relatives={sponsorRelatives} isLoading={isLoadingRelatives} onAddRelative={addSponsorRelative} onUpdateRelative={updateSponsorRelative} onDeleteRelative={deleteSponsorRelative} />
+              <SponsorRelativesSection sponsorId={sponsorId!} relatives={sponsorRelatives} isLoading={isLoadingRelatives} onAddRelative={addSponsorRelative} onUpdateRelative={updateSponsorRelative} onDeleteRelative={deleteSponsorRelative} />
             </TabsContent>
 
             {/* Sponsored Students Tab */}

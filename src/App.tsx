@@ -22,6 +22,7 @@ import AcademicYearsSettings from "./pages/settings/AcademicYearsSettings";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 import "./App.css";
 
 const queryClient = new QueryClient({
@@ -52,11 +53,11 @@ const App = () => (
               
               {/* Students */}
               <Route path="/students" element={<Students />} />
-              <Route path="/students/:id" element={<StudentDetail />} />
+              <Route path="/students/:idOrSlug" element={<StudentDetail />} />
               
               {/* Sponsors */}
               <Route path="/sponsors" element={<Sponsors />} />
-              <Route path="/sponsors/:id" element={<SponsorDetail />} />
+              <Route path="/sponsors/:idOrSlug" element={<SponsorDetail />} />
               
               {/* Exams */}
               <Route path="/exams" element={<Exams />} />
