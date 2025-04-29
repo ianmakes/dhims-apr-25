@@ -20,7 +20,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { isUuid } from "@/utils/slugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-
 export default function SponsorDetail() {
   const {
     idOrSlug
@@ -36,41 +35,39 @@ export default function SponsorDetail() {
     id: string;
     name: string;
   } | null>(null);
-  
+
   // First, get the actual sponsor ID from slug or ID
-  const { data: sponsorIdData, isLoading: isLoadingSponsorId } = useQuery({
+  const {
+    data: sponsorIdData,
+    isLoading: isLoadingSponsorId
+  } = useQuery({
     queryKey: ['sponsor-id', idOrSlug],
     queryFn: async () => {
       if (!idOrSlug) throw new Error('Sponsor ID or slug is required');
-      
       if (isUuid(idOrSlug)) {
         // If it's already a UUID, just return it
-        return { id: idOrSlug };
+        return {
+          id: idOrSlug
+        };
       } else {
         // Otherwise query by slug
-        const { data, error } = await supabase
-          .from('sponsors')
-          .select('id, slug')
-          .eq('slug', idOrSlug)
-          .single();
-          
+        const {
+          data,
+          error
+        } = await supabase.from('sponsors').select('id, slug').eq('slug', idOrSlug).single();
         if (error) {
           console.error("Error fetching sponsor by slug:", error);
           throw error;
         }
-        
         if (!data) {
           throw new Error('Sponsor not found');
         }
-        
         return data;
       }
     },
     enabled: !!idOrSlug
   });
-  
   const sponsorId = sponsorIdData?.id;
-  
   const {
     sponsor,
     availableStudents,
@@ -86,21 +83,21 @@ export default function SponsorDetail() {
     deleteSponsorRelative,
     addTimelineEvent
   } = useSponsorDetails(sponsorId || '');
-  
   const {
     updateSponsor
   } = useSponsors();
   const {
     toast
   } = useToast();
-  
+
   // Effect to update URL with slug if we loaded with ID
   useEffect(() => {
     if (sponsor && isUuid(idOrSlug as string) && sponsor.slug) {
-      navigate(`/sponsors/${sponsor.slug}`, { replace: true });
+      navigate(`/sponsors/${sponsor.slug}`, {
+        replace: true
+      });
     }
   }, [sponsor, idOrSlug, navigate]);
-  
   const handleEditSponsor = (data: SponsorFormValues) => {
     if (sponsorId) {
       updateSponsor({
@@ -110,17 +107,13 @@ export default function SponsorDetail() {
       setIsEditModalOpen(false);
     }
   };
-  
   const isLoading = isLoadingSponsorId || isLoadingSponsorDetails;
-  
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
   if (!sponsor) {
     return <div>Sponsor not found</div>;
   }
-  
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "";
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -329,8 +322,8 @@ export default function SponsorDetail() {
                       <p className="text-left">{sponsor.country}</p>
                     </div>}
                   {sponsor.primary_email_for_updates && <div>
-                      <h3 className="font-medium">Email for Updates</h3>
-                      <p>
+                      <h3 className="font-medium text-left">Email for Updates</h3>
+                      <p className="text-left">
                         {sponsor.primary_email_for_updates === "both" ? "Both emails" : sponsor.primary_email_for_updates}
                       </p>
                     </div>}
