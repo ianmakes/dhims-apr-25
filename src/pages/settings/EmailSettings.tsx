@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -35,8 +34,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { logUpdate } from "@/utils/auditLog";
 
+// Define provider type to fix TypeScript error
+type EmailProvider = "smtp" | "resend";
+
 const emailFormSchema = z.object({
-  provider: z.enum(["smtp", "resend"]),
+  provider: z.enum(["smtp", "resend"] as const),
   from_name: z.string().min(1, { message: "From name is required" }),
   from_email: z.string().email({ message: "Please enter a valid email address" }),
   smtp_host: z.string().optional(),
@@ -74,7 +76,7 @@ export default function EmailSettings() {
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailFormSchema),
     defaultValues: {
-      provider: "smtp",
+      provider: "smtp" as const, // Force the correct type
       from_name: "",
       from_email: "",
       smtp_host: "",
@@ -113,7 +115,7 @@ export default function EmailSettings() {
       if (data) {
         setSettings(data);
         form.reset({
-          provider: data.provider || "smtp",
+          provider: (data.provider as EmailProvider) || "smtp",
           from_name: data.from_name || "",
           from_email: data.from_email || "",
           smtp_host: data.smtp_host || "",

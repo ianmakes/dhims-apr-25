@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -66,6 +65,11 @@ interface Role {
   is_system: boolean;
   created_at: string;
   permissions?: string[];
+}
+
+interface RolePermission {
+  role_id: string;
+  permission_name: string;
 }
 
 // Default permissions that can be assigned to roles
@@ -145,18 +149,28 @@ export default function UserRolesSettings() {
         throw error;
       }
 
-      // Fetch role permissions
-      let rolesWithPermissions = [];
-      for (const role of roleData || []) {
-        const { data: permissions } = await supabase
-          .from("role_permissions")
-          .select("permission_name")
-          .eq("role_id", role.id);
-
-        rolesWithPermissions.push({
-          ...role,
-          permissions: permissions ? permissions.map(p => p.permission_name) : [],
-        });
+      // Store roles without permissions first
+      let rolesWithPermissions: Role[] = roleData || [];
+      
+      // Then get permissions from user_roles.permissions JSONB field
+      for (const role of rolesWithPermissions) {
+        // Extract permissions from the JSONB field if it exists
+        if (role.permissions) {
+          // If permissions is a JSONB array, convert to string[]
+          if (Array.isArray(role.permissions)) {
+            role.permissions = role.permissions as unknown as string[];
+          }
+          // If permissions is a JSONB object with keys, extract the keys
+          else if (typeof role.permissions === 'object' && role.permissions !== null) {
+            role.permissions = Object.keys(role.permissions).filter(
+              key => (role.permissions as any)[key] === true
+            );
+          } else {
+            role.permissions = [];
+          }
+        } else {
+          role.permissions = [];
+        }
       }
 
       setRoles(rolesWithPermissions);
@@ -190,6 +204,12 @@ export default function UserRolesSettings() {
   const onSubmit = async (data: RoleFormValues) => {
     try {
       setIsSubmitting(true);
+      
+      // Convert permissions array to JSONB object for storage
+      const permissionsObject: Record<string, boolean> = {};
+      data.permissions.forEach(permission => {
+        permissionsObject[permission] = true;
+      });
 
       if (editingRole) {
         // Update existing role
@@ -199,32 +219,11 @@ export default function UserRolesSettings() {
             name: data.name,
             description: data.description,
             is_system: data.is_system,
+            permissions: permissionsObject
           })
           .eq("id", editingRole.id);
 
         if (error) throw error;
-
-        // Delete existing permissions
-        const { error: deleteError } = await supabase
-          .from("role_permissions")
-          .delete()
-          .eq("role_id", editingRole.id);
-
-        if (deleteError) throw deleteError;
-
-        // Insert new permissions
-        if (data.permissions.length > 0) {
-          const permissionsToInsert = data.permissions.map(permission => ({
-            role_id: editingRole.id,
-            permission_name: permission,
-          }));
-
-          const { error: insertError } = await supabase
-            .from("role_permissions")
-            .insert(permissionsToInsert);
-
-          if (insertError) throw insertError;
-        }
 
         await logUpdate("user_roles", editingRole.id, `Updated role: ${data.name}`);
 
@@ -240,25 +239,12 @@ export default function UserRolesSettings() {
             name: data.name,
             description: data.description,
             is_system: data.is_system,
+            permissions: permissionsObject
           })
           .select()
           .single();
 
         if (error) throw error;
-
-        // Insert permissions
-        if (data.permissions.length > 0) {
-          const permissionsToInsert = data.permissions.map(permission => ({
-            role_id: newRole.id,
-            permission_name: permission,
-          }));
-
-          const { error: insertError } = await supabase
-            .from("role_permissions")
-            .insert(permissionsToInsert);
-
-          if (insertError) throw insertError;
-        }
 
         await logCreate("user_roles", newRole.id, `Created role: ${data.name}`);
 

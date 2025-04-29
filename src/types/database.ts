@@ -3,7 +3,11 @@ import { Database } from "@/integrations/supabase/types";
 import { Json } from "@/integrations/supabase/types";
 
 // Export specific table types for easier usage
-export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Profile = Database['public']['Tables']['profiles']['Row'] & {
+  bio?: string | null;
+  position?: string | null;
+  phone?: string | null;
+};
 export type Student = Database['public']['Tables']['students']['Row'];
 export type TimelineEvent = Database['public']['Tables']['timeline_events']['Row'];
 export type StudentLetter = Database['public']['Tables']['student_letters']['Row'];
