@@ -1,52 +1,42 @@
-
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Settings, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 export function AppHeader() {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
-  const { toast } = useToast();
-
+  const {
+    user,
+    profile,
+    signOut
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const handleSignOut = async () => {
     try {
       await signOut();
       toast({
-        title: "Logged out successfully",
+        title: "Logged out successfully"
       });
       navigate("/auth");
     } catch (error) {
       toast({
         title: "Error signing out",
         description: "Please try again",
-        variant: "destructive",
+        variant: "destructive"
       });
       console.error("Logout error:", error);
     }
   };
-
-  return (
-    <div className="border-b">
+  return <div className="border-b">
       <div className="flex h-16 items-center px-4">
         <div className="flex-1">
           {/* Logo/Title */}
           <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-            <img 
-              src="/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png" 
-              alt="Logo" 
-              className="h-8 w-auto mr-2" 
-            />
+            
             <h1 className="text-xl font-semibold">DHIMS</h1>
           </div>
         </div>
@@ -93,6 +83,5 @@ export function AppHeader() {
           </DropdownMenu>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
