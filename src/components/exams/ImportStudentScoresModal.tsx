@@ -256,9 +256,13 @@ export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> =
         throw new Error("No matching students found for the admission numbers provided");
       }
       
+      // Use upsert with the onConflict option to handle duplicate records
       const { error } = await supabase
         .from('student_exam_scores')
-        .upsert(scoresToUpsert);
+        .upsert(scoresToUpsert, { 
+          onConflict: 'exam_id,student_id',
+          ignoreDuplicates: false
+        });
       
       if (error) throw error;
       
@@ -374,7 +378,7 @@ export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> =
                     <div key={index} className="grid grid-cols-2 items-center gap-4">
                       <div className="font-medium truncate">{header}</div>
                       <Select 
-                        value={fieldMapping[header] || ""} 
+                        value={fieldMapping[header] || "null"} 
                         onValueChange={(value) => handleMappingChange(header, value as MappingField)}
                       >
                         <SelectTrigger>
@@ -385,7 +389,7 @@ export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> =
                           <SelectItem value="name">Student Name</SelectItem>
                           <SelectItem value="score">Score</SelectItem>
                           <SelectItem value="did_not_sit">Did Not Sit</SelectItem>
-                          <SelectItem value="">Ignore This Column</SelectItem>
+                          <SelectItem value="null">Ignore This Column</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
