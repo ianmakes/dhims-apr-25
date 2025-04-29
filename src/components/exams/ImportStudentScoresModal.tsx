@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,9 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle, FileSpreadsheet, Upload } from "lucide-react";
+import { AlertCircle, FileSpreadsheet, Upload, Download, Info, HelpCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 
 // Add onSuccess prop to the component props type
 export interface ImportStudentScoresModalProps {
@@ -18,16 +22,33 @@ export interface ImportStudentScoresModalProps {
   onSuccess?: () => void;
 }
 
+interface MappedField {
+  sourceField: string;
+  targetField: string;
+}
+
+const REQUIRED_TARGET_FIELDS = ["student_id", "score"];
+const TARGET_FIELDS = ["student_id", "score", "did_not_sit"];
+const SAMPLE_CSV = `admission_number,student_name,score,did_not_sit
+ST001,John Doe,85,false
+ST002,Jane Smith,92,false
+ST003,Sam Johnson,76,false
+ST004,Emma Williams,0,true
+ST005,Alex Brown,88,false`;
+
 export function ImportStudentScoresModal({
   open,
   onOpenChange,
   examId,
   onSuccess
 }: ImportStudentScoresModalProps) {
+  const [activeTab, setActiveTab] = useState<string>("upload");
   const [csvData, setCsvData] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [fieldMappings, setFieldMappings] = useState<MappedField[]>([]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,8 +59,103 @@ export function ImportStudentScoresModal({
       const text = event.target?.result as string;
       setCsvData(text);
       setError(null);
+      parseHeaders(text);
     };
     reader.readAsText(file);
+  };
+
+  const parseHeaders = (data: string) => {
+    if (!data.trim()) return;
+    
+    try {
+      const lines = data.trim().split("\n");
+      if (lines.length === 0) return;
+      
+      const headerLine = lines[0];
+      const parsedHeaders = headerLine.split(",").map(h => h.trim());
+      setHeaders(parsedHeaders);
+      
+      // Initialize field mappings
+      const initialMappings: MappedField[] = [];
+      parsedHeaders.forEach(header => {
+        // Try to auto-map based on similar names
+        let targetField: string | null = null;
+        
+        if (header.toLowerCase().includes("admission") || 
+            header.toLowerCase().includes("student") || 
+            header.toLowerCase() === "id") {
+          targetField = "student_id";
+        } else if (header.toLowerCase().includes("score") || 
+                 header.toLowerCase().includes("mark") || 
+                 header.toLowerCase().includes("grade")) {
+          targetField = "score";
+        } else if (header.toLowerCase().includes("absent") || 
+                 header.toLowerCase().includes("not_sit") || 
+                 header.toLowerCase().includes("dns") || 
+                 header.toLowerCase().includes("did_not_sit")) {
+          targetField = "did_not_sit";
+        }
+        
+        initialMappings.push({
+          sourceField: header,
+          targetField: targetField || ""
+        });
+      });
+      
+      setFieldMappings(initialMappings);
+      
+      // If we have headers, move to the mapping tab
+      if (parsedHeaders.length > 0) {
+        setActiveTab("map");
+      }
+    } catch (err) {
+      console.error("Error parsing CSV headers:", err);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = e.clipboardData.getData("text");
+    setCsvData(pastedText);
+    setError(null);
+    parseHeaders(pastedText);
+  };
+
+  const handleMappingChange = (sourceField: string, targetField: string) => {
+    setFieldMappings(prevMappings => 
+      prevMappings.map(mapping => 
+        mapping.sourceField === sourceField 
+          ? { ...mapping, targetField } 
+          : mapping
+      )
+    );
+  };
+
+  const downloadSampleCSV = () => {
+    const element = document.createElement("a");
+    const file = new Blob([SAMPLE_CSV], {type: "text/csv"});
+    element.href = URL.createObjectURL(file);
+    element.download = "sample_student_scores.csv";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const validateMappings = (): boolean => {
+    // Check if all required target fields are mapped
+    const mappedTargetFields = fieldMappings
+      .filter(m => m.targetField)
+      .map(m => m.targetField);
+    
+    const missingRequiredFields = REQUIRED_TARGET_FIELDS.filter(
+      field => !mappedTargetFields.includes(field)
+    );
+    
+    if (missingRequiredFields.length > 0) {
+      setError(`Missing required field mappings: ${missingRequiredFields.join(", ")}`);
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,46 +167,111 @@ export function ImportStudentScoresModal({
       return;
     }
 
+    if (activeTab === "upload") {
+      // Move to mapping step
+      parseHeaders(csvData);
+      setActiveTab("map");
+      return;
+    }
+    
+    // We're on the mapping tab, proceed with import
+    if (!validateMappings()) {
+      return;
+    }
+
     try {
       setIsUploading(true);
       
       // Parse CSV data
       const lines = csvData.trim().split("\n");
-      const headers = lines[0].split(",").map(h => h.trim());
-      
-      // Validate headers
-      const requiredHeaders = ["student_id", "score"];
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-      
-      if (missingHeaders.length > 0) {
-        throw new Error(`Missing required headers: ${missingHeaders.join(", ")}`);
+      if (lines.length <= 1) {
+        throw new Error("CSV file contains no data rows");
       }
+      
+      // Create a map of source field index to target field
+      const headerLine = lines[0].split(",").map(h => h.trim());
+      const fieldMap = new Map<number, string>();
+      
+      headerLine.forEach((header, index) => {
+        const mapping = fieldMappings.find(m => m.sourceField === header);
+        if (mapping && mapping.targetField) {
+          fieldMap.set(index, mapping.targetField);
+        }
+      });
       
       // Process data
       const data = lines.slice(1).map(line => {
         const values = line.split(",").map(v => v.trim());
-        const row: Record<string, any> = {};
-        
-        headers.forEach((header, index) => {
-          row[header] = values[index];
-        });
-        
-        return {
-          exam_id: examId,
-          student_id: row.student_id,
-          score: parseFloat(row.score),
-          did_not_sit: row.did_not_sit === "true" || row.did_not_sit === "1",
+        const row: Record<string, any> = {
+          exam_id: examId
         };
+        
+        // Apply mappings
+        for (let i = 0; i < values.length; i++) {
+          const targetField = fieldMap.get(i);
+          if (targetField) {
+            if (targetField === "score") {
+              row[targetField] = parseFloat(values[i]);
+            } else if (targetField === "did_not_sit") {
+              row[targetField] = values[i].toLowerCase() === "true" || values[i] === "1";
+            } else {
+              row[targetField] = values[i];
+            }
+          }
+        }
+        
+        // If did_not_sit is not provided, default to false
+        if (!row.hasOwnProperty("did_not_sit")) {
+          row.did_not_sit = false;
+        }
+        
+        return row;
       });
       
       // Simulate progress
       const totalSteps = data.length;
       let completedSteps = 0;
       
+      // Convert student_id to UUID if it's an admission number
+      // First, fetch all students to get the mapping from admission number to UUID
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select('id, admission_number')
+        .eq('status', 'Active');
+      
+      if (studentError) throw studentError;
+      
+      // Create a mapping from admission number to UUID
+      const studentMap = new Map();
+      students?.forEach(student => {
+        if (student.admission_number) {
+          studentMap.set(student.admission_number, student.id);
+        }
+      });
+      
+      // Replace admission numbers with UUIDs
+      const processedData = data.map(row => {
+        // If the student_id looks like an admission number, try to replace it with UUID
+        if (row.student_id && !row.student_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          const uuid = studentMap.get(row.student_id);
+          if (uuid) {
+            row.student_id = uuid;
+          } else {
+            // Skip this row as we couldn't find the student
+            return null;
+          }
+        }
+        return row;
+      }).filter(Boolean); // Remove null entries
+      
+      if (processedData.length === 0) {
+        throw new Error("No valid student records found. Please check that admission numbers match existing students.");
+      }
+      
       // Insert data in batches
       const batchSize = 50;
-      for (let i = 0; i < data.length; i += batchSize) {
-        const batch = data.slice(i, i + batchSize);
+      for (let i = 0; i < processedData.length; i += batchSize) {
+        const batch = processedData.slice(i, i + batchSize);
         
         const { error } = await supabase
           .from("student_exam_scores")
@@ -105,7 +286,7 @@ export function ImportStudentScoresModal({
         setUploadProgress(Math.round((completedSteps / totalSteps) * 100));
       }
       
-      toast.success(`Successfully imported ${data.length} student scores`);
+      toast.success(`Successfully imported ${processedData.length} student scores`);
       
       // Call onSuccess if it exists
       if (onSuccess) {
@@ -113,6 +294,9 @@ export function ImportStudentScoresModal({
       }
       
       setCsvData("");
+      setHeaders([]);
+      setFieldMappings([]);
+      setActiveTab("upload");
       onOpenChange(false);
     } catch (err: any) {
       setError(err.message || "Failed to import scores");
@@ -123,15 +307,9 @@ export function ImportStudentScoresModal({
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const pastedText = e.clipboardData.getData("text");
-    setCsvData(pastedText);
-    setError(null);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Import Student Scores</DialogTitle>
           <DialogDescription>
@@ -140,68 +318,133 @@ export function ImportStudentScoresModal({
         </DialogHeader>
         
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="file">Upload CSV File</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="file"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4 w-full">
+              <TabsTrigger value="upload" disabled={isUploading}>Step 1: Upload</TabsTrigger>
+              <TabsTrigger value="map" disabled={headers.length === 0 || isUploading}>Step 2: Map Fields</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="upload" className="space-y-4">
+              <Alert variant="info" className="bg-blue-50 border-blue-100">
+                <HelpCircle className="h-4 w-4" />
+                <AlertTitle className="text-blue-800">Tips for CSV format</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                  <p>Your CSV file should include columns for:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Student ID (admission number or UUID)</li>
+                    <li>Score (numeric value)</li>
+                    <li>Did Not Sit (optional, boolean: true/false or 1/0)</li>
+                  </ul>
+                </AlertDescription>
+                <div className="mt-2">
+                  <Button size="sm" variant="outline" onClick={downloadSampleCSV} className="text-blue-800">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Sample CSV
+                  </Button>
+                </div>
+              </Alert>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="file">Upload CSV File</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="file"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon"
+                    disabled={isUploading}
+                    onClick={() => document.getElementById("file")?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="csv-data">Or Paste Data</Label>
+                <Textarea
+                  id="csv-data"
+                  placeholder={SAMPLE_CSV}
+                  value={csvData}
+                  onChange={(e) => setCsvData(e.target.value)}
+                  onPaste={handlePaste}
+                  rows={6}
                   disabled={isUploading}
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="icon"
-                  disabled={isUploading}
-                  onClick={() => document.getElementById("file")?.click()}
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                CSV should have headers: student_id, score (optional: did_not_sit)
-              </p>
-            </div>
+            </TabsContent>
             
-            <div className="grid gap-2">
-              <Label htmlFor="csv-data">Or Paste Data</Label>
-              <Textarea
-                id="csv-data"
-                placeholder="student_id,score,did_not_sit
-123,85,false
-124,92,false
-125,0,true"
-                value={csvData}
-                onChange={(e) => setCsvData(e.target.value)}
-                onPaste={handlePaste}
-                rows={6}
-                disabled={isUploading}
-              />
-            </div>
-            
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+            <TabsContent value="map" className="space-y-4">
+              <Alert className="bg-amber-50 border-amber-100">
+                <Info className="h-4 w-4" />
+                <AlertTitle className="text-amber-800">Field Mapping</AlertTitle>
+                <AlertDescription className="text-amber-700">
+                  Map your CSV columns to the required fields. Fields marked with * are required.
+                </AlertDescription>
               </Alert>
-            )}
-            
-            {isUploading && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Uploading...</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <Progress value={uploadProgress} />
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="grid gap-4">
+                    {fieldMappings.map((mapping, index) => (
+                      <div key={index} className="grid grid-cols-5 gap-4 items-center">
+                        <div className="col-span-2 font-medium">{mapping.sourceField}</div>
+                        <div className="col-span-1 text-center">→</div>
+                        <div className="col-span-2">
+                          <Select 
+                            value={mapping.targetField} 
+                            onValueChange={(value) => handleMappingChange(mapping.sourceField, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Ignore this column</SelectItem>
+                              {TARGET_FIELDS.map(field => (
+                                <SelectItem key={field} value={field}>
+                                  {field} {REQUIRED_TARGET_FIELDS.includes(field) ? '*' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <div className="text-sm text-muted-foreground">
+                <p><strong>Note:</strong> For 'student_id', you can use either the student's UUID or admission number. The system will automatically convert admission numbers to UUIDs.</p>
               </div>
-            )}
-          </div>
+            </TabsContent>
+          </Tabs>
           
-          <DialogFooter>
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {isUploading && (
+            <div className="space-y-2 mt-4">
+              <div className="flex justify-between text-sm">
+                <span>Uploading...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} />
+            </div>
+          )}
+          
+          <DialogFooter className="mt-6">
             <Button 
               type="button" 
               variant="outline" 
@@ -214,8 +457,12 @@ export function ImportStudentScoresModal({
               type="submit"
               disabled={isUploading || !csvData.trim()}
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Import Scores
+              {activeTab === "upload" ? "Next" : (
+                <>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Import Scores
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

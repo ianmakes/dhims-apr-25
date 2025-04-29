@@ -17,6 +17,7 @@ export interface StudentExamScoreWithStudent extends StudentExamScore {
     id: string;
     name: string;
     current_grade: string;
+    admission_number?: string;
   };
   status?: string;
 }
@@ -25,6 +26,7 @@ export interface StudentForExam {
   id: string;
   name: string;
   current_grade?: string;
+  admission_number?: string;
   hasScore?: boolean;
   examScoreId?: string;
   score?: number | null;
