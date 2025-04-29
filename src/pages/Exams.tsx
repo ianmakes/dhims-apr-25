@@ -48,7 +48,7 @@ export default function Exams() {
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [formData, setFormData] = useState<ExamFormData>({
     name: "",
-    academicYear: "2023-2024",
+    academicYear: "",
     term: "Term 1",
     examDate: "",
     maxScore: "100",
@@ -325,7 +325,7 @@ export default function Exams() {
   const resetForm = () => {
     setFormData({
       name: "",
-      academicYear: currentAcademicYear ? currentAcademicYear.year_name : "2023-2024",
+      academicYear: currentAcademicYear ? currentAcademicYear.year_name : "",
       term: "Term 1",
       examDate: "",
       maxScore: "100",
@@ -484,6 +484,9 @@ export default function Exams() {
   const totalExams = exams.length;
   const activeExams = exams.filter(exam => exam.is_active).length;
   const totalStudentsTaken = exams.reduce((acc, exam) => acc + (exam.studentsTaken || 0), 0);
+  const highestScore = exams.length > 0 
+    ? Math.max(...exams.map(exam => exam.averageScore || 0))
+    : 0;
   const averagePassRate = exams.length > 0 
     ? exams.reduce((acc, exam) => acc + (exam.passRate || 0), 0) / exams.length
     : 0;
@@ -512,11 +515,11 @@ export default function Exams() {
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-5 py-4">
                 <div className="col-span-2">
-                  <Label htmlFor="name" className="mb-2 block">Exam Name</Label>
+                  <Label htmlFor="name" className="mb-3 block">Exam Name</Label>
                   <Input id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="e.g. Math Midterm Exam" required />
                 </div>
                 <div className="col-span-1">
-                  <Label htmlFor="academicYear" className="mb-2 block">Academic Year</Label>
+                  <Label htmlFor="academicYear" className="mb-3 block">Academic Year</Label>
                   <Select 
                     value={formData.academicYear} 
                     onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}
@@ -534,7 +537,7 @@ export default function Exams() {
                   </Select>
                 </div>
                 <div className="col-span-1">
-                  <Label htmlFor="term" className="mb-2 block">Term</Label>
+                  <Label htmlFor="term" className="mb-3 block">Term</Label>
                   <Select 
                     value={formData.term} 
                     onValueChange={(value) => setFormData(prev => ({ ...prev, term: value }))}
@@ -552,7 +555,7 @@ export default function Exams() {
                   </Select>
                 </div>
                 <div className="col-span-1">
-                  <Label htmlFor="examDate" className="mb-2 block">Exam Date</Label>
+                  <Label htmlFor="examDate" className="mb-3 block">Exam Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -591,11 +594,11 @@ export default function Exams() {
                   </Popover>
                 </div>
                 <div className="col-span-1">
-                  <Label htmlFor="maxScore" className="mb-2 block">Maximum Score</Label>
+                  <Label htmlFor="maxScore" className="mb-3 block">Maximum Score</Label>
                   <Input id="maxScore" name="maxScore" type="number" value={formData.maxScore} onChange={handleInputChange} min="1" required />
                 </div>
                 <div className="col-span-1">
-                  <Label htmlFor="passingScore" className="mb-2 block">Passing Score</Label>
+                  <Label htmlFor="passingScore" className="mb-3 block">Passing Score</Label>
                   <Input id="passingScore" name="passingScore" type="number" value={formData.passingScore} onChange={handleInputChange} min="1" max={formData.maxScore} required />
                 </div>
                 <div className="col-span-1 flex items-center space-x-2">
@@ -675,13 +678,13 @@ export default function Exams() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Exam Attempts</CardTitle>
+            <CardTitle className="text-sm font-medium">Highest Exam Average</CardTitle>
             <ChartBar className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStudentsTaken}</div>
+            <div className="text-2xl font-bold">{highestScore.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
-              By all students
+              From {totalStudentsTaken} total attempts
             </p>
           </CardContent>
         </Card>
@@ -731,11 +734,11 @@ export default function Exams() {
           <form onSubmit={handleEditSubmit}>
             <div className="grid grid-cols-2 gap-5 py-4">
               <div className="col-span-2">
-                <Label htmlFor="name" className="mb-2 block">Exam Name</Label>
+                <Label htmlFor="name" className="mb-3 block">Exam Name</Label>
                 <Input id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="e.g. Math Midterm Exam" required />
               </div>
               <div className="col-span-1">
-                <Label htmlFor="academicYear" className="mb-2 block">Academic Year</Label>
+                <Label htmlFor="academicYear" className="mb-3 block">Academic Year</Label>
                 <Select 
                   value={formData.academicYear} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}
@@ -753,7 +756,7 @@ export default function Exams() {
                 </Select>
               </div>
               <div className="col-span-1">
-                <Label htmlFor="term" className="mb-2 block">Term</Label>
+                <Label htmlFor="term" className="mb-3 block">Term</Label>
                 <Select 
                   value={formData.term} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, term: value }))}
@@ -771,7 +774,7 @@ export default function Exams() {
                 </Select>
               </div>
               <div className="col-span-1">
-                <Label htmlFor="examDate" className="mb-2 block">Exam Date</Label>
+                <Label htmlFor="examDate" className="mb-3 block">Exam Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -804,11 +807,11 @@ export default function Exams() {
                 </Popover>
               </div>
               <div className="col-span-1">
-                <Label htmlFor="maxScore" className="mb-2 block">Maximum Score</Label>
+                <Label htmlFor="maxScore" className="mb-3 block">Maximum Score</Label>
                 <Input id="maxScore" name="maxScore" type="number" value={formData.maxScore} onChange={handleInputChange} min="1" required />
               </div>
               <div className="col-span-1">
-                <Label htmlFor="passingScore" className="mb-2 block">Passing Score</Label>
+                <Label htmlFor="passingScore" className="mb-3 block">Passing Score</Label>
                 <Input id="passingScore" name="passingScore" type="number" value={formData.passingScore} onChange={handleInputChange} min="1" max={formData.maxScore} required />
               </div>
               <div className="col-span-1 flex items-center space-x-2">

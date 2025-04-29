@@ -52,6 +52,7 @@ export type Database = {
           created_by: string | null
           exam_date: string
           id: string
+          is_active: boolean | null
           max_score: number
           name: string
           passing_score: number
@@ -65,6 +66,7 @@ export type Database = {
           created_by?: string | null
           exam_date: string
           id?: string
+          is_active?: boolean | null
           max_score: number
           name: string
           passing_score: number
@@ -78,6 +80,7 @@ export type Database = {
           created_by?: string | null
           exam_date?: string
           id?: string
+          is_active?: boolean | null
           max_score?: number
           name?: string
           passing_score?: number
