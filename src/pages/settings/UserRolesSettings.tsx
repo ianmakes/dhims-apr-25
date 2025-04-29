@@ -61,15 +61,10 @@ type RoleFormValues = z.infer<typeof roleSchema>;
 interface Role {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   is_system: boolean;
-  created_at: string;
+  created_at: string | null;
   permissions?: string[];
-}
-
-interface RolePermission {
-  role_id: string;
-  permission_name: string;
 }
 
 // Default permissions that can be assigned to roles
@@ -123,7 +118,7 @@ export default function UserRolesSettings() {
     if (editingRole) {
       form.reset({
         name: editingRole.name,
-        description: editingRole.description,
+        description: editingRole.description || "",
         is_system: editingRole.is_system,
         permissions: editingRole.permissions || [],
       });
@@ -149,29 +144,31 @@ export default function UserRolesSettings() {
         throw error;
       }
 
-      // Store roles without permissions first
-      let rolesWithPermissions: Role[] = roleData || [];
-      
-      // Then get permissions from user_roles.permissions JSONB field
-      for (const role of rolesWithPermissions) {
+      // Map database results to our Role interface
+      const rolesWithPermissions: Role[] = roleData?.map(role => {
+        // Default to false if is_system is null
+        const is_system = role.is_system === null ? false : role.is_system;
+        
         // Extract permissions from the JSONB field if it exists
+        let permissions: string[] = [];
         if (role.permissions) {
-          // If permissions is a JSONB array, convert to string[]
+          // Handle different types of permission storage
           if (Array.isArray(role.permissions)) {
-            role.permissions = role.permissions as unknown as string[];
-          }
-          // If permissions is a JSONB object with keys, extract the keys
-          else if (typeof role.permissions === 'object' && role.permissions !== null) {
-            role.permissions = Object.keys(role.permissions).filter(
+            permissions = role.permissions as unknown as string[];
+          } else if (typeof role.permissions === 'object' && role.permissions !== null) {
+            // Extract keys where the value is true
+            permissions = Object.keys(role.permissions).filter(
               key => (role.permissions as any)[key] === true
             );
-          } else {
-            role.permissions = [];
           }
-        } else {
-          role.permissions = [];
         }
-      }
+        
+        return {
+          ...role,
+          is_system,
+          permissions
+        };
+      }) || [];
 
       setRoles(rolesWithPermissions);
     } catch (error) {
@@ -274,15 +271,7 @@ export default function UserRolesSettings() {
     try {
       setIsSubmitting(true);
 
-      // Delete permissions first
-      const { error: permError } = await supabase
-        .from("role_permissions")
-        .delete()
-        .eq("role_id", roleToDelete.id);
-
-      if (permError) throw permError;
-
-      // Then delete the role
+      // Delete the role directly (no need to deal with role_permissions)
       const { error } = await supabase
         .from("user_roles")
         .delete()
