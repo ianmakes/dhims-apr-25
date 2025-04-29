@@ -289,7 +289,7 @@ export const ImportStudentScoresModal: React.FC<ImportStudentScoresModalProps> =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px] md:max-w-[900px] w-[90vw]">
         <DialogHeader>
           <DialogTitle>Import Student Scores</DialogTitle>
           <DialogDescription>
