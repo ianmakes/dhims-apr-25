@@ -21,6 +21,7 @@ export function SettingsLayout() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="profile">Profile & Account</TabsTrigger>
           <TabsTrigger value="smtp">Email & SMTP</TabsTrigger>
+          <TabsTrigger value="academic-years">Academic Years</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           <TabsTrigger value="roles">User Roles</TabsTrigger>
         </TabsList>
