@@ -1,19 +1,20 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User, Calendar, BackpackIcon, MapPin } from "lucide-react";
 import { StudentFormInput } from "@/types/database";
-
 interface StudentProfileSidebarProps {
-  student: StudentFormInput & { [key: string]: any };
+  student: StudentFormInput & {
+    [key: string]: any;
+  };
   formatDate: (date: string | Date | null | undefined) => string;
 }
-
-export function StudentProfileSidebar({ student, formatDate }: StudentProfileSidebarProps) {
-  return (
-    <Card className="lg:col-span-2">
+export function StudentProfileSidebar({
+  student,
+  formatDate
+}: StudentProfileSidebarProps) {
+  return <Card className="lg:col-span-2">
       <CardHeader className="text-center">
         <Avatar className="mx-auto h-24 w-24">
           <AvatarImage src={student.profile_image_url} alt={student.name} />
@@ -23,18 +24,7 @@ export function StudentProfileSidebar({ student, formatDate }: StudentProfileSid
         </Avatar>
         <CardTitle className="mt-2">{student.name}</CardTitle>
         <div className="flex justify-center">
-          <Badge
-            variant={
-              student.status === "Active"
-                ? "default"
-                : student.status === "Inactive"
-                ? "secondary"
-                : student.status === "Graduated"
-                ? "outline"
-                : "destructive"
-            }
-            className={student.status === "Inactive" ? "opacity-60" : ""}
-          >
+          <Badge variant={student.status === "Active" ? "default" : student.status === "Inactive" ? "secondary" : student.status === "Graduated" ? "outline" : "destructive"} className={student.status === "Inactive" ? "opacity-60" : ""}>
             {student.status}
           </Badge>
         </div>
@@ -69,7 +59,7 @@ export function StudentProfileSidebar({ student, formatDate }: StudentProfileSid
         </div>
         <Separator />
         <div className="space-y-2">
-          <h3 className="font-medium">Academic Information</h3>
+          <h3 className="font-medium text-left">Academic Information</h3>
           <div className="flex items-center text-sm">
             <User className="mr-2 h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">CBC Category:</span>
@@ -116,6 +106,5 @@ export function StudentProfileSidebar({ student, formatDate }: StudentProfileSid
           {student.updated_at && <p>Last modified: {formatDate(student.updated_at)}</p>}
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 }
