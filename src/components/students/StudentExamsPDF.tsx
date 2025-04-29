@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FilePdf, Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
@@ -394,7 +393,7 @@ export function StudentExamsPDF({
     <Button 
       onClick={generatePDF} 
       disabled={isGenerating}
-      variant="primary"
+      variant="default"
     >
       {isGenerating ? (
         "Generating..."
