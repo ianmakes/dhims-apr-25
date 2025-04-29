@@ -47,7 +47,8 @@ const App = () => (
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               {/* Dashboard */}
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               
               {/* Students */}
               <Route path="/students" element={<Students />} />

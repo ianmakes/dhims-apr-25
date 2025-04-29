@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,7 @@ export function AppHeader() {
       <div className="flex h-16 items-center px-4">
         <div className="flex-1">
           {/* Logo/Title */}
-          <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-            
+          <div className="flex items-center cursor-pointer" onClick={() => navigate('/dashboard')}>
             <h1 className="text-xl font-semibold">DHIMS</h1>
           </div>
         </div>

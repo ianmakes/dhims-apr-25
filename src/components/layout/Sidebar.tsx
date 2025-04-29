@@ -25,7 +25,7 @@ export function Sidebar() {
   const sidebarItems = [
     {
       title: "Dashboard",
-      path: "/",
+      path: "/dashboard",
       icon: <BarChart2 className="h-5 w-5" />,
     },
     {
