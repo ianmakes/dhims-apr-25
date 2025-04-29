@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -5,11 +6,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Settings, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 export function AppHeader() {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
-  const { toast } = useToast();
+  const {
+    user,
+    profile,
+    signOut
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const handleSignOut = async () => {
     try {
       await signOut();

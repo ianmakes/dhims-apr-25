@@ -1,124 +1,196 @@
+// Type definitions for DHIMS
 
-import { Database } from "@/integrations/supabase/types";
-import { Json } from "@/integrations/supabase/types";
+// User roles type
+export type UserRole = "superuser" | "admin" | "manager" | "viewer";
 
-// Export specific table types for easier usage
-export type Profile = Database['public']['Tables']['profiles']['Row'] & {
-  bio?: string | null;
-  position?: string | null;
-  phone?: string | null;
-};
-export type Student = Database['public']['Tables']['students']['Row'];
-export type TimelineEvent = Database['public']['Tables']['timeline_events']['Row'];
-export type StudentLetter = Database['public']['Tables']['student_letters']['Row'];
-export type StudentPhoto = Database['public']['Tables']['student_photos']['Row'];
-export type StudentRelative = Database['public']['Tables']['student_relatives']['Row'];
-
-// Define the StudentExamScore type with proper exam property
-export type StudentExamScore = Database['public']['Tables']['student_exam_scores']['Row'] & {
-  exam: {
-    id: string;
-    name: string;
-    term: string;
-    academic_year: string;
-    exam_date: string;
-    max_score: number;
-    passing_score: number;
-  };
-};
-
-// Define sponsor-related types for tables
-export type SponsorTimelineEvent = {
+// User interface
+export interface User {
   id: string;
-  sponsor_id: string;
-  title: string;
-  description?: string | null;
-  type: string;
-  student_id?: string | null;
-  date: string;
-  created_at: string;
-  updated_at?: string | null;
-};
-
-// Define the SponsorRelative type
-export type SponsorRelative = {
-  id: string;
-  sponsor_id: string;
   name: string;
-  relationship: string;
   email: string;
-  phone_number?: string | null;
-  photo_url?: string | null;
-  created_at: string;
-  updated_at?: string | null;
-};
-
-// New student form input type
-export interface StudentFormInput {
-  name: string;
-  admission_number: string;
-  dob?: string | null;
-  gender: 'Male' | 'Female';
-  status: string;
-  accommodation_status?: string | null;
-  health_status?: string | null;
-  location?: string | null;
-  description?: string | null;
-  school_level?: string | null;
-  cbc_category?: string | null;
-  current_grade?: string | null;
-  current_academic_year?: number | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  admission_date?: string | null;
-  sponsor_id?: string | null;
-  sponsored_since?: string | null;
-  profile_image_url?: string | null;
-  slug?: string | null;
-  students?: Student[]; // Add this to resolve type issues
-  createdAt?: string;   // Add this to resolve type issues
-  updatedAt?: string;   // Add this to resolve type issues
+  role: UserRole;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  lastModifiedBy?: string;
 }
 
-// Add Sponsor type
-export type Sponsor = Database['public']['Tables']['sponsors']['Row'] & {
-  students?: Student[];
-  profile_image_url?: string | null;
-  primary_email_for_updates?: string | null;
-  slug?: string | null;
-};
+// Student interface
+export interface Student {
+  id: string;
+  firstName: string;
+  lastName: string;
+  gender: "male" | "female" | "other";
+  dateOfBirth: Date;
+  grade: string;
+  enrollmentDate: Date;
+  sponsorId?: string;
+  profileImage?: string;
+  address?: string;
+  guardianName?: string;
+  guardianContact?: string;
+  status: "active" | "inactive" | "graduated";
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  lastModifiedBy?: string;
+}
 
+// Sponsor interface
+export interface Sponsor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  email2?: string;
+  phone?: string;
+  address?: string;
+  country?: string;
+  startDate: Date;
+  status: "active" | "inactive";
+  students: string[]; // Array of student IDs
+  profileImage?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  lastModifiedBy?: string;
+}
+
+// Exam interface
+export interface Exam {
+  id: string;
+  name: string;
+  term: string;
+  academicYear: string;
+  date: Date;
+  grades: ExamGrade[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Exam grade interface
+export interface ExamGrade {
+  studentId: string;
+  score: number;
+  grade: string;
+  remarks?: string;
+}
+
+// Student letter interface
+export interface StudentLetter {
+  id: string;
+  studentId: string;
+  date: Date;
+  content: string;
+  attachments?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Student timeline event
+export interface TimelineEvent {
+  id: string;
+  studentId: string;
+  date: Date;
+  title: string;
+  description: string;
+  type: "academic" | "sponsor" | "personal" | "other";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Audit log entry
+export interface AuditLog {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: "student" | "sponsor" | "exam" | "user" | "settings" | "other";
+  entityId: string;
+  details: string;
+  timestamp: Date;
+}
+
+// App settings interface with expanded properties
+export interface AppSettings {
+  currentAcademicYear: string;
+  currentTerm: string;
+  organizationName: string;
+  organizationLogo?: string;
+  theme: {
+    primaryColor: string;
+    mode: "light" | "dark" | "system";
+  };
+  smtpSettings?: SMTPSettings;
+  generalSettings?: GeneralSettings;
+  notificationSettings?: NotificationSettings;
+}
+
+// General settings
+export interface GeneralSettings {
+  defaultAcademicYear: string;
+  appName: string;
+  appLogo?: string;
+  timezone: string;
+  dateFormat: string;
+  timeFormat: string;
+}
+
+// Notification settings
+export interface NotificationSettings {
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  pushNotifications: boolean;
+  notifyOnNewStudent: boolean;
+  notifyOnNewSponsor: boolean;
+  notifyOnSponsorshipChange: boolean;
+}
+
+// SMTP settings
+export interface SMTPSettings {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+}
+
+// Theme settings
+export interface ThemeSettings {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  mode: "light" | "dark" | "system";
+}
+
+// Academic year interface
 export interface AcademicYear {
   id: string;
-  year_name: string; // Single year format (e.g., "2024")
+  year_name: string;
   is_current: boolean;
   start_date: string;
   end_date: string;
   created_at?: string;
   updated_at?: string;
+  created_by?: string;
+  updated_by?: string;
 }
 
-// Update User and UserRole types
-export type User = {
-  id: string;
-  email: string;
-  role: "superuser" | "admin" | "manager" | "viewer";
-  created_at: string;
-  updated_at?: string | null;
-  name: string; // Added name field
-};
-
-export type UserRole = "superuser" | "admin" | "manager" | "viewer";
-
-// Separate type for full user role details
-export type UserRoleDetails = {
+// User role with permissions
+export interface UserRoleWithPermissions {
   id: string;
   name: string;
-  description: string;
-  permissions: any;
+  description?: string;
+  permissions: {
+    students?: { read?: boolean; write?: boolean; delete?: boolean; };
+    sponsors?: { read?: boolean; write?: boolean; delete?: boolean; };
+    exams?: { read?: boolean; write?: boolean; delete?: boolean; };
+    settings?: { read?: boolean; write?: boolean; delete?: boolean; };
+  };
   created_at: string;
-  updated_at?: string | null;
-  created_by: string;
-  updated_by?: string | null;
-  is_system?: boolean;
-};
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+}
