@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,11 +18,13 @@ import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2 } from
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+
+// Update the schema to validate single-year format
 const academicYearSchema = z.object({
   year_name: z.string().min(1, {
     message: "Academic year name is required"
-  }).regex(/^\d{4}-\d{4}$/, {
-    message: "Year must be in format YYYY-YYYY (e.g. 2023-2024)"
+  }).regex(/^\d{4}$/, {
+    message: "Year must be a 4-digit year (e.g. 2024)"
   }),
   is_current: z.boolean().default(false),
   start_date: z.string().min(1, {
@@ -40,15 +43,15 @@ const academicYearSchema = z.object({
 });
 type AcademicYearFormValues = z.infer<typeof academicYearSchema>;
 
-// Schema for copying academic year data
+// Update the schema for copying academic year data
 const copyYearSchema = z.object({
   sourceYearId: z.string().uuid({
     message: "Please select a source academic year"
   }),
   destinationYearId: z.string().uuid().optional(),
   createNewYear: z.boolean().default(false),
-  newYearName: z.string().regex(/^\d{4}-\d{4}$/, {
-    message: "Year must be in format YYYY-YYYY (e.g. 2023-2024)"
+  newYearName: z.string().regex(/^\d{4}$/, {
+    message: "Year must be a 4-digit year (e.g. 2024)"
   }).optional(),
   newStartDate: z.string().optional(),
   newEndDate: z.string().optional(),
@@ -98,10 +101,9 @@ const copyYearSchema = z.object({
   }
 });
 type CopyYearFormValues = z.infer<typeof copyYearSchema>;
+
 export default function AcademicYearsSettings() {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -110,6 +112,7 @@ export default function AcademicYearsSettings() {
   const [yearToSetCurrent, setYearToSetCurrent] = useState<AcademicYear | null>(null);
   const [copyProgress, setCopyProgress] = useState(0);
   const [isCopying, setIsCopying] = useState(false);
+  
   const form = useForm<AcademicYearFormValues>({
     resolver: zodResolver(academicYearSchema),
     defaultValues: {
@@ -119,6 +122,7 @@ export default function AcademicYearsSettings() {
       end_date: ""
     }
   });
+  
   const copyForm = useForm<CopyYearFormValues>({
     resolver: zodResolver(copyYearSchema),
     defaultValues: {
@@ -133,9 +137,11 @@ export default function AcademicYearsSettings() {
       copySponsorship: true
     }
   });
+  
   useEffect(() => {
     fetchAcademicYears();
   }, []);
+  
   useEffect(() => {
     if (!isDialogOpen) {
       setEditingYear(null);
@@ -147,6 +153,7 @@ export default function AcademicYearsSettings() {
       });
     }
   }, [isDialogOpen, form]);
+  
   useEffect(() => {
     if (editingYear) {
       form.reset({
@@ -157,13 +164,15 @@ export default function AcademicYearsSettings() {
       });
     }
   }, [editingYear, form]);
+  
   const fetchAcademicYears = async () => {
     setIsLoading(true);
     try {
-      const {
-        data: academicYearsData,
-        error
-      } = await supabase.from('academic_years').select('*').order('year_name');
+      const { data: academicYearsData, error } = await supabase
+        .from('academic_years')
+        .select('*')
+        .order('year_name');
+        
       if (error) throw error;
       setAcademicYears(academicYearsData as AcademicYear[]);
     } catch (error: any) {
@@ -177,30 +186,39 @@ export default function AcademicYearsSettings() {
       setIsLoading(false);
     }
   };
+  
   const handleSubmit = async (values: AcademicYearFormValues) => {
     try {
       let response;
       if (editingYear) {
-        response = await supabase.from('academic_years').update({
-          year_name: values.year_name,
-          is_current: values.is_current,
-          start_date: values.start_date,
-          end_date: values.end_date,
-          updated_at: new Date().toISOString()
-        }).eq('id', editingYear.id);
+        response = await supabase
+          .from('academic_years')
+          .update({
+            year_name: values.year_name,
+            is_current: values.is_current,
+            start_date: values.start_date,
+            end_date: values.end_date,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingYear.id);
       } else {
-        response = await supabase.from('academic_years').insert([{
-          year_name: values.year_name,
-          is_current: values.is_current,
-          start_date: values.start_date,
-          end_date: values.end_date
-        }]);
+        response = await supabase
+          .from('academic_years')
+          .insert([{
+            year_name: values.year_name,
+            is_current: values.is_current,
+            start_date: values.start_date,
+            end_date: values.end_date
+          }]);
       }
+      
       if (response.error) throw response.error;
+      
       toast({
         title: editingYear ? "Updated" : "Created",
         description: `Academic year ${values.year_name} has been ${editingYear ? "updated" : "created"} successfully.`
       });
+      
       await fetchAcademicYears();
       setIsDialogOpen(false);
     } catch (error: any) {
@@ -212,16 +230,21 @@ export default function AcademicYearsSettings() {
       });
     }
   };
+  
   const handleDelete = async (academicYear: AcademicYear) => {
     try {
-      const {
-        error
-      } = await supabase.from('academic_years').delete().eq('id', academicYear.id);
+      const { error } = await supabase
+        .from('academic_years')
+        .delete()
+        .eq('id', academicYear.id);
+        
       if (error) throw error;
+      
       toast({
         title: "Deleted",
         description: `Academic year ${academicYear.year_name} has been deleted.`
       });
+      
       await fetchAcademicYears();
     } catch (error: any) {
       console.error("Error deleting academic year:", error);
@@ -232,20 +255,26 @@ export default function AcademicYearsSettings() {
       });
     }
   };
+  
   const handleSetCurrent = async () => {
     if (!yearToSetCurrent) return;
+    
     try {
-      const {
-        error
-      } = await supabase.from('academic_years').update({
-        is_current: true,
-        updated_at: new Date().toISOString()
-      }).eq('id', yearToSetCurrent.id);
+      const { error } = await supabase
+        .from('academic_years')
+        .update({
+          is_current: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', yearToSetCurrent.id);
+        
       if (error) throw error;
+      
       toast({
         title: "Current Year Updated",
         description: `${yearToSetCurrent.year_name} is now set as the current academic year. Student grades have been automatically promoted to the next level.`
       });
+      
       setYearToSetCurrent(null);
       await fetchAcademicYears();
     } catch (error: any) {
@@ -257,32 +286,38 @@ export default function AcademicYearsSettings() {
       });
     }
   };
+  
   const handleCopyYear = async (values: CopyYearFormValues) => {
     setIsCopying(true);
     setCopyProgress(0);
+    
     try {
       // Step 1: Get source year data
       const sourceYear = academicYears.find(year => year.id === values.sourceYearId);
       if (!sourceYear) {
         throw new Error("Source academic year not found");
       }
+      
       setCopyProgress(10);
       let destinationYearId: string;
-
+      
       // Step 2: Create new year if specified
       if (values.createNewYear) {
         if (!values.newYearName || !values.newStartDate || !values.newEndDate) {
           throw new Error("New year details are missing");
         }
-        const {
-          data,
-          error
-        } = await supabase.from('academic_years').insert([{
-          year_name: values.newYearName,
-          is_current: false,
-          start_date: values.newStartDate,
-          end_date: values.newEndDate
-        }]).select('id').single();
+        
+        const { data, error } = await supabase
+          .from('academic_years')
+          .insert([{
+            year_name: values.newYearName,
+            is_current: false,
+            start_date: values.newStartDate,
+            end_date: values.newEndDate
+          }])
+          .select('id')
+          .single();
+          
         if (error) throw error;
         destinationYearId = data.id;
         setCopyProgress(30);
@@ -293,7 +328,7 @@ export default function AcademicYearsSettings() {
         destinationYearId = values.destinationYearId;
         setCopyProgress(30);
       }
-
+      
       // Step 3: Copy student data if selected
       if (values.copyStudentData) {
         // Here you would implement the actual copying of student data 
@@ -302,7 +337,7 @@ export default function AcademicYearsSettings() {
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(60);
       }
-
+      
       // Step 4: Copy exam templates if selected
       if (values.copyExamTemplates) {
         // Here you would implement copying exam templates
@@ -310,7 +345,7 @@ export default function AcademicYearsSettings() {
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(80);
       }
-
+      
       // Step 5: Copy sponsorship information if selected
       if (values.copySponsorship) {
         // Here you would implement copying sponsorship data
@@ -318,14 +353,16 @@ export default function AcademicYearsSettings() {
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(95);
       }
-
+      
       // Complete the process
       setCopyProgress(100);
       await fetchAcademicYears();
+      
       toast({
         title: "Data Copied Successfully",
         description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
       });
+      
       setTimeout(() => {
         setIsCopyDialogOpen(false);
         setIsCopying(false);
@@ -341,12 +378,16 @@ export default function AcademicYearsSettings() {
       setIsCopying(false);
     }
   };
+  
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'PP');
   };
+  
   const watchCreateNewYear = copyForm.watch("createNewYear");
   const watchSourceYearId = copyForm.watch("sourceYearId");
-  return <div className="space-y-6">
+  
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium text-left">Academic Years</h3>
@@ -372,9 +413,11 @@ export default function AcademicYearsSettings() {
               <Form {...copyForm}>
                 <form onSubmit={copyForm.handleSubmit(handleCopyYear)} className="space-y-4">
                   {/* Source Year Selection */}
-                  <FormField control={copyForm.control} name="sourceYearId" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={copyForm.control}
+                    name="sourceYearId"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Source Academic Year</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange} disabled={isCopying}>
                           <FormControl>
@@ -383,21 +426,27 @@ export default function AcademicYearsSettings() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {academicYears.map(year => <SelectItem key={year.id} value={year.id}>
+                            {academicYears.map(year => (
+                              <SelectItem key={year.id} value={year.id}>
                                 {year.year_name} {year.is_current && "(Current)"}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormDescription>
                           Select the academic year from which to copy data.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
                   
                   {/* Create New Year Toggle */}
-                  <FormField control={copyForm.control} name="createNewYear" render={({
-                  field
-                }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormField
+                    control={copyForm.control}
+                    name="createNewYear"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                         <FormControl>
                           <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
                         </FormControl>
@@ -407,49 +456,68 @@ export default function AcademicYearsSettings() {
                             Create a new academic year as the destination.
                           </FormDescription>
                         </div>
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Conditional fields for destination */}
-                  {watchCreateNewYear ? <>
+                  {watchCreateNewYear ? (
+                    <>
                       {/* New Year Name */}
-                      <FormField control={copyForm.control} name="newYearName" render={({
-                    field
-                  }) => <FormItem>
-                            <FormLabel>New Academic Year Name</FormLabel>
+                      <FormField
+                        control={copyForm.control}
+                        name="newYearName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Academic Year</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="e.g. 2024-2025" disabled={isCopying} />
+                              <Input {...field} placeholder="e.g. 2024" disabled={isCopying} />
                             </FormControl>
                             <FormDescription>
-                              Format: YYYY-YYYY (e.g. 2024-2025)
+                              Enter a 4-digit year (e.g. 2024)
                             </FormDescription>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )}
+                      />
                       
                       {/* Date fields */}
                       <div className="grid grid-cols-2 gap-4">
-                        <FormField control={copyForm.control} name="newStartDate" render={({
-                      field
-                    }) => <FormItem>
+                        <FormField
+                          control={copyForm.control}
+                          name="newStartDate"
+                          render={({ field }) => (
+                            <FormItem>
                               <FormLabel>Start Date</FormLabel>
                               <FormControl>
                                 <Input type="date" {...field} disabled={isCopying} />
                               </FormControl>
                               <FormMessage />
-                            </FormItem>} />
-                        <FormField control={copyForm.control} name="newEndDate" render={({
-                      field
-                    }) => <FormItem>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={copyForm.control}
+                          name="newEndDate"
+                          render={({ field }) => (
+                            <FormItem>
                               <FormLabel>End Date</FormLabel>
                               <FormControl>
                                 <Input type="date" {...field} disabled={isCopying} />
                               </FormControl>
                               <FormMessage />
-                            </FormItem>} />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                    </> : (/* Existing Year Selection */
-                <FormField control={copyForm.control} name="destinationYearId" render={({
-                  field
-                }) => <FormItem>
+                    </>
+                  ) : (
+                    /* Existing Year Selection */
+                    <FormField
+                      control={copyForm.control}
+                      name="destinationYearId"
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Destination Academic Year</FormLabel>
                           <Select value={field.value} onValueChange={field.onChange} disabled={isCopying}>
                             <FormControl>
@@ -458,24 +526,33 @@ export default function AcademicYearsSettings() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {academicYears.filter(year => year.id !== watchSourceYearId).map(year => <SelectItem key={year.id} value={year.id}>
-                                  {year.year_name} {year.is_current && "(Current)"}
-                                </SelectItem>)}
+                              {academicYears
+                                .filter(year => year.id !== watchSourceYearId)
+                                .map(year => (
+                                  <SelectItem key={year.id} value={year.id}>
+                                    {year.year_name} {year.is_current && "(Current)"}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormDescription>
                             Select the academic year to which data will be copied.
                           </FormDescription>
                           <FormMessage />
-                        </FormItem>} />)}
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   
                   {/* Data to copy section */}
                   <div className="space-y-4 border rounded-md p-4">
                     <h4 className="font-medium">What data to copy?</h4>
                     
-                    <FormField control={copyForm.control} name="copyStudentData" render={({
-                    field
-                  }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormField
+                      control={copyForm.control}
+                      name="copyStudentData"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
                           </FormControl>
@@ -485,11 +562,15 @@ export default function AcademicYearsSettings() {
                               Copy student data (excluding grades and scores).
                             </FormDescription>
                           </div>
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
                     
-                    <FormField control={copyForm.control} name="copyExamTemplates" render={({
-                    field
-                  }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormField
+                      control={copyForm.control}
+                      name="copyExamTemplates"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
                           </FormControl>
@@ -499,11 +580,15 @@ export default function AcademicYearsSettings() {
                               Copy exam templates without results.
                             </FormDescription>
                           </div>
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
                     
-                    <FormField control={copyForm.control} name="copySponsorship" render={({
-                    field
-                  }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormField
+                      control={copyForm.control}
+                      name="copySponsorship"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
                           </FormControl>
@@ -513,17 +598,21 @@ export default function AcademicYearsSettings() {
                               Copy student-sponsor relationships.
                             </FormDescription>
                           </div>
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
                   {/* Progress indicator */}
-                  {isCopying && <div className="space-y-2">
+                  {isCopying && (
+                    <div className="space-y-2">
                       <div className="flex justify-between text-xs">
                         <span>Copying data...</span>
                         <span>{copyProgress}%</span>
                       </div>
                       <Progress value={copyProgress} />
-                    </div>}
+                    </div>
+                  )}
                   
                   <DialogFooter>
                     <DialogClose asChild>
@@ -532,10 +621,12 @@ export default function AcademicYearsSettings() {
                       </Button>
                     </DialogClose>
                     <Button type="submit" disabled={isCopying}>
-                      {isCopying ? <>
+                      {isCopying ? (
+                        <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Copying...
-                        </> : "Copy Data"}
+                        </>
+                      ) : "Copy Data"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -561,41 +652,55 @@ export default function AcademicYearsSettings() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                  <FormField control={form.control} name="year_name" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="year_name"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Academic Year</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g. 2023-2024" />
+                          <Input {...field} placeholder="e.g. 2024" />
                         </FormControl>
                         <FormDescription>
-                          Format: YYYY-YYYY (e.g. 2023-2024)
+                          Enter a 4-digit year (e.g. 2024)
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="start_date" render={({
-                    field
-                  }) => <FormItem>
+                    <FormField
+                      control={form.control}
+                      name="start_date"
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Start Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>} />
-                    <FormField control={form.control} name="end_date" render={({
-                    field
-                  }) => <FormItem>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="end_date"
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>End Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <FormField control={form.control} name="is_current" render={({
-                  field
-                }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormField
+                    control={form.control}
+                    name="is_current"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                         <FormControl>
                           <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -605,7 +710,9 @@ export default function AcademicYearsSettings() {
                             This will automatically update all student grades to the next level.
                           </FormDescription>
                         </div>
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
                   <DialogFooter>
                     <DialogClose asChild>
                       <Button type="button" variant="outline">Cancel</Button>
@@ -623,13 +730,18 @@ export default function AcademicYearsSettings() {
 
       <Card>
         <CardContent className="pt-6">
-          {isLoading ? <div className="flex justify-center py-6">Loading academic years...</div> : academicYears.length === 0 ? <div className="flex flex-col items-center justify-center py-6">
+          {isLoading ? (
+            <div className="flex justify-center py-6">Loading academic years...</div>
+          ) : academicYears.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6">
               <p className="text-muted-foreground mb-4">No academic years found</p>
               <Button onClick={() => setIsDialogOpen(true)} variant="outline" size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create your first academic year
               </Button>
-            </div> : <Table>
+            </div>
+          ) : (
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Academic Year</TableHead>
@@ -640,19 +752,23 @@ export default function AcademicYearsSettings() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {academicYears.map(year => <TableRow key={year.id}>
+                {academicYears.map(year => (
+                  <TableRow key={year.id}>
                     <TableCell className="font-medium">{year.year_name}</TableCell>
                     <TableCell>{formatDate(year.start_date)}</TableCell>
                     <TableCell>{formatDate(year.end_date)}</TableCell>
                     <TableCell>
-                      {year.is_current ? <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                      {year.is_current ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
                           <Star className="mr-1 h-3 w-3" />
                           Current
-                        </span> : "Inactive"}
+                        </span>
+                      ) : "Inactive"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
-                        {!year.is_current && <AlertDialog>
+                        {!year.is_current && (
+                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm" onClick={() => setYearToSetCurrent(year)}>
                                 <Star className="h-4 w-4" />
@@ -680,23 +796,36 @@ export default function AcademicYearsSettings() {
                                 <AlertDialogAction onClick={handleSetCurrent}>Continue</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
-                          </AlertDialog>}
-                        <Button variant="ghost" size="sm" onClick={() => {
-                    setEditingYear(year);
-                    setIsDialogOpen(true);
-                  }}>
+                          </AlertDialog>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingYear(year);
+                            setIsDialogOpen(true);
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
-                        {!year.is_current && <Button variant="ghost" size="sm" onClick={() => handleDelete(year)}>
+                        {!year.is_current && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(year)}
+                          >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete</span>
-                          </Button>}
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
-                  </TableRow>)}
+                  </TableRow>
+                ))}
               </TableBody>
-            </Table>}
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -731,5 +860,6 @@ export default function AcademicYearsSettings() {
           </div>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 }
