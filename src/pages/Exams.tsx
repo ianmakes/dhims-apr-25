@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ImportStudentScoresModal } from '@/components/exams/ImportStudentScoresModal';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { AcademicYearLabel } from '@/components/common/AcademicYearLabel';
+import { AddEditExamModal } from '@/components/exams/AddEditExamModal';
 
 type Exam = {
   id: string;
@@ -218,12 +220,12 @@ const Exams = () => {
         </CardContent>
       </Card>
 
-      {/* This component needs to be created */}
-      {isAddEditModalOpen && (
-        <div className="hidden">
-          You need to implement AddEditExamModal or import it
-        </div>
-      )}
+      <AddEditExamModal 
+        open={isAddEditModalOpen}
+        onOpenChange={setIsAddEditModalOpen}
+        examId={examId || undefined}
+        onSave={handleExamSaved}
+      />
 
       <ImportStudentScoresModal 
         open={isImportModalOpen}
@@ -250,7 +252,7 @@ const Exams = () => {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={deleteExamMutation.isLoading}
+              disabled={deleteExamMutation.isPending}
               onClick={() => {
                 if (examToDelete) {
                   deleteExamMutation.mutate(examToDelete);

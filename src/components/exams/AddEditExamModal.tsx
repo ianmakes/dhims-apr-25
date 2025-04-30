@@ -14,6 +14,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
+// Add missing description field to Exam type
+type Exam = {
+  id: string;
+  name: string;
+  description?: string; // Add this field
+  academic_year: string;
+  term: string;
+  exam_date: string;
+  max_score: number;
+  passing_score: number;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+  is_active: boolean;
+};
+
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   academic_year: z.string().min(1, "Academic year is required"),
@@ -69,7 +86,7 @@ export function AddEditExamModal({
         .single();
         
       if (error) throw error;
-      return data;
+      return data as Exam;
     },
     enabled: !!examId,
   });
@@ -150,6 +167,9 @@ export function AddEditExamModal({
   const onSubmit = (values: FormValues) => {
     saveExamMutation.mutate(values);
   };
+
+  // Get the isPending status from the mutation for loading state
+  const isPending = saveExamMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -311,15 +331,15 @@ export function AddEditExamModal({
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  disabled={saveExamMutation.isLoading}
+                  disabled={isPending}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={saveExamMutation.isLoading}
+                  disabled={isPending}
                 >
-                  {saveExamMutation.isLoading && (
+                  {isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   {examId ? "Update" : "Create"} Exam

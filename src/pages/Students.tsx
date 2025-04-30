@@ -220,7 +220,7 @@ export default function Students() {
       <AddEditStudentModal
         open={isAddEditModalOpen}
         onOpenChange={setIsAddEditModalOpen}
-        studentId={studentToEdit}
+        student={studentToEdit ? { id: studentToEdit } : undefined}
         onSuccess={() => {
           queryClient.invalidateQueries({
             queryKey: ['students']

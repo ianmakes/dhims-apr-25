@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { StatsCard } from '../components/dashboard/StatsCard';
 import { RecentActivityCard } from '../components/dashboard/RecentActivityCard';
@@ -90,7 +91,8 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <RecentActivityCard academicYearId={selectedAcademicYear?.id} />
+        {/* Changed academicYearId to selectedAcademicYear since that's what the component expects */}
+        <RecentActivityCard />
         {/* Additional dashboard components can go here */}
       </div>
     </div>

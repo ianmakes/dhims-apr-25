@@ -232,7 +232,7 @@ export default function Sponsors() {
       <AddEditSponsorModal
         open={isAddEditModalOpen}
         onOpenChange={setIsAddEditModalOpen}
-        sponsorId={sponsorToEdit}
+        sponsor={sponsorToEdit ? { id: sponsorToEdit } : undefined}
         onSuccess={() => {
           queryClient.invalidateQueries({
             queryKey: ['sponsors']

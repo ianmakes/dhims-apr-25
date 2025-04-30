@@ -52,20 +52,27 @@ export function AcademicYearStats() {
             .select('id', { count: 'exact', head: true })
             .lt('start_date', year.end_date);
 
-          // Get average exam scores for this year
-          const { data: examScores } = await supabase
-            .from('student_exam_scores')
-            .select('score, exam_id')
-            .in('exam_id', 
-              supabase
-                .from('exams')
-                .select('id')
-                .eq('academic_year', year.year_name)
-            );
+          // Get average exam scores for this year - FIX: Extract exam IDs first
+          const { data: examIds } = await supabase
+            .from('exams')
+            .select('id')
+            .eq('academic_year', year.year_name);
+            
+          // Fix: Now use the extracted IDs properly
+          const examIdArray = examIds?.map(exam => exam.id) || [];
+          
+          let avgScore: number | undefined = undefined;
+          
+          if (examIdArray.length > 0) {
+            const { data: examScores } = await supabase
+              .from('student_exam_scores')
+              .select('score')
+              .in('exam_id', examIdArray);
 
-          const avgScore = examScores?.length 
-            ? Math.round(examScores.reduce((sum, item) => sum + (item.score || 0), 0) / examScores.length)
-            : undefined;
+            avgScore = examScores?.length 
+              ? Math.round(examScores.reduce((sum, item) => sum + (item.score || 0), 0) / examScores.length)
+              : undefined;
+          }
 
           yearStats.push({
             year: year.year_name,
