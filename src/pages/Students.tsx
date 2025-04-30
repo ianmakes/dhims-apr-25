@@ -221,9 +221,11 @@ export default function Students() {
         open={isAddEditModalOpen}
         onOpenChange={setIsAddEditModalOpen}
         student={studentToEdit ? { 
-          id: studentToEdit,  // Changed from studentId to id
+          // The StudentFormInput expects properties directly, not an 'id' field
           name: "",
-          admission_number: ""
+          admission_number: "",
+          // We need to pass the ID via the optional 'slug' field since that's what's available in StudentFormInput
+          slug: studentToEdit 
         } : undefined}
         onSuccess={() => {
           queryClient.invalidateQueries({

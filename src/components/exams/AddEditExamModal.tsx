@@ -88,6 +88,23 @@ export function AddEditExamModal({
   const queryClient = useQueryClient();
   const [date, setDate] = useState<Date | undefined>(new Date());
 
+  // Define the expected exam type with description
+  type ExamWithDescription = {
+    id: string;
+    name: string;
+    description?: string;
+    term: string;
+    academic_year: string;
+    exam_date: string;
+    max_score: number;
+    passing_score: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    created_by?: string;
+    updated_by?: string;
+  };
+
   // Fetch exam data if in edit mode
   const { data: examData, isLoading: isExamLoading } = useQuery({
     queryKey: ['exam', examId],
@@ -107,7 +124,7 @@ export function AddEditExamModal({
       return {
         ...data,
         description: data.description || ''
-      };
+      } as ExamWithDescription;
     },
     enabled: isEditMode,
   });
