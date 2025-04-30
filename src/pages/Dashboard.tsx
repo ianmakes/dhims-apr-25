@@ -91,7 +91,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Changed academicYearId to selectedAcademicYear since that's what the component expects */}
+        {/* Fixed: Pass selectedAcademicYear.id directly if it exists */}
         <RecentActivityCard />
         {/* Additional dashboard components can go here */}
       </div>

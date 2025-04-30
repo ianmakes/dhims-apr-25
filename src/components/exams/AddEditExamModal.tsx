@@ -1,94 +1,119 @@
-
-import React, { useEffect } from 'react';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
-// Add missing description field to Exam type
-type Exam = {
-  id: string;
-  name: string;
-  description?: string; // Add this field
-  academic_year: string;
-  term: string;
-  exam_date: string;
-  max_score: number;
-  passing_score: number;
-  created_at: string;
-  created_by: string;
-  updated_at: string;
-  updated_by: string;
-  is_active: boolean;
-};
-
-const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  academic_year: z.string().min(1, "Academic year is required"),
-  term: z.string().min(1, "Term is required"),
-  exam_date: z.string().min(1, "Exam date is required"),
-  max_score: z.coerce.number().min(1, "Maximum score must be at least 1"),
-  passing_score: z.coerce.number().min(0, "Passing score must be at least 0"),
+// Define form schema
+const examFormSchema = z.object({
+  name: z.string().min(2, {
+    message: 'Exam name must be at least 2 characters.',
+  }),
   description: z.string().optional(),
+  term: z.string({
+    required_error: 'Please select a term.',
+  }),
+  academicYear: z.string({
+    required_error: 'Please select an academic year.',
+  }),
+  date: z.date({
+    required_error: 'Please select a date.',
+  }),
+  maxScore: z.coerce.number().min(1, {
+    message: 'Maximum score must be at least 1.',
+  }),
+  passingScore: z.coerce.number().min(0, {
+    message: 'Passing score must be at least 0.',
+  }),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type ExamFormValues = z.infer<typeof examFormSchema>;
 
 interface AddEditExamModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   examId?: string;
-  onSave?: () => void;
 }
 
-export function AddEditExamModal({ 
-  open, 
-  onOpenChange, 
-  examId, 
-  onSave 
+export function AddEditExamModal({
+  open,
+  onOpenChange,
+  examId,
 }: AddEditExamModalProps) {
-  const { toast } = useToast();
+  const isEditMode = !!examId;
+  const { academicYears } = useAcademicYear();
   const queryClient = useQueryClient();
-  const { selectedAcademicYear, academicYears } = useAcademicYear();
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      academic_year: selectedAcademicYear?.year_name || "",
-      term: "",
-      exam_date: new Date().toISOString().split('T')[0],
-      max_score: 100,
-      passing_score: 50,
-      description: "",
-    },
-  });
-
-  // Fetch exam details if editing
+  // Fetch exam data if in edit mode
   const { data: examData, isLoading: isExamLoading } = useQuery({
-    queryKey: ["exam", examId],
+    queryKey: ['exam', examId],
     queryFn: async () => {
       if (!examId) return null;
       
       const { data, error } = await supabase
-        .from("exams")
-        .select("*")
-        .eq("id", examId)
+        .from('exams')
+        .select('*')
+        .eq('id', examId)
         .single();
         
       if (error) throw error;
-      return data as Exam;
+      return data;
     },
-    enabled: !!examId,
+    enabled: isEditMode,
+  });
+
+  // Initialize form with default values or exam data
+  const form = useForm<ExamFormValues>({
+    resolver: zodResolver(examFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      term: '',
+      academicYear: '',
+      date: new Date(),
+      maxScore: 100,
+      passingScore: 50,
+    },
   });
 
   // Update form values when exam data is loaded
@@ -96,258 +121,296 @@ export function AddEditExamModal({
     if (examData) {
       form.reset({
         name: examData.name,
-        academic_year: examData.academic_year,
+        description: examData.description || '',
         term: examData.term,
-        exam_date: examData.exam_date.split('T')[0],
-        max_score: examData.max_score,
-        passing_score: examData.passing_score,
-        description: examData.description || "",
+        academicYear: examData.academic_year,
+        date: new Date(examData.exam_date),
+        maxScore: examData.max_score,
+        passingScore: examData.passing_score,
       });
+      setDate(new Date(examData.exam_date));
     }
   }, [examData, form]);
 
-  // Save exam mutation
-  const saveExamMutation = useMutation({
-    mutationFn: async (values: FormValues) => {
-      if (examId) {
-        // Update existing exam
-        const { error } = await supabase
-          .from("exams")
-          .update({
+  // Create exam mutation
+  const createExamMutation = useMutation({
+    mutationFn: async (values: ExamFormValues) => {
+      const { data, error } = await supabase
+        .from('exams')
+        .insert([
+          {
             name: values.name,
-            academic_year: values.academic_year,
-            term: values.term,
-            exam_date: values.exam_date,
-            max_score: values.max_score,
-            passing_score: values.passing_score,
             description: values.description,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", examId);
-          
-        if (error) throw error;
-      } else {
-        // Create new exam
-        const { error } = await supabase
-          .from("exams")
-          .insert([{
-            name: values.name,
-            academic_year: values.academic_year,
             term: values.term,
-            exam_date: values.exam_date,
-            max_score: values.max_score,
-            passing_score: values.passing_score,
-            description: values.description,
-            created_at: new Date().toISOString(),
-          }]);
-          
-        if (error) throw error;
-      }
+            academic_year: values.academicYear,
+            exam_date: values.date.toISOString().split('T')[0],
+            max_score: values.maxScore,
+            passing_score: values.passingScore,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exams"] });
-      toast({
-        title: examId ? "Exam Updated" : "Exam Created",
-        description: examId
-          ? "The exam has been updated successfully."
-          : "The exam has been created successfully.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      toast.success('Exam created successfully');
       onOpenChange(false);
-      if (onSave) onSave();
+      form.reset();
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(`Error creating exam: ${error.message}`);
     },
   });
 
-  const onSubmit = (values: FormValues) => {
-    saveExamMutation.mutate(values);
+  // Update exam mutation
+  const updateExamMutation = useMutation({
+    mutationFn: async (values: ExamFormValues) => {
+      const { data, error } = await supabase
+        .from('exams')
+        .update({
+          name: values.name,
+          description: values.description,
+          term: values.term,
+          academic_year: values.academicYear,
+          exam_date: values.date.toISOString().split('T')[0],
+          max_score: values.maxScore,
+          passing_score: values.passingScore,
+        })
+        .eq('id', examId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      queryClient.invalidateQueries({ queryKey: ['exam', examId] });
+      toast.success('Exam updated successfully');
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast.error(`Error updating exam: ${error.message}`);
+    },
+  });
+
+  // Handle form submission
+  const onSubmit = (values: ExamFormValues) => {
+    if (isEditMode) {
+      updateExamMutation.mutate(values);
+    } else {
+      createExamMutation.mutate(values);
+    }
   };
 
-  // Get the isPending status from the mutation for loading state
-  const isPending = saveExamMutation.isPending;
+  // Check if any mutation is loading
+  const isLoading = createExamMutation.isPending || updateExamMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{examId ? "Edit Exam" : "Add New Exam"}</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
           <DialogDescription>
-            {examId
-              ? "Update the exam information."
-              : "Create a new exam for students."}
+            {isEditMode
+              ? 'Update the exam details below.'
+              : 'Fill in the details to create a new exam.'}
           </DialogDescription>
         </DialogHeader>
 
-        {isExamLoading ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Exam Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="End of Term Exam" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Brief description of the exam"
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="name"
+                name="term"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Exam Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="e.g. Mathematics Mid-Term" />
-                    </FormControl>
+                    <FormLabel>Term</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select term" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Term 1">Term 1</SelectItem>
+                        <SelectItem value="Term 2">Term 2</SelectItem>
+                        <SelectItem value="Term 3">Term 3</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="academic_year"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Academic Year</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select academic year" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {academicYears.map((year) => (
-                            <SelectItem key={year.id} value={year.year_name}>
-                              {year.year_name}
-                              {year.is_current ? " (Current)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="term"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Term</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select term" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Term 1">Term 1</SelectItem>
-                          <SelectItem value="Term 2">Term 2</SelectItem>
-                          <SelectItem value="Term 3">Term 3</SelectItem>
-                          <SelectItem value="Final">Final</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <FormField
                 control={form.control}
-                name="exam_date"
+                name="academicYear"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>Academic Year</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select academic year" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {academicYears.map((year) => (
+                          <SelectItem key={year.id} value={year.year_name}>
+                            {year.year_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
                     <FormLabel>Exam Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={(date) => {
+                            setDate(date);
+                            field.onChange(date);
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="max_score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Maximum Score</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The maximum possible score
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="passing_score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Passing Score</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        The minimum score to pass
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="maxScore"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Maximum Score</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      The highest possible score for this exam
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
-                name="description"
+                name="passingScore"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel>Passing Score</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Brief description of the exam" />
+                      <Input type="number" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      The minimum score required to pass
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                >
-                  {isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {examId ? "Update" : "Create"} Exam
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading
+                  ? isEditMode
+                    ? 'Updating...'
+                    : 'Creating...'
+                  : isEditMode
+                  ? 'Update Exam'
+                  : 'Create Exam'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

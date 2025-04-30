@@ -52,13 +52,13 @@ export function AcademicYearStats() {
             .select('id', { count: 'exact', head: true })
             .lt('start_date', year.end_date);
 
-          // Get average exam scores for this year - FIX: Extract exam IDs first
+          // Get average exam scores for this year - Fix: Extract exam IDs first
           const { data: examIds } = await supabase
             .from('exams')
             .select('id')
             .eq('academic_year', year.year_name);
             
-          // Fix: Now use the extracted IDs properly
+          // Fix: Convert the query result to an array of strings
           const examIdArray = examIds?.map(exam => exam.id) || [];
           
           let avgScore: number | undefined = undefined;
