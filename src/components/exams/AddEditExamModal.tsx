@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -68,16 +69,19 @@ const examFormSchema = z.object({
 
 type ExamFormValues = z.infer<typeof examFormSchema>;
 
+// Update the interface to include onSave prop
 interface AddEditExamModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   examId?: string;
+  onSave?: () => void;
 }
 
 export function AddEditExamModal({
   open,
   onOpenChange,
   examId,
+  onSave,
 }: AddEditExamModalProps) {
   const isEditMode = !!examId;
   const { academicYears } = useAcademicYear();
@@ -90,6 +94,7 @@ export function AddEditExamModal({
     queryFn: async () => {
       if (!examId) return null;
       
+      // Get the exam data with description field
       const { data, error } = await supabase
         .from('exams')
         .select('*')
@@ -97,7 +102,12 @@ export function AddEditExamModal({
         .single();
         
       if (error) throw error;
-      return data;
+      
+      // Make sure we return a type that includes 'description'
+      return {
+        ...data,
+        description: data.description || ''
+      };
     },
     enabled: isEditMode,
   });
@@ -157,6 +167,7 @@ export function AddEditExamModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
       toast.success('Exam created successfully');
+      if (onSave) onSave();
       onOpenChange(false);
       form.reset();
     },
@@ -190,6 +201,7 @@ export function AddEditExamModal({
       queryClient.invalidateQueries({ queryKey: ['exams'] });
       queryClient.invalidateQueries({ queryKey: ['exam', examId] });
       toast.success('Exam updated successfully');
+      if (onSave) onSave();
       onOpenChange(false);
     },
     onError: (error: any) => {

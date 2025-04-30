@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -240,7 +239,7 @@ export default function Sponsors() {
           startDate: "", 
           status: "active" as "active" | "inactive" 
         } : undefined}
-        onSuccess={() => {
+        onSubmit={() => {
           queryClient.invalidateQueries({
             queryKey: ['sponsors']
           });

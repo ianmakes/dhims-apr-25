@@ -221,7 +221,7 @@ export default function Students() {
         open={isAddEditModalOpen}
         onOpenChange={setIsAddEditModalOpen}
         student={studentToEdit ? { 
-          studentId: studentToEdit,
+          id: studentToEdit,  // Changed from studentId to id
           name: "",
           admission_number: ""
         } : undefined}
