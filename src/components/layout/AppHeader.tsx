@@ -6,15 +6,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Settings, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AcademicYearSelector } from "../common/AcademicYearSelector";
-import { useIsMobile } from "@/hooks/use-mobile";
-
 export function AppHeader() {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
-  const { toast } = useToast();
-  const isMobile = useIsMobile();
-
+  const {
+    user,
+    profile,
+    signOut
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -31,9 +32,7 @@ export function AppHeader() {
       console.error("Logout error:", error);
     }
   };
-
-  return (
-    <div className="border-b">
+  return <div className="border-b">
       <div className="flex h-16 items-center px-4">
         <div className="flex-1">
           {/* Logo/Title */}
@@ -41,14 +40,6 @@ export function AppHeader() {
             <h1 className="text-xl font-semibold">DHIMS</h1>
           </div>
         </div>
-        
-        {/* Academic Year Selector - Hide on mobile */}
-        {!isMobile && (
-          <div className="mr-4">
-            <AcademicYearSelector />
-          </div>
-        )}
-
         <div className="flex items-center space-x-4">
           {/* User menu */}
           <DropdownMenu>
@@ -75,18 +66,6 @@ export function AppHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {/* Mobile only: Academic Year Selector */}
-              {isMobile && (
-                <>
-                  <DropdownMenuItem className="p-2 focus:bg-transparent">
-                    <div className="w-full">
-                      <p className="text-xs mb-1 text-muted-foreground">Academic Year</p>
-                      <AcademicYearSelector />
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
               <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
@@ -104,6 +83,5 @@ export function AppHeader() {
           </DropdownMenu>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
