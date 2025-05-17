@@ -24,15 +24,13 @@ const userFormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address"
   }),
-  role: z.enum(["superuser", "admin", "manager", "viewer", "teacher", "user"], {
+  role: z.enum(["superuser", "admin", "manager", "viewer"], {
     required_error: "Please select a role"
   }),
   password: z.string().min(6, {
     message: "Password must be at least 6 characters"
   }).optional()
 });
-
-type UserFormValues = z.infer<typeof userFormSchema>;
 
 function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -45,7 +43,7 @@ function UsersPage() {
   const { user: currentUser } = useAuth();
 
   // Form for creating/editing users
-  const form = useForm<UserFormValues>({
+  const form = useForm<z.infer<typeof userFormSchema>>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
       name: "",
@@ -78,13 +76,11 @@ function UsersPage() {
           // Transform the profiles into the User format expected by the component
           const transformedUsers: User[] = profiles.map(profile => ({
             id: profile.id,
-            first_name: profile.name?.split(' ')[0] || 'Unknown',
-            last_name: profile.name?.split(' ')[1] || '',
+            name: profile.name || 'Unknown',
             email: '', // Email isn't stored in profiles table for privacy
             role: profile.role as UserRole,
-            created_at: profile.created_at || new Date().toISOString(),
-            is_active: true,
-            name: profile.name || 'Unknown'
+            createdAt: profile.created_at ? new Date(profile.created_at) : new Date(),
+            updatedAt: profile.updated_at ? new Date(profile.updated_at) : new Date()
           }));
           
           setUsers(transformedUsers);
@@ -117,7 +113,7 @@ function UsersPage() {
   const handleOpenEditDialog = (user: User) => {
     setSelectedUser(user);
     form.reset({
-      name: user.name || `${user.first_name} ${user.last_name}`.trim(),
+      name: user.name,
       email: user.email,
       role: user.role,
       password: undefined
@@ -130,7 +126,7 @@ function UsersPage() {
     setIsDeleteAlertOpen(true);
   };
 
-  const handleCreateUser = async (values: UserFormValues) => {
+  const handleCreateUser = async (values: z.infer<typeof userFormSchema>) => {
     try {
       setIsLoading(true);
       
@@ -150,18 +146,13 @@ function UsersPage() {
       
       if (data.user) {
         // Update the local state with the new user
-        const [firstName, ...lastNameParts] = values.name.split(' ');
-        const lastName = lastNameParts.join(' ');
-        
         const newUser: User = {
           id: data.user.id,
-          first_name: firstName,
-          last_name: lastName,
+          name: values.name,
           email: values.email,
-          role: values.role as UserRole,
-          created_at: new Date().toISOString(),
-          is_active: true,
-          name: values.name
+          role: values.role,
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
         
         setUsers(prev => [...prev, newUser]);
@@ -185,7 +176,7 @@ function UsersPage() {
     }
   };
 
-  const handleUpdateUser = async (values: UserFormValues) => {
+  const handleUpdateUser = async (values: z.infer<typeof userFormSchema>) => {
     try {
       if (!selectedUser) return;
       
@@ -196,7 +187,7 @@ function UsersPage() {
         .from('profiles')
         .update({ 
           name: values.name,
-          role: values.role as UserRole
+          role: values.role 
         })
         .eq('id', selectedUser.id);
       
@@ -213,18 +204,9 @@ function UsersPage() {
       }
       
       // Update the user in the local state
-      const [firstName, ...lastNameParts] = values.name.split(' ');
-      const lastName = lastNameParts.join(' ');
-      
       setUsers(prev => prev.map(user => 
         user.id === selectedUser.id 
-          ? { 
-              ...user, 
-              first_name: firstName,
-              last_name: lastName,
-              role: values.role as UserRole,
-              name: values.name
-            } 
+          ? { ...user, name: values.name, role: values.role, updatedAt: new Date() } 
           : user
       ));
       
@@ -246,6 +228,7 @@ function UsersPage() {
     }
   };
 
+  // Updated handleDeleteUser function to properly delete users through Supabase Admin API
   const handleDeleteUser = async () => {
     try {
       if (!selectedUser) return;
@@ -276,7 +259,7 @@ function UsersPage() {
       
       toast({
         title: "User deleted",
-        description: `User ${selectedUser.name || `${selectedUser.first_name} ${selectedUser.last_name}`.trim()} has been deleted successfully.`
+        description: `User ${selectedUser.name} has been deleted successfully.`
       });
       
       setIsDeleteAlertOpen(false);
@@ -296,16 +279,14 @@ function UsersPage() {
   const columns = [
     {
       accessorKey: "name",
-      header: "Name",
-      cell: ({ row }: { row: any }) => {
-        const user = row.original;
-        return user.name || `${user.first_name} ${user.last_name}`.trim();
-      }
+      header: "Name"
     }, 
     {
       accessorKey: "role",
       header: "Role",
-      cell: ({ row }: { row: any }) => {
+      cell: ({
+        row
+      }) => {
         const role = row.getValue("role") as UserRole;
         return <div className="capitalize">
             {role === "superuser" ? <div className="inline-flex items-center justify-center rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-medium text-purple-700">
@@ -321,17 +302,21 @@ function UsersPage() {
       }
     }, 
     {
-      accessorKey: "created_at",
+      accessorKey: "createdAt",
       header: "Joined Date",
-      cell: ({ row }: { row: any }) => {
+      cell: ({
+        row
+      }) => {
         return <div>
-            {new Date(row.getValue("created_at")).toLocaleDateString()}
+            {new Date(row.getValue("createdAt")).toLocaleDateString()}
           </div>;
       }
     }, 
     {
       id: "actions",
-      cell: ({ row }: { row: any }) => {
+      cell: ({
+        row
+      }) => {
         const user = row.original;
         
         // Prevent current user from deleting themselves
@@ -446,7 +431,6 @@ function UsersPage() {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="viewer">Viewer</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -523,9 +507,8 @@ function UsersPage() {
                       <SelectContent>
                         <SelectItem value="superuser">Super User</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="manager">Admin</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="viewer">Viewer</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -557,7 +540,7 @@ function UsersPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the user 
-              account for {selectedUser?.name || `${selectedUser?.first_name} ${selectedUser?.last_name}`.trim()} and remove their data from the system.
+              account for {selectedUser?.name} and remove their data from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

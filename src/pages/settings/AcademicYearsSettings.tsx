@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -330,85 +331,26 @@ export default function AcademicYearsSettings() {
       
       // Step 3: Copy student data if selected
       if (values.copyStudentData) {
-        // Get students from source year
-        const { data: sourceStudents, error: fetchError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('current_academic_year', parseInt(sourceYear.year_name));
-        
-        if (fetchError) throw fetchError;
-        
-        if (sourceStudents && sourceStudents.length > 0) {
-          // For each student, create a copy for the new year
-          for (const student of sourceStudents) {
-            // Remove the id to create a new record
-            const { id, created_at, updated_at, ...studentData } = student;
-            
-            // Update the academic year
-            const newStudentData = {
-              ...studentData,
-              current_academic_year: parseInt(values.createNewYear ? values.newYearName : 
-                academicYears.find(y => y.id === destinationYearId)?.year_name || '')
-            };
-            
-            // Insert the new student record
-            const { error: insertError } = await supabase
-              .from('students')
-              .insert([newStudentData]);
-              
-            if (insertError) throw insertError;
-          }
-        }
-        
+        // Here you would implement the actual copying of student data 
+        // from the source year to the destination year
+        // This is a placeholder for the actual implementation
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(60);
       }
       
       // Step 4: Copy exam templates if selected
       if (values.copyExamTemplates) {
-        // Get exams from source year
-        const { data: sourceExams, error: fetchError } = await supabase
-          .from('exams')
-          .select('*')
-          .eq('academic_year', sourceYear.year_name);
-        
-        if (fetchError) throw fetchError;
-        
-        const destYearName = values.createNewYear ? values.newYearName : 
-          academicYears.find(y => y.id === destinationYearId)?.year_name || '';
-        
-        if (sourceExams && sourceExams.length > 0) {
-          // For each exam, create a copy for the new year
-          for (const exam of sourceExams) {
-            // Remove the id to create a new record
-            const { id, created_at, updated_at, ...examData } = exam;
-            
-            // Update the academic year
-            const newExamData = {
-              ...examData,
-              academic_year: destYearName,
-              // Reset exam date to the start of the new academic year
-              exam_date: values.createNewYear ? values.newStartDate : 
-                academicYears.find(y => y.id === destinationYearId)?.start_date || exam.exam_date
-            };
-            
-            // Insert the new exam record
-            const { error: insertError } = await supabase
-              .from('exams')
-              .insert([newExamData]);
-              
-            if (insertError) throw insertError;
-          }
-        }
-        
+        // Here you would implement copying exam templates
+        // This is a placeholder for the actual implementation
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(80);
       }
       
       // Step 5: Copy sponsorship information if selected
       if (values.copySponsorship) {
-        // This would involve updating student-sponsor relationships
-        // Note: Since sponsorships aren't directly tied to academic years,
-        // we don't need to copy the relationships but ensure they're maintained
-        
+        // Here you would implement copying sponsorship data
+        // This is a placeholder for the actual implementation
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(95);
       }
       

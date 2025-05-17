@@ -1,304 +1,657 @@
-
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Link, useNavigate } from "react-router-dom";
+import { DataTable } from "@/components/data-display/DataTable";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { 
-  ChevronDownIcon, 
-  Edit, 
-  Eye, 
-  FileText, 
-  Filter, 
-  MoreHorizontal, 
-  Plus, 
-  RefreshCcw, 
-  Search, 
-  SortAsc,
-  Trash2, 
-  UserPlus 
-} from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PageHeader } from "@/components/ui/page-header";
+import { Check, Download, Eye, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAcademicYear } from "@/contexts/AcademicYearContext";
-import type { Student } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { logUpdate, logDelete } from "@/utils/auditLog";
+
+interface Student {
+  id: string;
+  admission_number: string;
+  name: string;
+  current_grade: string;
+  gender: string;
+  admission_date: string;
+  sponsor_id?: string;
+  status: string;
+  profile_image_url?: string;
+  [key: string]: any; // Allow for additional properties
+}
 
 export default function Students() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortColumn, setSortColumn] = useState<keyof Student | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState<Date>();
-  const { toast } = useToast()
-  
-  const { currentYear } = useAcademicYear();
-  const currentAcademicYear = currentYear?.year_name || '';
+  const [grade, setGrade] = useState<string>("all");
+  const [status, setStatus] = useState<string>("all");
+  const [sponsored, setSponsored] = useState<string>("all");
+  const [academicYear, setAcademicYear] = useState<string>("2024");
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
+  const [isBulkActionInProgress, setIsBulkActionInProgress] = useState(false);
+  const navigate = useNavigate();
 
-  const fetchStudents = async () => {
-    setIsLoading(true);
+  // Fetch students data from Supabase
+  const {
+    data: students = [],
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['students'],
+    queryFn: async () => {
+      const {
+        data,
+        error
+      } = await supabase.from('students').select('*').order('created_at', {
+        ascending: false
+      });
+      if (error) throw error;
+      return data as Student[];
+    }
+  });
+
+  // Mutation for adding a student
+  const addStudentMutation = useMutation({
+    mutationFn: async (studentData: any) => {
+      const {
+        data,
+        error
+      } = await supabase.from('students').insert([{
+        ...studentData,
+        created_by: user?.id,
+        updated_by: user?.id
+      }]).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Student added",
+        description: "New student has been added successfully."
+      });
+    },
+    onError: error => {
+      toast({
+        title: "Error adding student",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for updating a student
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data
+    }: {
+      id: string;
+      data: any;
+    }) => {
+      const {
+        data: updatedData,
+        error
+      } = await supabase.from('students').update({
+        ...data,
+        updated_by: user?.id,
+        updated_at: new Date().toISOString()
+      }).eq('id', id).select().single();
+      if (error) throw error;
+      return updatedData;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Student updated",
+        description: "Student has been updated successfully."
+      });
+    },
+    onError: error => {
+      toast({
+        title: "Error updating student",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for deleting a student
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const {
+        error
+      } = await supabase.from('students').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Student deleted",
+        description: "Student has been deleted successfully."
+      });
+    },
+    onError: error => {
+      toast({
+        title: "Error deleting student",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for bulk deleting students
+  const bulkDeleteStudentsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      setIsBulkActionInProgress(true);
+      const { error } = await supabase.from('students').delete().in('id', ids);
+      if (error) throw error;
+      
+      // Log the bulk deletion in audit log
+      await Promise.all(ids.map(id => 
+        logDelete('students', id, `Student deleted in bulk operation by ${user?.email}`)
+      ));
+      
+      return ids;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Students deleted",
+        description: `${ids.length} students have been deleted successfully.`
+      });
+      setSelectedRowIds([]);
+      setIsBulkActionInProgress(false);
+    },
+    onError: error => {
+      toast({
+        title: "Error deleting students",
+        description: error.message,
+        variant: "destructive"
+      });
+      setIsBulkActionInProgress(false);
+    }
+  });
+
+  // Mutation for bulk updating students status
+  const bulkUpdateStudentsStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[], status: string }) => {
+      setIsBulkActionInProgress(true);
+      const { error } = await supabase.from('students')
+        .update({ 
+          status, 
+          updated_by: user?.id, 
+          updated_at: new Date().toISOString() 
+        })
+        .in('id', ids);
+      if (error) throw error;
+      
+      // Log the bulk status update in audit log
+      await Promise.all(ids.map(id => 
+        logUpdate('students', id, `Student status updated to ${status} in bulk operation by ${user?.email}`)
+      ));
+      
+      return { ids, status };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ['students']
+      });
+      toast({
+        title: "Students updated",
+        description: `${data.ids.length} students have been updated to ${data.status} status.`
+      });
+      setSelectedRowIds([]);
+      setIsBulkActionInProgress(false);
+    },
+    onError: error => {
+      toast({
+        title: "Error updating students",
+        description: error.message,
+        variant: "destructive"
+      });
+      setIsBulkActionInProgress(false);
+    }
+  });
+
+  // Function to export students data to CSV
+  const exportToCSV = () => {
+    if (selectedRowIds.length === 0) return;
+    
+    setIsBulkActionInProgress(true);
+    
     try {
-      let query = supabase.from("students").select("*");
+      // Get selected students data
+      const selectedStudents = students.filter(student => 
+        selectedRowIds.includes(student.id)
+      );
       
-      // Filter by academic year if one is selected
-      if (currentAcademicYear) {
-        query = query.eq("current_academic_year", parseInt(currentAcademicYear));
-      }
+      // Define CSV headers
+      const headers = [
+        'ID', 'Admission Number', 'Name', 'Grade', 'Gender', 
+        'Admission Date', 'Sponsorship Status', 'Status'
+      ];
       
-      const { data, error } = await query;
+      // Format student data for CSV
+      const csvData = selectedStudents.map(student => [
+        student.id,
+        student.admission_number,
+        student.name,
+        student.current_grade,
+        student.gender,
+        student.admission_date ? new Date(student.admission_date).toLocaleDateString() : 'N/A',
+        student.sponsor_id ? 'Sponsored' : 'Unsponsored',
+        student.status
+      ]);
       
-      if (error) {
-        console.error("Error fetching students:", error);
-        return;
-      }
+      // Combine headers and data
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.join(','))
+      ].join('\n');
       
-      setStudents(data as Student[] || []);
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `students_export_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Show success message
+      toast({
+        title: "Export successful",
+        description: `${selectedStudents.length} students exported to CSV file.`
+      });
+      
     } catch (error) {
-      console.error("Error in fetchStudents:", error);
+      console.error("Export error:", error);
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting the data.",
+        variant: "destructive"
+      });
     } finally {
-      setIsLoading(false);
+      setIsBulkActionInProgress(false);
     }
   };
 
-  useEffect(() => {
-    fetchStudents();
-  }, [currentAcademicYear]);
+  // Filter students based on filters
+  const filteredStudents = students.filter(student => {
+    if (grade && grade !== "all" && student.current_grade !== grade) return false;
+    if (status && status !== "all" && student.status !== status) return false;
+    if (sponsored === "sponsored" && !student.sponsor_id) return false;
+    if (sponsored === "unsponsored" && student.sponsor_id) return false;
+    return true;
+  });
 
-  const handleSort = (column: keyof Student) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+  // Updated Add Student Modal logic
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  const handleAddStudent = (data: any) => {
+    addStudentMutation.mutate(data);
+    setIsAddStudentModalOpen(false);
+  };
+
+  const handleEditStudent = (data: any) => {
+    if (selectedStudent) {
+      updateStudentMutation.mutate({
+        id: selectedStudent.id,
+        data
+      });
+      setIsEditStudentModalOpen(false);
     }
   };
 
-  const sortedStudents = [...students].sort((a, b) => {
-    if (sortColumn) {
-      const aValue = a[sortColumn];
-      const bValue = b[sortColumn];
+  const handleDeleteStudent = () => {
+    if (selectedStudent) {
+      deleteStudentMutation.mutate(selectedStudent.id);
+      setIsDeleteAlertOpen(false);
+    }
+  };
 
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+  const handleOpenEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    setIsEditStudentModalOpen(true);
+  };
+
+  const handleOpenDeleteAlert = (student: Student) => {
+    setSelectedStudent(student);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRowIds.length > 0) {
+      bulkDeleteStudentsMutation.mutate(selectedRowIds);
+      setIsBulkDeleteAlertOpen(false);
+    }
+  };
+
+  const handleBulkActivate = () => {
+    if (selectedRowIds.length > 0) {
+      bulkUpdateStudentsStatusMutation.mutate({ 
+        ids: selectedRowIds, 
+        status: "Active" 
+      });
+    }
+  };
+
+  const handleBulkDeactivate = () => {
+    if (selectedRowIds.length > 0) {
+      bulkUpdateStudentsStatusMutation.mutate({ 
+        ids: selectedRowIds, 
+        status: "Inactive" 
+      });
+    }
+  };
+
+  // Define the bulk actions for the DataTable
+  const bulkActions = [
+    {
+      label: "Activate Students",
+      action: handleBulkActivate
+    },
+    {
+      label: "Deactivate Students",
+      action: handleBulkDeactivate
+    },
+    {
+      label: "Export to CSV",
+      action: exportToCSV
+    },
+    {
+      label: "Delete Students",
+      action: () => setIsBulkDeleteAlertOpen(true)
+    }
+  ];
+
+  // Define columns for DataTable
+  const columns = [
+    {
+      accessorKey: "admission_number",
+      header: "ADM No."
+    }, 
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => {
+        return <Link to={`/students/${row.original.id}`} className="text-primary hover:underline">
+          {row.getValue("name")}
+        </Link>;
+      }
+    }, 
+    {
+      accessorKey: "current_grade",
+      header: "Grade"
+    }, 
+    {
+      accessorKey: "gender",
+      header: "Gender",
+      cell: ({ row }) => {
+        return <div className="capitalize">{row.getValue("gender")}</div>;
+      }
+    }, 
+    {
+      accessorKey: "admission_date",
+      header: "Admission Date",
+      cell: ({ row }) => {
+        const date = row.getValue("admission_date");
+        return <div>
+          {date ? new Date(date).toLocaleDateString() : "N/A"}
+        </div>;
+      }
+    }, 
+    {
+      accessorKey: "sponsor_id",
+      header: "Sponsor",
+      cell: ({ row }) => {
+        const sponsorId = row.getValue("sponsor_id");
+        return <div>
+          {sponsorId ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
+            <span>Sponsored</span>
+          </div> : <div className="inline-flex items-center justify-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-sm font-medium text-yellow-700">
+            <span>Unsponsored</span>
+          </div>}
+        </div>;
+      }
+    }, 
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status");
+        return <div className="capitalize">
+          {status === "Active" ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
+            <span>Active</span>
+          </div> : status === "Inactive" ? <div className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
+            <span>Inactive</span>
+          </div> : <div className="inline-flex items-center justify-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-700">
+            <span>{status}</span>
+          </div>}
+        </div>;
+      }
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const student = row.original;
+        return <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(student.id)}>
+                Copy student ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Link to={`/students/${student.id}`} className="flex items-center">
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>View</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenEditModal(student)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>Edit</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => handleOpenDeleteAlert(student)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>;
       }
     }
-    return 0;
-  });
+  ];
 
-  const filteredStudents = sortedStudents.filter((student) => {
-    const searchRegex = new RegExp(searchQuery, "i");
-    return (
-      searchRegex.test(student.name) ||
-      searchRegex.test(student.admission_number) ||
-      (student.current_grade && searchRegex.test(student.current_grade))
-    );
-  });
-
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Students"
-        description={`Manage all students${currentYear ? ` for ${currentYear.year_name} academic year` : ''}`}
-        actions={
-          <div className="flex items-center space-x-2">
-            <Input
-              placeholder="Search students..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Button>
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
-            <Button>
-              <FileText className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Drawer>
-              <DrawerTrigger asChild>
-                <Button>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Student
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent>
-                <DrawerHeader>
-                  <DrawerTitle>Add Student</DrawerTitle>
-                  <DrawerDescription>
-                    Make changes to your profile here. Click save when you're
-                    done.
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <label htmlFor="name" className="text-right">
-                      Name
-                    </label>
-                    <Input id="name" value="Pedro Duarte" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <label htmlFor="username" className="text-right">
-                      Username
-                    </label>
-                    <Input
-                      id="username"
-                      value="@peduarte"
-                      className="col-span-3"
-                    />
-                  </div>
-                </div>
-                <DrawerFooter>
-                  <Button>Save changes</Button>
-                </DrawerFooter>
-              </DrawerContent>
-            </Drawer>
-          </div>
-        }
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle>Student List</CardTitle>
-          <CardDescription>
-            All students in your organization.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("name")}
-                    >
-                      Name
-                      {sortColumn === "name" && (
-                        <SortAsc className="ml-2 h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("admission_number")}
-                    >
-                      Admission #
-                      {sortColumn === "admission_number" && (
-                        <SortAsc className="ml-2 h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("current_grade")}
-                    >
-                      Grade
-                      {sortColumn === "current_grade" && (
-                        <SortAsc className="ml-2 h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      Loading students...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredStudents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      No students found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">
-                        {student.name}
-                      </TableCell>
-                      <TableCell>{student.admission_number}</TableCell>
-                      <TableCell>{student.current_grade}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+  return <div className="space-y-6 fade-in">
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-left">Students</h1>
+        <p className="text-muted-foreground">
+          Manage and track all students in the system
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label htmlFor="academicYear" className="text-sm font-medium">
+            Academic Year:
+          </label>
+          <Select value={academicYear} onValueChange={setAcademicYear}>
+            <SelectTrigger id="academicYear" className="w-36">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2023">2023</SelectItem>
+              <SelectItem value="2022">2022</SelectItem>
+              <SelectItem value="2021">2021</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={() => setIsAddStudentModalOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Student
+        </Button>
+      </div>
     </div>
-  );
+
+    {/* Filter section */}
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-2">
+        <label htmlFor="grade" className="text-sm font-medium">
+          Grade:
+        </label>
+        <Select value={grade} onValueChange={setGrade}>
+          <SelectTrigger id="grade" className="w-28">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8"].map(g => <SelectItem key={g} value={g}>
+              {g}
+            </SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label htmlFor="status" className="text-sm font-medium">
+          Status:
+        </label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger id="status" className="w-32">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+            <SelectItem value="Graduated">Graduated</SelectItem>
+            <SelectItem value="Transferred">Transferred</SelectItem>
+            <SelectItem value="Suspended">Suspended</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label htmlFor="sponsored" className="text-sm font-medium">
+          Sponsored:
+        </label>
+        <Select value={sponsored} onValueChange={setSponsored}>
+          <SelectTrigger id="sponsored" className="w-40">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="sponsored">Sponsored</SelectItem>
+            <SelectItem value="unsponsored">Unsponsored</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+
+    {/* Students table */}
+    <DataTable 
+      columns={columns} 
+      data={filteredStudents} 
+      searchColumn="name" 
+      searchPlaceholder="Search students..." 
+      isLoading={isLoading || isBulkActionInProgress} 
+      onRowSelectionChange={setSelectedRowIds}
+      bulkActions={bulkActions}
+      onRowClick={(row) => navigate(`/students/${row.id}`)}
+    />
+
+    {/* Add Student Modal */}
+    <AddEditStudentModal 
+      open={isAddStudentModalOpen} 
+      onOpenChange={setIsAddStudentModalOpen} 
+      onSubmit={handleAddStudent} 
+      isLoading={addStudentMutation.isPending} 
+    />
+
+    {/* Edit Student Modal */}
+    {selectedStudent && (
+      <AddEditStudentModal 
+        open={isEditStudentModalOpen} 
+        onOpenChange={setIsEditStudentModalOpen} 
+        student={selectedStudent as any} 
+        onSubmit={handleEditStudent} 
+        isLoading={updateStudentMutation.isPending} 
+      />
+    )}
+
+    {/* Delete Student Alert */}
+    <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the student record
+            and remove their data from the system.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteStudent} className="bg-destructive text-destructive-foreground">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Bulk Delete Students Alert */}
+    <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete multiple students?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to delete {selectedRowIds.length} student{selectedRowIds.length !== 1 ? 's' : ''}. 
+            This action cannot be undone and will permanently remove all selected student records from the system.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleBulkDelete} 
+            className="bg-destructive text-destructive-foreground"
+            disabled={isBulkActionInProgress}
+          >
+            {isBulkActionInProgress ? "Deleting..." : "Delete All Selected"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </div>;
 }
