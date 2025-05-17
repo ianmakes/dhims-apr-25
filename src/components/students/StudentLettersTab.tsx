@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AddLetterModal } from "@/components/students/AddLetterModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner"; // Removed incorrect Textarea import
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -18,7 +19,7 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: letters, isLoading } = useQuery({
+  const { data: letters, isLoading, refetch: refetchLetters } = useQuery({
     queryKey: ["student-letters", studentId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -50,17 +51,10 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student-letters", studentId] });
-      toast({
-        title: "Success",
-        description: "Letter deleted successfully",
-      });
+      toast.success("Letter deleted successfully");
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Failed to delete letter: " + error.message);
     },
   });
 
@@ -78,6 +72,7 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
         open={open}
         onOpenChange={setOpen}
         studentId={studentId}
+        onSuccess={() => refetchLetters()}
       />
 
       {isLoading ? (

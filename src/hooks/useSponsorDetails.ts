@@ -50,6 +50,9 @@ export const useSponsorDetails = (sponsorId: string) => {
         sponsorData.slug = slug;
       }
       
+      // Initialize the relatives array
+      sponsorData.relatives = [];
+      
       // Get relatives using custom fetch since sponsor_relatives might not exist in the supabase types
       try {
         const response = await fetch(

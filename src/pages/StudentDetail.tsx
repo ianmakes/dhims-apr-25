@@ -355,14 +355,11 @@ export default function StudentDetail() {
             <TabsContent value="photos">
               <StudentPhotosTab studentName={student.name} studentId={student.id} formatDate={formatDate} />
             </TabsContent>
+            
             <TabsContent value="letters">
-              <StudentLettersTab 
-                studentName={student.name} 
-                studentId={student.id} 
-                onAddLetter={() => setIsAddLetterModalOpen(true)} 
-                formatDate={formatDate} 
-              />
+              <StudentLettersTab studentId={student.id} />
             </TabsContent>
+            
             <TabsContent value="timeline">
               <StudentTimelineTab 
                 studentName={student.name} 
