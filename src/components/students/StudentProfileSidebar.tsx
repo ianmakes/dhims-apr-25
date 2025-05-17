@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -103,6 +104,7 @@ export function StudentProfileSidebar({
         <Separator />
         <div className="text-xs text-muted-foreground">
           <p>Created: {formatDate(student.created_at)}</p>
+          <p>Created by: {student.created_by_name || "System"}</p>
           {student.updated_at && <p>Last modified: {formatDate(student.updated_at)}</p>}
         </div>
       </CardContent>
