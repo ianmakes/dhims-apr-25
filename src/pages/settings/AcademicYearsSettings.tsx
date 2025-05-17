@@ -380,10 +380,11 @@ export default function AcademicYearsSettings() {
   const watchSourceYearId = copyForm.watch("sourceYearId");
   
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div>
+      {/* Two-column layout with cards side by side in one row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Card 1: Academic Years Management */}
-        <Card>
+        <Card className="h-full">
           <CardHeader className="border-b">
             <div className="flex items-center justify-between">
               <div>
@@ -589,8 +590,8 @@ export default function AcademicYearsSettings() {
           </CardContent>
         </Card>
         
-        {/* Card 2: Data Management */}
-        <Card>
+        {/* Card 2: Current Academic Year & Data Management */}
+        <Card className="h-full">
           <CardHeader className="border-b">
             <CardTitle className="text-left">Data Management</CardTitle>
             <CardDescription className="text-left mt-1">
@@ -872,7 +873,8 @@ export default function AcademicYearsSettings() {
                   </Dialog>
                 </div>
                 
-                <div className="rounded-md bg-blue-50 p-4 mb-4">
+                {/* Info card */}
+                <div className="rounded-md bg-blue-50 p-4">
                   <div className="flex">
                     <div className="flex-shrink-0">
                       <Info className="h-5 w-5 text-blue-400" aria-hidden="true" />
