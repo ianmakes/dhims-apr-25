@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,8 +49,9 @@ export const useSponsorDetails = (sponsorId: string) => {
         sponsorData.slug = slug;
       }
       
-      // Initialize the relatives array
-      sponsorData.relatives = [];
+      // Create the relatives array with proper typing
+      const typedSponsorData = sponsorData as Sponsor;
+      typedSponsorData.relatives = [];
       
       // Get relatives using custom fetch since sponsor_relatives might not exist in the supabase types
       try {
@@ -64,13 +64,13 @@ export const useSponsorDetails = (sponsorId: string) => {
         
         if (response.ok) {
           const relativesData = await response.json();
-          sponsorData.relatives = relativesData;
+          typedSponsorData.relatives = relativesData;
         }
       } catch (error) {
         console.error("Error fetching relatives:", error);
       }
       
-      return sponsorData as Sponsor;
+      return typedSponsorData;
     },
     enabled: !!sponsorId,
   });
