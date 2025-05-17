@@ -43,6 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -72,9 +73,39 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
+  // Add selection column to columns if bulk actions are enabled
+  const columnsWithSelection = bulkActions
+    ? [
+        {
+          id: "select",
+          header: ({ table }: any) => (
+            <Checkbox
+              checked={
+                table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && "indeterminate")
+              }
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="Select all"
+            />
+          ),
+          cell: ({ row }: any) => (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ),
+          enableSorting: false,
+          enableHiding: false,
+        },
+        ...columns,
+      ]
+    : columns;
+
   const table = useReactTable({
     data,
-    columns,
+    columns: columnsWithSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
@@ -100,7 +131,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
       rowSelection,
     },
-    enableRowSelection: true,
+    enableRowSelection: !!bulkActions,
   });
 
   // Handle row click
@@ -191,7 +222,7 @@ export function DataTable<TData, TValue>({
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columnsWithSelection.length}
                   className="h-24 text-center"
                 >
                   <div className="flex justify-center items-center space-x-2 text-muted-foreground">
@@ -218,7 +249,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columnsWithSelection.length}
                   className="h-24 text-center"
                 >
                   No results.
