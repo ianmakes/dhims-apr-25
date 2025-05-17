@@ -280,6 +280,17 @@ export default function StudentDetail() {
     // Ensure gender is correctly typed as "Male" or "Female"
     gender: student.gender === "Male" || student.gender === "Female" ? student.gender as "Male" | "Female" : "Male" as const // Default to "Male" if it's not a valid value
   };
+  
+  // Helper to refresh letter data
+  const refreshLetterData = () => {
+    queryClient.invalidateQueries({ queryKey: ['student-letters', student?.id] });
+  };
+  
+  // Helper to refresh photo data
+  const refreshPhotoData = () => {
+    queryClient.invalidateQueries({ queryKey: ['student-photos', student?.id] });
+  };
+
   return <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -374,20 +385,27 @@ export default function StudentDetail() {
     }} onSubmit={handleEditStudent} />}
 
       {/* Add Photo Modal */}
-      <AddPhotoModal open={isAddPhotoModalOpen} onOpenChange={setIsAddPhotoModalOpen} studentId={student?.id || ""} onSuccess={() => {
-      // Update photos list
-      setPhotos(getStudentPhotos());
-    }} />
+      <AddPhotoModal 
+        open={isAddPhotoModalOpen} 
+        onOpenChange={setIsAddPhotoModalOpen} 
+        studentId={student?.id || ""} 
+        onSuccess={refreshPhotoData} 
+      />
 
       {/* Add Letter Modal */}
-      <AddLetterModal open={isAddLetterModalOpen} onOpenChange={setIsAddLetterModalOpen} studentId={student?.id || ""} onSuccess={() => {
-      // Refresh letters
-    }} />
+      <AddLetterModal 
+        open={isAddLetterModalOpen} 
+        onOpenChange={setIsAddLetterModalOpen} 
+        studentId={student?.id || ""} 
+        onSuccess={refreshLetterData}
+      />
 
       {/* Add Timeline Event Modal */}
-      <AddTimelineEventModal open={isAddTimelineEventModalOpen} onOpenChange={setIsAddTimelineEventModalOpen} studentId={student?.id || ""} onSuccess={() => {
-      // Refresh timeline events
-      refetchTimeline();
-    }} />
+      <AddTimelineEventModal 
+        open={isAddTimelineEventModalOpen} 
+        onOpenChange={setIsAddTimelineEventModalOpen} 
+        studentId={student?.id || ""} 
+        onSuccess={() => refetchTimeline()} 
+      />
     </div>;
 }

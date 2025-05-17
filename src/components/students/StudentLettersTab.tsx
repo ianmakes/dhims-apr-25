@@ -5,18 +5,20 @@ import { FileText, BookOpen, Download, Mail, Calendar, Eye, Upload, X, ZoomIn, Z
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "sonner";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StudentLetter } from "@/types/database";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 interface StudentLettersTabProps {
   studentName: string;
   onAddLetter: () => void;
   formatDate: (date: string | Date | null | undefined) => string;
-  studentId: string; // Add studentId prop
+  studentId: string;
 }
+
 export function StudentLettersTab({
   studentName,
   onAddLetter,
@@ -48,17 +50,39 @@ export function StudentLettersTab({
       if (error) throw error;
       return data as StudentLetter[];
     },
-    enabled: !!studentId
+    enabled: !!studentId,
+    // Set short stale time to ensure quick refresh on data change
+    staleTime: 1000 
   });
+
+  // Effect to handle letter additions from other parts of the app
+  useEffect(() => {
+    // We already benefit from reactQuery's automatic refetch on focus
+    // This ensures our letters refresh when added from other components
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refetchLetters();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refetchLetters]);
+  
   const handleViewLetter = (letter: StudentLetter) => {
     setCurrentLetter(letter);
     setIsViewLetterModalOpen(true);
     setZoomLevel(1); // Reset zoom level when opening a new letter
   };
+
   const handleSendEmail = (letter: StudentLetter) => {
     // In a real implementation, this would trigger an email to the sponsor
     toast.success(`Email with letter "${letter.title || 'Letter'}" sent to sponsor`);
   };
+
   const handleDeleteLetter = async () => {
     if (!currentLetter) return;
     try {
@@ -66,18 +90,24 @@ export function StudentLettersTab({
         error
       } = await supabase.from('student_letters').delete().eq('id', currentLetter.id);
       if (error) throw error;
+      
       toast.success("Letter deleted successfully");
+      
       setIsDeleteDialogOpen(false);
       setIsViewLetterModalOpen(false);
+      
+      // Immediately refresh letters list to reflect deletion
       refetchLetters();
     } catch (error) {
       console.error('Error deleting letter:', error);
       toast.error("Failed to delete letter");
     }
   };
+  
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev + 0.25, 3)); // Limit max zoom to 3x
   };
+  
   const handleZoomOut = () => {
     setZoomLevel(prev => Math.max(prev - 0.25, 0.5)); // Limit min zoom to 0.5x
   };
@@ -94,6 +124,7 @@ export function StudentLettersTab({
     const lowerUrl = url.toLowerCase();
     return lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.gif') || lowerUrl.endsWith('.webp');
   };
+  
   return <div className="py-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

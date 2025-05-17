@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AddPhotoModalProps {
   open: boolean;
@@ -46,6 +47,7 @@ export function AddPhotoModal({
 }: AddPhotoModalProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -94,28 +96,37 @@ export function AddPhotoModal({
         .from('student-photos')
         .getPublicUrl(data.path);
       
-      // Add the photo to the student's photos list
-      // Note: In a real app, you'd likely have a separate photos table
+      // Add the photo to the database
       const photoData = {
         student_id: studentId,
         url: publicUrl,
         caption: values.caption,
         date: values.date ? new Date(values.date).toISOString() : new Date().toISOString(),
         created_by: user?.id,
-        created_at: new Date().toISOString(),
       };
 
-      // For now, we'll just save this in local storage for demo purposes
-      // In a real app, this would be saved to a database table
-      const existingPhotos = JSON.parse(localStorage.getItem(`student_photos_${studentId}`) || '[]');
-      existingPhotos.push({ id: Date.now().toString(), ...photoData });
-      localStorage.setItem(`student_photos_${studentId}`, JSON.stringify(existingPhotos));
+      const { error: insertError } = await supabase
+        .from('student_photos')
+        .insert(photoData);
+        
+      if (insertError) throw insertError;
       
       toast({
         title: "Photo uploaded",
         description: "The photo has been uploaded successfully.",
       });
       
+      // Reset form
+      form.reset({
+        caption: "",
+        date: new Date().toISOString().slice(0, 10),
+      });
+      setSelectedImage(null);
+      
+      // Immediately invalidate the query cache to force a refresh of photos
+      queryClient.invalidateQueries({ queryKey: ['student-photos', studentId] });
+      
+      // Call the onSuccess callback
       onSuccess();
       onOpenChange(false);
     } catch (error) {

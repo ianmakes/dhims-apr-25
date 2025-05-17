@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AddLetterModalProps {
   open: boolean;
@@ -48,6 +49,7 @@ export function AddLetterModal({
 }: AddLetterModalProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -129,7 +131,7 @@ export function AddLetterModal({
         description: "The letter has been added successfully.",
       });
       
-      // Reset form and close modal
+      // Reset form
       form.reset({
         title: "",
         content: "",
@@ -137,6 +139,10 @@ export function AddLetterModal({
       });
       setSelectedFile(null);
       
+      // Immediately invalidate the query cache to force a refresh of the letters
+      queryClient.invalidateQueries({ queryKey: ['student-letters', studentId] });
+      
+      // Call the onSuccess callback
       onSuccess();
       onOpenChange(false);
     } catch (error) {
