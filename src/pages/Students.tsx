@@ -8,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -92,32 +91,7 @@ export default function Students() {
         return;
       }
       
-      // Ensure the data matches our Student type
-      const typedStudents = data?.map(item => ({
-        id: item.id,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        first_name: item.first_name,
-        last_name: item.last_name,
-        date_of_birth: item.date_of_birth,
-        gender: item.gender,
-        address: item.address,
-        phone_number: item.phone_number || '',
-        email: item.email,
-        guardian_name: item.guardian_name,
-        guardian_phone_number: item.guardian_phone_number || '',
-        guardian_email: item.guardian_email || '',
-        class_level: item.class_level || '',
-        enrollment_date: item.enrollment_date,
-        previous_school: item.previous_school,
-        medical_info: item.medical_info,
-        special_needs: item.special_needs,
-        notes: item.notes,
-        sponsor_id: item.sponsor_id,
-        slug: item.slug || ''
-      })) as Student[];
-      
-      setStudents(typedStudents || []);
+      setStudents(data as Student[] || []);
     } catch (error) {
       console.error("Error in fetchStudents:", error);
     } finally {
@@ -157,9 +131,9 @@ export default function Students() {
   const filteredStudents = sortedStudents.filter((student) => {
     const searchRegex = new RegExp(searchQuery, "i");
     return (
-      searchRegex.test(student.first_name) ||
-      searchRegex.test(student.last_name) ||
-      searchRegex.test(student.email)
+      searchRegex.test(student.name) ||
+      searchRegex.test(student.admission_number) ||
+      (student.current_grade && searchRegex.test(student.current_grade))
     );
   });
 
@@ -200,15 +174,15 @@ export default function Students() {
                 </DrawerHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
+                    <label htmlFor="name" className="text-right">
                       Name
-                    </Label>
+                    </label>
                     <Input id="name" value="Pedro Duarte" className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="username" className="text-right">
+                    <label htmlFor="username" className="text-right">
                       Username
-                    </Label>
+                    </label>
                     <Input
                       id="username"
                       value="@peduarte"
@@ -239,10 +213,10 @@ export default function Students() {
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("first_name")}
+                      onClick={() => handleSort("name")}
                     >
-                      First Name
-                      {sortColumn === "first_name" && (
+                      Name
+                      {sortColumn === "name" && (
                         <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
@@ -250,10 +224,10 @@ export default function Students() {
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("last_name")}
+                      onClick={() => handleSort("admission_number")}
                     >
-                      Last Name
-                      {sortColumn === "last_name" && (
+                      Admission #
+                      {sortColumn === "admission_number" && (
                         <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
@@ -261,21 +235,10 @@ export default function Students() {
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("email")}
-                    >
-                      Email
-                      {sortColumn === "email" && (
-                        <SortAsc className="ml-2 h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("class_level")}
+                      onClick={() => handleSort("current_grade")}
                     >
                       Grade
-                      {sortColumn === "class_level" && (
+                      {sortColumn === "current_grade" && (
                         <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
@@ -300,11 +263,10 @@ export default function Students() {
                   filteredStudents.map((student) => (
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">
-                        {student.first_name}
+                        {student.name}
                       </TableCell>
-                      <TableCell>{student.last_name}</TableCell>
-                      <TableCell>{student.email}</TableCell>
-                      <TableCell>{student.class_level}</TableCell>
+                      <TableCell>{student.admission_number}</TableCell>
+                      <TableCell>{student.current_grade}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

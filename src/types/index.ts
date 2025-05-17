@@ -9,28 +9,33 @@ export interface AcademicYear {
   updated_at?: string;
 }
 
+// Updated Student interface to match the database schema
 export interface Student {
   id: string;
   created_at: string;
   updated_at: string;
-  first_name: string;
-  last_name: string;
-  date_of_birth: string;
-  gender: string;
-  address: string;
-  phone_number: string;
-  email: string;
-  guardian_name: string;
-  guardian_phone_number: string;
-  guardian_email: string;
-  class_level: string;
-  enrollment_date: string;
-  previous_school: string | null;
-  medical_info: string | null;
-  special_needs: string | null;
-  notes: string | null;
-  sponsor_id: string | null;
-  slug: string;
+  name: string; // Changed from first_name/last_name to match DB
+  admission_number: string;
+  dob?: string;
+  gender?: string;
+  status: string;
+  accommodation_status?: string;
+  health_status?: string;
+  location?: string;
+  description?: string;
+  school_level?: string;
+  cbc_category?: string;
+  current_grade?: string;
+  current_academic_year?: number;
+  height_cm?: number;
+  weight_kg?: number;
+  admission_date?: string;
+  sponsor_id?: string;
+  sponsored_since?: string;
+  profile_image_url?: string;
+  slug?: string;
+  created_by?: string;
+  updated_by?: string;
 }
 
 export interface User {
@@ -42,6 +47,8 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   last_login?: string;
+  name?: string; // Added for compatibility with existing code
 }
 
-export type UserRole = 'admin' | 'manager' | 'teacher' | 'user';
+// Update UserRole to include all possible values
+export type UserRole = 'admin' | 'manager' | 'teacher' | 'viewer' | 'superuser' | 'user';
