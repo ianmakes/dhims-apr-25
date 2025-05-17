@@ -15,21 +15,31 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAcademicYear } from "@/contexts/AcademicYearContext";
 
 export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { currentYear } = useAcademicYear();
+  
+  const currentAcademicYear = currentYear?.year_name || '';
 
   // Stats queries
   const { data: studentCount = 0, refetch: refetchStudents } = useQuery({
-    queryKey: ["student-count"],
+    queryKey: ["student-count", currentAcademicYear],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("students")
-        .select("*", { count: "exact", head: true });
+      // If we have a current year, filter by that academic year
+      let query = supabase.from("students").select("*", { count: "exact", head: true });
+      
+      if (currentAcademicYear) {
+        query = query.eq("current_academic_year", parseInt(currentAcademicYear));
+      }
+      
+      const { count, error } = await query;
       
       if (error) throw error;
       return count || 0;
     },
+    enabled: !!currentYear // Only run query when currentYear is available
   });
 
   const { data: sponsorCount = 0, refetch: refetchSponsors } = useQuery({
@@ -45,28 +55,42 @@ export default function Dashboard() {
   });
 
   const { data: examCount = 0, refetch: refetchExams } = useQuery({
-    queryKey: ["exam-count"],
+    queryKey: ["exam-count", currentAcademicYear],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("exams")
-        .select("*", { count: "exact", head: true });
+      // If we have a current year, filter by that academic year
+      let query = supabase.from("exams").select("*", { count: "exact", head: true });
+      
+      if (currentAcademicYear) {
+        query = query.eq("academic_year", currentAcademicYear);
+      }
+      
+      const { count, error } = await query;
       
       if (error) throw error;
       return count || 0;
     },
+    enabled: !!currentYear // Only run query when currentYear is available
   });
 
   const { data: unassignedStudents = 0, refetch: refetchUnassigned } = useQuery({
-    queryKey: ["unassigned-students"],
+    queryKey: ["unassigned-students", currentAcademicYear],
     queryFn: async () => {
-      const { count, error } = await supabase
+      // If we have a current year, filter by that academic year
+      let query = supabase
         .from("students")
         .select("*", { count: "exact", head: true })
         .is("sponsor_id", null);
       
+      if (currentAcademicYear) {
+        query = query.eq("current_academic_year", parseInt(currentAcademicYear));
+      }
+      
+      const { count, error } = await query;
+      
       if (error) throw error;
       return count || 0;
     },
+    enabled: !!currentYear // Only run query when currentYear is available
   });
 
   const refreshAll = async () => {
@@ -84,7 +108,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <PageHeader 
         title="Dashboard" 
-        description="Welcome to David's Hope International Management System"
+        description={`Welcome to David's Hope International Management System${currentYear ? ` - ${currentYear.year_name} Academic Year` : ''}`}
         actions={
           <Button 
             onClick={refreshAll} 
@@ -102,7 +126,7 @@ export default function Dashboard() {
         <StatsCard
           title="Total Students"
           value={studentCount}
-          description="Students in the system"
+          description={`Students in ${currentYear?.year_name || 'the system'}`}
           icon={<Users className="h-5 w-5 text-wp-primary" />}
           trend={{ value: 12, isPositive: true, label: "from last month" }}
         />
@@ -115,7 +139,7 @@ export default function Dashboard() {
         <StatsCard
           title="Exams Recorded"
           value={examCount}
-          description="Total exams in the system"
+          description={`Exams in ${currentYear?.year_name || 'the system'}`}
           icon={<BookOpen className="h-5 w-5 text-wp-primary" />}
         />
         <StatsCard
@@ -134,7 +158,7 @@ export default function Dashboard() {
             <CardDescription>Recent events and changes in the system</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <RecentActivityCard />
+            <RecentActivityCard academicYear={currentAcademicYear} />
           </CardContent>
         </Card>
 

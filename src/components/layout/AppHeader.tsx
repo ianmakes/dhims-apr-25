@@ -6,6 +6,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Settings, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AcademicYearSelector } from "@/components/AcademicYearSelector";
+
 export function AppHeader() {
   const navigate = useNavigate();
   const {
@@ -16,6 +18,7 @@ export function AppHeader() {
   const {
     toast
   } = useToast();
+  
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -32,6 +35,7 @@ export function AppHeader() {
       console.error("Logout error:", error);
     }
   };
+  
   return <div className="border-b">
       <div className="flex h-16 items-center px-4">
         <div className="flex-1">
@@ -40,7 +44,11 @@ export function AppHeader() {
             <h1 className="text-xl font-semibold">DHIMS</h1>
           </div>
         </div>
+
         <div className="flex items-center space-x-4">
+          {/* Academic Year Selector */}
+          <AcademicYearSelector />
+
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

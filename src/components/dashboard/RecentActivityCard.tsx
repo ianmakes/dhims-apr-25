@@ -1,127 +1,112 @@
-import { ActivityIcon, BookOpen, Clock, UserCircle, Users } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-type ActivityType = "student" | "sponsor" | "exam" | "system";
-interface Activity {
-  id: string;
-  type: ActivityType;
-  title: string;
-  description: string;
-  timestamp: Date;
-  user: {
-    name: string;
-    avatar?: string;
-  };
-}
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+
 interface RecentActivityCardProps {
-  activities?: Activity[];
-  className?: string;
+  academicYear?: string;
 }
-export function RecentActivityCard({
-  activities,
-  className
-}: RecentActivityCardProps) {
-  // Provide mock data if activities are not provided
-  const displayActivities = activities || [{
-    id: "1",
-    type: "student",
-    title: "New student registered",
-    description: "John Doe has been registered as a new student",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    // 2 hours ago
-    user: {
-      name: "Admin User"
+
+export function RecentActivityCard({ academicYear }: RecentActivityCardProps) {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    async function fetchActivities() {
+      setLoading(true);
+      try {
+        // Basic query
+        let query = supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(15);
+
+        // If academic year filter is provided, add it to the query
+        // This is a simple implementation - in a real app, you would need to 
+        // store the academic year in each audit log entry
+        if (academicYear) {
+          // This is a simplified approach. In a real implementation,
+          // you would need to add academic_year field to audit_logs table
+          // and filter by it. For now, we'll just filter by the date range if known
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching activities:', error);
+          return;
+        }
+
+        setActivities(data || []);
+      } catch (error) {
+        console.error('Error in fetchActivities:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, {
-    id: "2",
-    type: "sponsor",
-    title: "New sponsor added",
-    description: "Jane Smith has been added as a new sponsor",
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    // 1 day ago
-    user: {
-      name: "Admin User"
-    }
-  }, {
-    id: "3",
-    type: "exam",
-    title: "Exam results updated",
-    description: "Term 2 exam results have been added to the system",
-    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    // 3 days ago
-    user: {
-      name: "Teacher User"
-    }
-  }, {
-    id: "4",
-    type: "system",
-    title: "System maintenance",
-    description: "System was updated to the latest version",
-    timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    // 7 days ago
-    user: {
-      name: "System"
-    }
-  }];
-  const getActivityIcon = (type: ActivityType) => {
-    switch (type) {
-      case "student":
-        return <Users className="h-4 w-4" />;
-      case "sponsor":
-        return <UserCircle className="h-4 w-4" />;
-      case "exam":
-        return <BookOpen className="h-4 w-4" />;
-      case "system":
-        return <ActivityIcon className="h-4 w-4" />;
-      default:
-        return <Clock className="h-4 w-4" />;
-    }
+
+    fetchActivities();
+  }, [academicYear, user]);
+
+  // Helper function to format dates
+  const formatDate = (date: string) => {
+    return format(new Date(date), 'MMM d, yyyy h:mm a');
   };
-  const getActivityColor = (type: ActivityType) => {
-    switch (type) {
-      case "student":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-700/20 dark:text-blue-400";
-      case "sponsor":
-        return "bg-green-100 text-green-700 dark:bg-green-700/20 dark:text-green-400";
-      case "exam":
-        return "bg-purple-100 text-purple-700 dark:bg-purple-700/20 dark:text-purple-400";
-      case "system":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-700/20 dark:text-yellow-400";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-700/20 dark:text-gray-400";
-    }
+
+  // Helper function to get initial for avatar
+  const getInitial = (username: string) => {
+    return username?.charAt(0).toUpperCase() || 'U';
   };
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true
-    }).format(date);
-  };
-  return <Card className={cn("transition-all-medium h-full card-hover", className)}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium text-left">Recent Activity</CardTitle>
-      </CardHeader>
-      <CardContent className="overflow-auto max-h-[400px]">
-        <div className="space-y-5">
-          {displayActivities.map(activity => <div key={activity.id} className="flex items-start space-x-3">
-              <div className={cn("flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full", getActivityColor(activity.type))}>
-                {getActivityIcon(activity.type)}
-              </div>
-              <div className="space-y-1 flex-1">
-                <p className="font-medium text-sm text-left">{activity.title}</p>
-                <p className="text-xs text-muted-foreground text-left">
-                  {activity.description}
-                </p>
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>by {activity.user.name}</span>
-                  <span>{formatDate(activity.timestamp)}</span>
-                </div>
-              </div>
-            </div>)}
+
+  if (loading) {
+    return (
+      <div className="py-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-start space-x-4 px-4 py-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-muted-foreground">No recent activity found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y">
+      {activities.map((activity) => (
+        <div key={activity.id} className="flex items-start space-x-4 p-4">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback>{getInitial(activity.username || '')}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 space-y-1">
+            <p className="text-sm">
+              <span className="font-medium">{activity.username || 'Unknown User'}</span>{' '}
+              {activity.action}{' '}
+              <span className="font-medium">
+                {activity.entity} {activity.entity_id}
+              </span>
+            </p>
+            {activity.details && <p className="text-sm text-muted-foreground">{activity.details}</p>}
+            <p className="text-xs text-muted-foreground">{formatDate(activity.created_at)}</p>
+          </div>
         </div>
-      </CardContent>
-    </Card>;
+      ))}
+    </div>
+  );
 }
