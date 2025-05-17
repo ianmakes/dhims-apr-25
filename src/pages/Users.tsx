@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { User, UserRole } from "@/types";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -229,20 +228,31 @@ function UsersPage() {
     }
   };
 
+  // Updated handleDeleteUser function to properly delete users through Supabase Admin API
   const handleDeleteUser = async () => {
     try {
       if (!selectedUser) return;
       
       setIsLoading(true);
       
-      // In a production app, you'd use admin API to delete users
-      // Here we're just removing from the profiles table
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', selectedUser.id);
+      // First, we need to delete the user from the auth.users table
+      // Since we've updated the foreign key constraint to CASCADE,
+      // this will automatically delete the profile as well
+      const { error } = await supabase.auth.admin.deleteUser(
+        selectedUser.id
+      );
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting user with admin API:", error);
+        
+        // Fallback: Try deleting just the profile if admin API fails
+        const { error: profileDeleteError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', selectedUser.id);
+          
+        if (profileDeleteError) throw profileDeleteError;
+      }
       
       // Remove the user from the local state
       setUsers(prev => prev.filter(user => user.id !== selectedUser.id));
