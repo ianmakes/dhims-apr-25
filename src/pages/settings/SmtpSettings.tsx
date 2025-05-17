@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 
 const emailSettingsSchema = z.object({
   from_name: z.string().min(2, {
@@ -78,8 +78,8 @@ export default function SmtpSettings() {
         
         if (data) {
           form.reset({
-            from_name: data.from_name,
-            from_email: data.from_email,
+            from_name: data.from_name || "David's Hope International",
+            from_email: data.from_email || "noreply@davidshope.org",
             provider: data.provider as "smtp" | "resend",
             smtp_host: data.smtp_host || "",
             smtp_port: data.smtp_port || "",
@@ -107,7 +107,18 @@ export default function SmtpSettings() {
         .from('email_settings')
         .upsert({
           id: 'default',
-          ...data
+          from_name: data.from_name,
+          from_email: data.from_email,
+          provider: data.provider,
+          smtp_host: data.smtp_host,
+          smtp_port: data.smtp_port,
+          smtp_username: data.smtp_username,
+          smtp_password: data.smtp_password,
+          resend_api_key: data.resend_api_key,
+          notifications_enabled: data.notifications_enabled,
+          notify_new_student: data.notify_new_student,
+          notify_new_sponsor: data.notify_new_sponsor,
+          notify_sponsorship_change: data.notify_sponsorship_change,
         });
       
       if (error) throw error;
@@ -184,7 +195,7 @@ export default function SmtpSettings() {
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0">
                             <FormControl>
-                              <RadioGroupItem value="smtp" />
+                              <RadioItem value="smtp" />
                             </FormControl>
                             <FormLabel className="font-normal">
                               SMTP Server
@@ -192,7 +203,7 @@ export default function SmtpSettings() {
                           </FormItem>
                           <FormItem className="flex items-center space-x-3 space-y-0">
                             <FormControl>
-                              <RadioGroupItem value="resend" />
+                              <RadioItem value="resend" />
                             </FormControl>
                             <FormLabel className="font-normal">
                               Resend.com API

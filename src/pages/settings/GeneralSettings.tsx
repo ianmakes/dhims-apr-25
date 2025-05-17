@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +28,10 @@ const generalSettingsSchema = z.object({
   footer_text: z.string().optional()
 });
 
-type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
+type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema> & {
+  logo_url?: string;
+  favicon_url?: string;
+};
 
 export default function GeneralSettings() {
   const { toast } = useToast();
@@ -40,7 +43,9 @@ export default function GeneralSettings() {
     primary_color: "#9b87f5",
     secondary_color: "#7E69AB",
     theme_mode: "light",
-    footer_text: ""
+    footer_text: "",
+    logo_url: undefined,
+    favicon_url: undefined
   });
 
   const form = useForm<GeneralSettingsFormValues>({
@@ -49,7 +54,7 @@ export default function GeneralSettings() {
   });
 
   // Fetch settings on component mount
-  useState(() => {
+  useEffect(() => {
     const fetchSettings = async () => {
       try {
         const { data, error } = await supabase
@@ -64,14 +69,18 @@ export default function GeneralSettings() {
         }
         
         if (data) {
-          form.reset({
+          const formData = {
             organization_name: data.organization_name || "David's Hope International",
             primary_color: data.primary_color || "#9b87f5",
             secondary_color: data.secondary_color || "#7E69AB",
-            theme_mode: data.theme_mode || "light",
-            footer_text: data.footer_text || ""
-          });
-          setSettings(data as GeneralSettingsFormValues);
+            theme_mode: (data.theme_mode as "light" | "dark" | "system") || "light",
+            footer_text: data.footer_text || "",
+            logo_url: data.logo_url,
+            favicon_url: data.favicon_url
+          };
+          
+          form.reset(formData);
+          setSettings(formData);
         }
       } catch (error) {
         console.error('Error in fetchSettings:', error);
@@ -79,7 +88,7 @@ export default function GeneralSettings() {
     };
     
     fetchSettings();
-  }, []);
+  }, [form]);
 
   const uploadFile = async (file: File, bucket: string) => {
     try {
