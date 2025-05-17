@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,22 +33,33 @@ export const useSponsorDetails = (sponsorId: string) => {
   const { data: sponsor, isLoading: isLoadingSponsor } = useQuery({
     queryKey: ["sponsors", sponsorId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Get the sponsor with students data
+      const { data: sponsorData, error: sponsorError } = await supabase
         .from("sponsors")
         .select("*, students(*)")
         .eq("id", sponsorId)
         .single();
 
-      if (error) throw error;
+      if (sponsorError) throw sponsorError;
       
       // Generate slug if it doesn't exist
-      if (!data.slug && data.first_name && data.last_name) {
-        const slug = generateSlug(`${data.first_name}-${data.last_name}`);
+      if (!sponsorData.slug && sponsorData.first_name && sponsorData.last_name) {
+        const slug = generateSlug(`${sponsorData.first_name}-${sponsorData.last_name}`);
         await supabase.from("sponsors").update({ slug }).eq("id", sponsorId);
-        data.slug = slug;
+        sponsorData.slug = slug;
       }
       
-      return data as Sponsor;
+      // Get relatives for the PDF generation
+      const { data: relativesData, error: relativesError } = await supabase
+        .from("sponsor_relatives")
+        .select("*")
+        .eq("sponsor_id", sponsorId);
+        
+      if (!relativesError && relativesData) {
+        sponsorData.relatives = relativesData;
+      }
+      
+      return sponsorData as Sponsor;
     },
     enabled: !!sponsorId,
   });
@@ -228,6 +238,7 @@ export const useSponsorDetails = (sponsorId: string) => {
       return data[0] as SponsorRelative;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors", sponsorId] });
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
       toast.success("Relative added successfully");
     },
@@ -256,6 +267,7 @@ export const useSponsorDetails = (sponsorId: string) => {
       return data[0] as SponsorRelative;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors", sponsorId] });
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
       toast.success("Relative updated successfully");
     },
@@ -277,6 +289,7 @@ export const useSponsorDetails = (sponsorId: string) => {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors", sponsorId] });
       queryClient.invalidateQueries({ queryKey: ["sponsor-relatives", sponsorId] });
       toast.success("Relative removed successfully");
     },

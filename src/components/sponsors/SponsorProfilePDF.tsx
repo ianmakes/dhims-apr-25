@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Sponsor } from "@/types/database";
+import { Sponsor, SponsorRelative } from "@/types/database";
 
 interface SponsorProfilePDFProps {
   sponsor: Sponsor;
@@ -15,13 +15,11 @@ interface SponsorProfilePDFProps {
 }
 
 export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProfilePDFProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(true);
 
   useEffect(() => {
     const generatePDF = async () => {
       try {
-        setIsGenerating(true);
-        
         // Get the HTML element
         const element = document.getElementById("sponsor-profile-pdf");
         if (!element) {
@@ -197,6 +195,33 @@ export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProf
           </Card>
         </div>
         
+        {/* Show relatives if any */}
+        {sponsor.relatives && sponsor.relatives.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Relatives / Contacts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4">
+                {sponsor.relatives.map((relative: SponsorRelative) => (
+                  <div key={relative.id} className="border p-3 rounded-md grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="font-medium">{relative.name}</span>
+                      <p className="text-sm text-wp-text-secondary">{relative.relationship}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm">{relative.email}</p>
+                      {relative.phone_number && (
+                        <p className="text-sm text-wp-text-secondary">{relative.phone_number}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {sponsor.notes && (
           <Card className="mb-6">
             <CardHeader>
@@ -208,6 +233,7 @@ export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProf
           </Card>
         )}
         
+        {/* Sponsored students section */}
         {sponsor.students && sponsor.students.length > 0 && (
           <Card>
             <CardHeader>
@@ -222,6 +248,11 @@ export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProf
                       Grade: {student.current_grade || "—"} | 
                       Admission #: {student.admission_number}
                     </p>
+                    {student.sponsored_since && (
+                      <p className="text-xs text-wp-text-secondary mt-1">
+                        Sponsored since: {formatDate(student.sponsored_since)}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

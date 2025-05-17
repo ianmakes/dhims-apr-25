@@ -25,6 +25,7 @@ import { SponsorProfilePDF } from "@/components/sponsors/SponsorProfilePDF";
 import { toast } from "sonner";
 
 export default function SponsorDetail() {
+  
   const { idOrSlug } = useParams<{ idOrSlug: string; }>();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -57,6 +58,7 @@ export default function SponsorDetail() {
     },
     enabled: !!idOrSlug
   });
+  
   
   const sponsorId = sponsorIdData?.id;
   
@@ -119,6 +121,15 @@ export default function SponsorDetail() {
       day: 'numeric'
     }).format(dateObj);
   };
+
+  // Handle click on Download Profile button
+  const handleDownloadPDF = () => {
+    setIsGeneratingPDF(true);
+    toast.info("Generating PDF profile...", {
+      duration: 2000,
+    });
+  };
+  
   
   const handleOpenRemoveDialog = (studentId: string, studentName: string) => {
     setCurrentStudentToRemove({
@@ -217,7 +228,10 @@ export default function SponsorDetail() {
   return <div className="space-y-6 fade-in">
       {isGeneratingPDF && <SponsorProfilePDF 
         sponsor={sponsor} 
-        onGenerated={() => setIsGeneratingPDF(false)}
+        onGenerated={() => {
+          setIsGeneratingPDF(false);
+          toast.success("PDF profile generated successfully!");
+        }}
         onError={(error) => {
           toast.error("Error generating PDF: " + error.message);
           setIsGeneratingPDF(false);
@@ -254,7 +268,7 @@ export default function SponsorDetail() {
               {sponsor.status === "active" ? "Active" : "Inactive"}
             </span>
           </div>
-          <Button variant="outline" onClick={() => setIsGeneratingPDF(true)}>
+          <Button variant="outline" onClick={handleDownloadPDF}>
             <FileDown className="mr-2 h-4 w-4" />
             Download Profile
           </Button>
@@ -265,6 +279,7 @@ export default function SponsorDetail() {
         </div>
       </div>
 
+      
       <div className="grid gap-6 lg:grid-cols-7">
         {/* Sponsor profile sidebar */}
         <Card className="lg:col-span-2">
