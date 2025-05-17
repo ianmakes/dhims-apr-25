@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { User, UserRole } from "@/types";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -58,14 +59,19 @@ function UsersPage() {
       try {
         setIsLoading(true);
         
+        console.log("Fetching users from profiles table...");
+        
         // Get users from the profiles table
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('*');
         
         if (error) {
+          console.error("Error fetching profiles:", error);
           throw error;
         }
+        
+        console.log("Fetched profiles:", profiles);
         
         if (profiles) {
           // Transform the profiles into the User format expected by the component

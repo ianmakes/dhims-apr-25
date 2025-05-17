@@ -19,6 +19,8 @@ export const createSuperuser = async (email = "itest6904@gmail.com", password = 
       return;
     }
     
+    console.log("Creating superuser with email:", email);
+    
     // Create the superuser
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -47,6 +49,8 @@ export const createSuperuser = async (email = "itest6904@gmail.com", password = 
       if (updateError) {
         throw new Error(`Error updating superuser role: ${updateError.message}`);
       }
+      
+      console.log("Superuser role updated in profiles table");
     }
     
     return data;
