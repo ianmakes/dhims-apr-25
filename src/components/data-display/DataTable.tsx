@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   ColumnDef,
@@ -43,6 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -72,9 +72,42 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
+  // Prepare columns with selection
+  const selectionColumns = bulkActions
+    ? [
+        {
+          id: "select",
+          header: ({ table }: any) => (
+            <Checkbox
+              checked={
+                table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && "indeterminate")
+              }
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="Select all"
+              className="translate-y-[2px]"
+            />
+          ),
+          cell: ({ row }: any) => (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+              onClick={(e) => e.stopPropagation()}
+              className="translate-y-[2px]"
+            />
+          ),
+          enableSorting: false,
+          enableHiding: false,
+        },
+      ]
+    : [];
+
+  const allColumns = [...selectionColumns, ...columns];
+
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
@@ -100,7 +133,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
       rowSelection,
     },
-    enableRowSelection: true,
+    enableRowSelection: Boolean(bulkActions),
   });
 
   // Handle row click
@@ -160,10 +193,12 @@ export function DataTable<TData, TValue>({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <p className="text-sm text-wp-text-secondary">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected
-          </p>
+          {table.getFilteredSelectedRowModel().rows.length > 0 && (
+            <p className="text-sm text-wp-text-secondary">
+              {table.getFilteredSelectedRowModel().rows.length} of{" "}
+              {table.getFilteredRowModel().rows.length} row(s) selected
+            </p>
+          )}
         </div>
       </div>
 
@@ -192,7 +227,7 @@ export function DataTable<TData, TValue>({
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={allColumns.length}
                   className="h-24 text-center"
                 >
                   <div className="flex justify-center items-center space-x-2 text-muted-foreground">
@@ -219,7 +254,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={allColumns.length}
                   className="h-24 text-center text-wp-text-secondary"
                 >
                   No results.
