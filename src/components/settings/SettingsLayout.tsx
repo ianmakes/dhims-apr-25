@@ -19,7 +19,7 @@ export function SettingsLayout() {
       <Tabs value={currentTab} onValueChange={value => navigate(`/settings/${value}`)}>
         <TabsList className="w-full border-b overflow-auto flex justify-start">
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="profile">Profile & Account</TabsTrigger>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="smtp">Email & SMTP</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
