@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   ColumnDef,
@@ -42,7 +43,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -72,42 +72,9 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Prepare columns with selection
-  const selectionColumns = bulkActions
-    ? [
-        {
-          id: "select",
-          header: ({ table }: any) => (
-            <Checkbox
-              checked={
-                table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() && "indeterminate")
-              }
-              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label="Select all"
-              className="translate-y-[2px]"
-            />
-          ),
-          cell: ({ row }: any) => (
-            <Checkbox
-              checked={row.getIsSelected()}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-              onClick={(e) => e.stopPropagation()}
-              className="translate-y-[2px]"
-            />
-          ),
-          enableSorting: false,
-          enableHiding: false,
-        },
-      ]
-    : [];
-
-  const allColumns = [...selectionColumns, ...columns];
-
   const table = useReactTable({
     data,
-    columns: allColumns,
+    columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
@@ -133,7 +100,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
       rowSelection,
     },
-    enableRowSelection: Boolean(bulkActions),
+    enableRowSelection: true,
   });
 
   // Handle row click
@@ -157,7 +124,7 @@ export function DataTable<TData, TValue>({
                 onChange={(event) =>
                   table.getColumn(searchColumn)?.setFilterValue(event.target.value)
                 }
-                className="pl-8 border-wp-border focus:border-wp-primary focus:ring-1 focus:ring-wp-primary"
+                className="pl-8"
                 disabled={isLoading}
               />
             </div>
@@ -167,11 +134,11 @@ export function DataTable<TData, TValue>({
           {bulkActions && bulkActions.length > 0 && table.getFilteredSelectedRowModel().rows.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="wp-secondary" size="sm">
+                <Button variant="outline" size="sm">
                   Bulk Actions ({table.getFilteredSelectedRowModel().rows.length})
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white border border-wp-border">
+              <DropdownMenuContent align="end">
                 {bulkActions.map((action, index) => (
                   <DropdownMenuItem 
                     key={index}
@@ -185,7 +152,6 @@ export function DataTable<TData, TValue>({
                       });
                       action.action(selectedRowIds);
                     }}
-                    className="hover:bg-wp-gray-50"
                   >
                     {action.label}
                   </DropdownMenuItem>
@@ -193,24 +159,22 @@ export function DataTable<TData, TValue>({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {table.getFilteredSelectedRowModel().rows.length > 0 && (
-            <p className="text-sm text-wp-text-secondary">
-              {table.getFilteredSelectedRowModel().rows.length} of{" "}
-              {table.getFilteredRowModel().rows.length} row(s) selected
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {table.getFilteredRowModel().rows.length} row(s) selected
+          </p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="wp-card overflow-hidden">
+      <div className="rounded-md border bg-background">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-left font-medium text-wp-text-primary bg-wp-gray-50">
+                    <TableHead key={header.id} className="text-left">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -227,7 +191,7 @@ export function DataTable<TData, TValue>({
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={allColumns.length}
+                  colSpan={columns.length}
                   className="h-24 text-center"
                 >
                   <div className="flex justify-center items-center space-x-2 text-muted-foreground">
@@ -241,11 +205,11 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={`hover:bg-wp-gray-50 transition-colors border-b border-wp-border ${onRowClick ? 'cursor-pointer' : ''}`}
+                  className={`hover:bg-muted/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                   onClick={() => handleRowClick(row)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-left p-4">
+                    <TableCell key={cell.id} className="text-left">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -254,8 +218,8 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={allColumns.length}
-                  className="h-24 text-center text-wp-text-secondary"
+                  colSpan={columns.length}
+                  className="h-24 text-center"
                 >
                   No results.
                 </TableCell>
@@ -268,12 +232,12 @@ export function DataTable<TData, TValue>({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <p className="text-sm text-wp-text-secondary">
+          <p className="text-sm text-muted-foreground">
             Showing {table.getRowModel().rows?.length} of{" "}
             {table.getFilteredRowModel().rows.length} result(s)
           </p>
           <div className="flex items-center space-x-2">
-            <p className="text-sm text-wp-text-secondary">Rows per page</p>
+            <p className="text-sm text-muted-foreground">Rows per page</p>
             <Select
               value={table.getState().pagination.pageSize.toString()}
               onValueChange={(value) => {
@@ -281,10 +245,10 @@ export function DataTable<TData, TValue>({
               }}
               disabled={isLoading}
             >
-              <SelectTrigger className="h-8 w-16 border-wp-border">
+              <SelectTrigger className="h-8 w-16">
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
-              <SelectContent className="bg-white border border-wp-border">
+              <SelectContent>
                 {[10, 20, 30, 40, 50].map((pageSize) => (
                   <SelectItem key={pageSize} value={pageSize.toString()}>
                     {pageSize}
@@ -300,7 +264,6 @@ export function DataTable<TData, TValue>({
             size="icon"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage() || isLoading}
-            className="border-wp-border"
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
@@ -309,12 +272,11 @@ export function DataTable<TData, TValue>({
             size="icon"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage() || isLoading}
-            className="border-wp-border"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center space-x-2">
-            <p className="text-sm text-wp-text-secondary">
+            <p className="text-sm text-muted-foreground">
               Page {table.getState().pagination.pageIndex + 1} of{" "}
               {table.getPageCount()}
             </p>
@@ -324,7 +286,6 @@ export function DataTable<TData, TValue>({
             size="icon"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage() || isLoading}
-            className="border-wp-border"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -333,7 +294,6 @@ export function DataTable<TData, TValue>({
             size="icon"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage() || isLoading}
-            className="border-wp-border"
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>

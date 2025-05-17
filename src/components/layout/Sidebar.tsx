@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -13,49 +13,14 @@ import {
   ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const [appVersion, setAppVersion] = useState("1.0.0");
-  const [sidebarTheme, setSidebarTheme] = useState({
-    bg: "bg-sidebar",
-    text: "text-sidebar-foreground"
-  });
   
   const isActiveRoute = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
-
-  // Fetch app settings on mount
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('app_settings')
-          .select('*')
-          .eq('id', 'general')
-          .single();
-          
-        if (data && !error) {
-          if (data.app_version) {
-            setAppVersion(data.app_version);
-          }
-          
-          // Apply custom theme if available
-          if (data.primary_color && data.secondary_color) {
-            document.documentElement.style.setProperty('--primary', data.primary_color);
-            document.documentElement.style.setProperty('--secondary', data.secondary_color);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching app settings:", error);
-      }
-    };
-    
-    fetchSettings();
-  }, []);
 
   const sidebarItems = [
     {
@@ -93,7 +58,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "h-screen flex-shrink-0 bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out",
+        "h-screen flex-shrink-0 bg-sidebar border-r border-border transition-all duration-300 ease-in-out",
         collapsed ? "w-12 md:w-14" : "w-60"
       )}
     >
@@ -129,7 +94,7 @@ export function Sidebar() {
                   className={cn(
                     "w-full flex justify-start text-sidebar-foreground hover:bg-sidebar-accent transition-colors h-10 px-3 py-2",
                     collapsed ? "justify-center p-2" : "",
-                    isActiveRoute(item.path) ? "bg-sidebar-accent font-medium text-white" : ""
+                    isActiveRoute(item.path) ? "bg-sidebar-accent font-medium" : ""
                   )}
                 >
                   {item.icon}
@@ -139,13 +104,6 @@ export function Sidebar() {
             ))}
           </nav>
         </div>
-
-        {/* Version info */}
-        {!collapsed && (
-          <div className="px-3 py-2 text-xs text-sidebar-foreground/60">
-            Version {appVersion}
-          </div>
-        )}
       </div>
     </aside>
   );

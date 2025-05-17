@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -68,20 +69,12 @@ export default function Sponsors() {
     if (selectedRowIds.length > 0) {
       bulkDeleteSponsors(selectedRowIds);
       setIsBulkDeleteAlertOpen(false);
-      toast({
-        title: "Sponsors deleted",
-        description: `${selectedRowIds.length} sponsors have been deleted.`,
-      });
     }
   };
   
   const handleBulkUpdateStatus = (status: "active" | "inactive") => {
     if (selectedRowIds.length > 0) {
       bulkUpdateSponsorStatus({ ids: selectedRowIds, status });
-      toast({
-        title: `Sponsors ${status === "active" ? "activated" : "deactivated"}`,
-        description: `${selectedRowIds.length} sponsors have been ${status === "active" ? "activated" : "deactivated"}.`,
-      });
     }
   };
   
@@ -127,52 +120,6 @@ export default function Sponsors() {
     {
       label: "Activate Selected",
       action: () => handleBulkUpdateStatus("active")
-    },
-    {
-      label: "Export Selected as CSV",
-      action: () => {
-        const selectedSponsors = sponsors.filter((sponsor: any) => 
-          selectedRowIds.includes(sponsor.id)
-        );
-        
-        if (selectedSponsors.length === 0) {
-          toast({
-            title: "No sponsors selected",
-            description: "Please select at least one sponsor to export."
-          });
-          return;
-        }
-        
-        // Format data for CSV
-        const headers = ["First Name", "Last Name", "Email", "Phone", "Country", "Status"];
-        const csvContent = [
-          headers.join(','),
-          ...selectedSponsors.map((sponsor: any) => [
-            sponsor.first_name,
-            sponsor.last_name,
-            sponsor.email,
-            sponsor.phone || '',
-            sponsor.country || '',
-            sponsor.status
-          ].map(field => `"${field}"`).join(','))
-        ].join('\n');
-        
-        // Create and download CSV file
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", "selected_sponsors.csv");
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({
-          title: "Export complete",
-          description: `${selectedSponsors.length} sponsors exported as CSV.`
-        });
-      }
     }
   ];
 

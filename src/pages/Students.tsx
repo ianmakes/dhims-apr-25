@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -7,13 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, Download, Eye, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { logUpdate, logDelete } from "@/utils/auditLog";
 
 interface Student {
   id: string;
@@ -39,8 +39,6 @@ export default function Students() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
-  const [isBulkActionInProgress, setIsBulkActionInProgress] = useState(false);
-  const navigate = useNavigate();
 
   // Fetch students data from Supabase
   const {
@@ -161,27 +159,19 @@ export default function Students() {
   // Mutation for bulk deleting students
   const bulkDeleteStudentsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      setIsBulkActionInProgress(true);
       const { error } = await supabase.from('students').delete().in('id', ids);
       if (error) throw error;
-      
-      // Log the bulk deletion in audit log
-      await Promise.all(ids.map(id => 
-        logDelete('students', id, `Student deleted in bulk operation by ${user?.email}`)
-      ));
-      
       return ids;
     },
-    onSuccess: (_, ids) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['students']
       });
       toast({
         title: "Students deleted",
-        description: `${ids.length} students have been deleted successfully.`
+        description: `${selectedRowIds.length} students have been deleted successfully.`
       });
       setSelectedRowIds([]);
-      setIsBulkActionInProgress(false);
     },
     onError: error => {
       toast({
@@ -189,14 +179,12 @@ export default function Students() {
         description: error.message,
         variant: "destructive"
       });
-      setIsBulkActionInProgress(false);
     }
   });
 
   // Mutation for bulk updating students status
   const bulkUpdateStudentsStatusMutation = useMutation({
     mutationFn: async ({ ids, status }: { ids: string[], status: string }) => {
-      setIsBulkActionInProgress(true);
       const { error } = await supabase.from('students')
         .update({ 
           status, 
@@ -205,24 +193,17 @@ export default function Students() {
         })
         .in('id', ids);
       if (error) throw error;
-      
-      // Log the bulk status update in audit log
-      await Promise.all(ids.map(id => 
-        logUpdate('students', id, `Student status updated to ${status} in bulk operation by ${user?.email}`)
-      ));
-      
-      return { ids, status };
+      return ids;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['students']
       });
       toast({
         title: "Students updated",
-        description: `${data.ids.length} students have been updated to ${data.status} status.`
+        description: `${selectedRowIds.length} students have been updated successfully.`
       });
       setSelectedRowIds([]);
-      setIsBulkActionInProgress(false);
     },
     onError: error => {
       toast({
@@ -230,73 +211,8 @@ export default function Students() {
         description: error.message,
         variant: "destructive"
       });
-      setIsBulkActionInProgress(false);
     }
   });
-
-  // Function to export students data to CSV
-  const exportToCSV = () => {
-    if (selectedRowIds.length === 0) return;
-    
-    setIsBulkActionInProgress(true);
-    
-    try {
-      // Get selected students data
-      const selectedStudents = students.filter(student => 
-        selectedRowIds.includes(student.id)
-      );
-      
-      // Define CSV headers
-      const headers = [
-        'ID', 'Admission Number', 'Name', 'Grade', 'Gender', 
-        'Admission Date', 'Sponsorship Status', 'Status'
-      ];
-      
-      // Format student data for CSV
-      const csvData = selectedStudents.map(student => [
-        student.id,
-        student.admission_number,
-        student.name,
-        student.current_grade,
-        student.gender,
-        student.admission_date ? new Date(student.admission_date).toLocaleDateString() : 'N/A',
-        student.sponsor_id ? 'Sponsored' : 'Unsponsored',
-        student.status
-      ]);
-      
-      // Combine headers and data
-      const csvContent = [
-        headers.join(','),
-        ...csvData.map(row => row.join(','))
-      ].join('\n');
-      
-      // Create download link
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `students_export_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Show success message
-      toast({
-        title: "Export successful",
-        description: `${selectedStudents.length} students exported to CSV file.`
-      });
-      
-    } catch (error) {
-      console.error("Export error:", error);
-      toast({
-        title: "Export failed",
-        description: "There was an error exporting the data.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsBulkActionInProgress(false);
-    }
-  };
 
   // Filter students based on filters
   const filteredStudents = students.filter(student => {
@@ -351,15 +267,6 @@ export default function Students() {
     }
   };
 
-  const handleBulkActivate = () => {
-    if (selectedRowIds.length > 0) {
-      bulkUpdateStudentsStatusMutation.mutate({ 
-        ids: selectedRowIds, 
-        status: "Active" 
-      });
-    }
-  };
-
   const handleBulkDeactivate = () => {
     if (selectedRowIds.length > 0) {
       bulkUpdateStudentsStatusMutation.mutate({ 
@@ -369,28 +276,30 @@ export default function Students() {
     }
   };
 
-  // Define the bulk actions for the DataTable
-  const bulkActions = [
-    {
-      label: "Activate Students",
-      action: handleBulkActivate
-    },
-    {
-      label: "Deactivate Students",
-      action: handleBulkDeactivate
-    },
-    {
-      label: "Export to CSV",
-      action: exportToCSV
-    },
-    {
-      label: "Delete Students",
-      action: () => setIsBulkDeleteAlertOpen(true)
-    }
-  ];
-
-  // Define columns for DataTable
+  // Define columns for DataTable with checkbox selection
   const columns = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "admission_number",
       header: "ADM No."
@@ -581,16 +490,41 @@ export default function Students() {
       </div>
     </div>
 
+    {/* Bulk actions */}
+    {selectedRowIds.length > 0 && (
+      <div className="bg-muted p-2 rounded-md flex items-center justify-between">
+        <span className="ml-2 text-sm font-medium">
+          {selectedRowIds.length} student{selectedRowIds.length !== 1 ? 's' : ''} selected
+        </span>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleBulkDeactivate}
+            disabled={bulkUpdateStudentsStatusMutation.isPending}
+          >
+            Deactivate
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => setIsBulkDeleteAlertOpen(true)}
+            disabled={bulkDeleteStudentsMutation.isPending}
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    )}
+
     {/* Students table */}
     <DataTable 
       columns={columns} 
       data={filteredStudents} 
       searchColumn="name" 
       searchPlaceholder="Search students..." 
-      isLoading={isLoading || isBulkActionInProgress} 
+      isLoading={isLoading} 
       onRowSelectionChange={setSelectedRowIds}
-      bulkActions={bulkActions}
-      onRowClick={(row) => navigate(`/students/${row.id}`)}
     />
 
     {/* Add Student Modal */}
@@ -646,9 +580,9 @@ export default function Students() {
           <AlertDialogAction 
             onClick={handleBulkDelete} 
             className="bg-destructive text-destructive-foreground"
-            disabled={isBulkActionInProgress}
+            disabled={bulkDeleteStudentsMutation.isPending}
           >
-            {isBulkActionInProgress ? "Deleting..." : "Delete All Selected"}
+            {bulkDeleteStudentsMutation.isPending ? "Deleting..." : "Delete All Selected"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

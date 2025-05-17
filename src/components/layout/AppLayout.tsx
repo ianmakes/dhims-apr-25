@@ -5,12 +5,12 @@ import { AppHeader } from "./AppHeader";
 
 export function AppLayout() {
   return (
-    <div className="flex h-screen w-full bg-wp-gray-50">
+    <div className="flex h-screen w-full bg-background">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <AppHeader />
         <main className="flex-1 overflow-auto bg-wp-gray-50">
-          <div className="wp-container py-4 md:py-6">
+          <div className="page-content-container py-4 md:py-6">
             <Outlet />
           </div>
         </main>

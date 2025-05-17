@@ -4,6 +4,7 @@ import { Json } from "@/integrations/supabase/types";
 
 // Export specific table types for easier usage
 export type Profile = Database['public']['Tables']['profiles']['Row'] & {
+  bio?: string | null;
   position?: string | null;
   phone?: string | null;
 };
