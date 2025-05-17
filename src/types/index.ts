@@ -1,3 +1,4 @@
+
 export interface AcademicYear {
   id: string;
   year_name: string;
@@ -31,3 +32,16 @@ export interface Student {
   sponsor_id: string | null;
   slug: string;
 }
+
+export interface User {
+  id: string;
+  created_at: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: UserRole;
+  is_active: boolean;
+  last_login?: string;
+}
+
+export type UserRole = 'admin' | 'manager' | 'teacher' | 'user';

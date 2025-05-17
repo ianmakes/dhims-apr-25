@@ -28,6 +28,8 @@ export function AcademicYearSelectButton({
   const [isLoading, setIsLoading] = useState(false);
 
   const handleYearChange = async (yearId: string) => {
+    if (isLoading) return; // Prevent multiple clicks while loading
+    
     const year = availableYears.find(y => y.id === yearId);
     if (!year) return;
 
@@ -61,7 +63,6 @@ export function AcademicYearSelectButton({
         <DropdownMenuRadioGroup
           value={currentYear.id}
           onValueChange={handleYearChange}
-          disabled={isLoading}
         >
           {availableYears.map((year) => (
             <DropdownMenuRadioItem

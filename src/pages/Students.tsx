@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -20,26 +21,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Drawer,
   DrawerClose,
@@ -53,38 +41,26 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, CaretSortIcon, ChevronDownIcon, Edit, Eye, FileText, Filter, Plus, RefreshCcw, Search, Trash2, UserPlus } from "lucide-react";
+import { 
+  ChevronDownIcon, 
+  Edit, 
+  Eye, 
+  FileText, 
+  Filter, 
+  MoreHorizontal, 
+  Plus, 
+  RefreshCcw, 
+  Search, 
+  SortAsc,
+  Trash2, 
+  UserPlus 
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAcademicYear } from "@/contexts/AcademicYearContext";
-
-type Student = {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  first_name: string;
-  last_name: string;
-  date_of_birth: string;
-  gender: string;
-  address: string;
-  contact_number: string;
-  email: string;
-  guardian_name: string;
-  guardian_contact_number: string;
-  enrollment_date: string;
-  grade_level: string;
-  academic_performance: string;
-  attendance_record: string;
-  behavioral_notes: string;
-  medical_information: string;
-  special_needs: string;
-  extracurricular_activities: string;
-  notes: string;
-  sponsor_id: string | null;
-  current_academic_year: number;
-};
+import type { Student } from "@/types";
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -116,7 +92,32 @@ export default function Students() {
         return;
       }
       
-      setStudents(data || []);
+      // Ensure the data matches our Student type
+      const typedStudents = data?.map(item => ({
+        id: item.id,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        first_name: item.first_name,
+        last_name: item.last_name,
+        date_of_birth: item.date_of_birth,
+        gender: item.gender,
+        address: item.address,
+        phone_number: item.phone_number || '',
+        email: item.email,
+        guardian_name: item.guardian_name,
+        guardian_phone_number: item.guardian_phone_number || '',
+        guardian_email: item.guardian_email || '',
+        class_level: item.class_level || '',
+        enrollment_date: item.enrollment_date,
+        previous_school: item.previous_school,
+        medical_info: item.medical_info,
+        special_needs: item.special_needs,
+        notes: item.notes,
+        sponsor_id: item.sponsor_id,
+        slug: item.slug || ''
+      })) as Student[];
+      
+      setStudents(typedStudents || []);
     } catch (error) {
       console.error("Error in fetchStudents:", error);
     } finally {
@@ -242,7 +243,7 @@ export default function Students() {
                     >
                       First Name
                       {sortColumn === "first_name" && (
-                        <CaretSortIcon className="ml-2 h-4 w-4" />
+                        <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
                   </TableHead>
@@ -253,7 +254,7 @@ export default function Students() {
                     >
                       Last Name
                       {sortColumn === "last_name" && (
-                        <CaretSortIcon className="ml-2 h-4 w-4" />
+                        <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
                   </TableHead>
@@ -264,18 +265,18 @@ export default function Students() {
                     >
                       Email
                       {sortColumn === "email" && (
-                        <CaretSortIcon className="ml-2 h-4 w-4" />
+                        <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
                   </TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("grade_level")}
+                      onClick={() => handleSort("class_level")}
                     >
                       Grade
-                      {sortColumn === "grade_level" && (
-                        <CaretSortIcon className="ml-2 h-4 w-4" />
+                      {sortColumn === "class_level" && (
+                        <SortAsc className="ml-2 h-4 w-4" />
                       )}
                     </Button>
                   </TableHead>
@@ -303,13 +304,13 @@ export default function Students() {
                       </TableCell>
                       <TableCell>{student.last_name}</TableCell>
                       <TableCell>{student.email}</TableCell>
-                      <TableCell>{student.grade_level}</TableCell>
+                      <TableCell>{student.class_level}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Open menu</span>
-                              <DotsHorizontalIcon className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
