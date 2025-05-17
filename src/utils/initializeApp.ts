@@ -2,8 +2,8 @@
 import { createSuperuser } from "@/integrations/supabase/createSuperuser";
 
 // Default fallback values - only used if env vars are not set
-const DEFAULT_SUPERADMIN_EMAIL = "online.ianamkes@gmail.com";
-const DEFAULT_SUPERADMIN_PASSWORD = "Kenya123?";
+const DEFAULT_SUPERADMIN_EMAIL = "itest6904@gmail.com";
+const DEFAULT_SUPERADMIN_PASSWORD = "Kenya123!";
 
 export async function initializeApp() {
   // Only run in development for now
