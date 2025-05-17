@@ -55,6 +55,7 @@ interface DataTableProps<TData, TValue> {
     label: string;
     action: (selectedRowIds: string[]) => void;
   }[];
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -65,6 +66,7 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   onRowSelectionChange,
   bulkActions,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -100,6 +102,13 @@ export function DataTable<TData, TValue>({
     },
     enableRowSelection: true,
   });
+
+  // Handle row click
+  const handleRowClick = (row: any) => {
+    if (onRowClick) {
+      onRowClick(row.original);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -196,7 +205,8 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/50 transition-colors"
+                  className={`hover:bg-muted/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={() => handleRowClick(row)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="text-left">

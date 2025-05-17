@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart2, BookOpen, ChartBar, Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
@@ -368,7 +367,12 @@ export default function Exams() {
     enableHiding: false
   }, {
     accessorKey: "name",
-    header: "Name"
+    header: "Name",
+    cell: ({
+      row
+    }) => <span className="font-medium text-primary hover:underline">
+        {row.original.name}
+      </span>
   }, {
     accessorKey: "term",
     header: "Term"
@@ -441,6 +445,11 @@ export default function Exams() {
           </DropdownMenuContent>
         </DropdownMenu>
   }];
+
+  // Handle row click to navigate to exam details
+  const handleRowClick = (exam: ExamWithScores) => {
+    navigate(`/exams/${exam.id}`);
+  };
 
   // Filter exams based on search term and filters
   const filteredExams = exams.filter(exam => (selectedYear ? exam.academic_year === selectedYear : true) && (selectedTerm ? exam.term === selectedTerm : true) && (searchTerm ? exam.name.toLowerCase().includes(searchTerm.toLowerCase()) : true));
@@ -635,7 +644,7 @@ export default function Exams() {
         <CardContent>
           
 
-          <DataTable columns={columns} data={filteredExams} isLoading={isLoading} searchColumn="name" onRowSelectionChange={handleRowSelectionChange} bulkActions={bulkActions} />
+          <DataTable columns={columns} data={filteredExams} isLoading={isLoading} searchColumn="name" onRowSelectionChange={handleRowSelectionChange} bulkActions={bulkActions} onRowClick={handleRowClick} />
         </CardContent>
       </Card>
 
