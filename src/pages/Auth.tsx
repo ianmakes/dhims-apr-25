@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +28,10 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Default fallback values - only used if env vars are not set
+  const DEFAULT_SUPERADMIN_EMAIL = "itest6904@gmail.com";
+  const DEFAULT_SUPERADMIN_PASSWORD = "Kenya123!";
 
   // Check if user is already logged in
   useEffect(() => {
@@ -93,9 +96,13 @@ export default function Auth() {
   const handleGuestLogin = async () => {
     try {
       setIsLoading(true);
+      // Use environment variables with fallbacks
+      const email = import.meta.env.VITE_SUPERADMIN_EMAIL || DEFAULT_SUPERADMIN_EMAIL;
+      const password = import.meta.env.VITE_SUPERADMIN_PASSWORD || DEFAULT_SUPERADMIN_PASSWORD;
+      
       const { error } = await supabase.auth.signInWithPassword({
-        email: "itest6904@gmail.com",
-        password: "Kenya123!",
+        email,
+        password,
       });
 
       if (error) {
@@ -103,13 +110,13 @@ export default function Auth() {
       }
 
       toast({
-        title: "Guest login successful",
-        description: "Welcome! You are now logged in as a guest user.",
+        title: "Admin login successful",
+        description: "Welcome! You are now logged in as an administrator.",
       });
     } catch (error) {
       const authError = error as AuthError;
       toast({
-        title: "Guest login failed",
+        title: "Admin login failed",
         description: authError?.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });

@@ -2,10 +2,7 @@
 import { supabase } from "./client";
 
 // This is a development utility function to create the initial superuser
-export const createSuperuser = async () => {
-  const email = "itest6904@gmail.com";
-  const password = "Kenya123!";
-  
+export const createSuperuser = async (email = "itest6904@gmail.com", password = "Kenya123!") => {
   try {
     // Check if the user already exists
     const { data: existingUsers, error: checkError } = await supabase
