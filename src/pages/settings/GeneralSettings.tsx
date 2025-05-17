@@ -1,17 +1,15 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { logUpdate } from "@/utils/auditLog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload } from "lucide-react";
 
 const generalSettingsSchema = z.object({
@@ -27,161 +25,100 @@ const generalSettingsSchema = z.object({
   theme_mode: z.enum(["light", "dark", "system"], {
     required_error: "Please select a theme mode."
   }),
-  footer_text: z.string().optional(),
-  app_version: z.string().optional()
+  footer_text: z.string().optional()
 });
 
-type GeneralSettingsValues = z.infer<typeof generalSettingsSchema>;
+type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
 
 export default function GeneralSettings() {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
-  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const faviconInputRef = useRef<HTMLInputElement>(null);
-
-  // Default form values
-  const defaultValues: GeneralSettingsValues = {
+  const [settings, setSettings] = useState<GeneralSettingsFormValues>({
     organization_name: "David's Hope International",
-    primary_color: "#2271b1", // WP default blue
-    secondary_color: "#dcdcde", // WP light gray
+    primary_color: "#9b87f5",
+    secondary_color: "#7E69AB",
     theme_mode: "light",
-    footer_text: "© 2025 David's Hope International. All rights reserved.",
-    app_version: "1.0.0"
-  };
-
-  const form = useForm<GeneralSettingsValues>({
-    resolver: zodResolver(generalSettingsSchema),
-    defaultValues
+    footer_text: ""
   });
 
-  useEffect(() => {
+  const form = useForm<GeneralSettingsFormValues>({
+    resolver: zodResolver(generalSettingsSchema),
+    defaultValues: settings
+  });
+
+  // Fetch settings on component mount
+  useState(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('*')
+          .eq('id', 'general')
+          .single();
+          
+        if (error) {
+          console.error('Error fetching settings:', error);
+          return;
+        }
+        
+        if (data) {
+          form.reset({
+            organization_name: data.organization_name || "David's Hope International",
+            primary_color: data.primary_color || "#9b87f5",
+            secondary_color: data.secondary_color || "#7E69AB",
+            theme_mode: data.theme_mode || "light",
+            footer_text: data.footer_text || ""
+          });
+          setSettings(data as GeneralSettingsFormValues);
+        }
+      } catch (error) {
+        console.error('Error in fetchSettings:', error);
+      }
+    };
+    
     fetchSettings();
   }, []);
 
-  const fetchSettings = async () => {
+  const uploadFile = async (file: File, bucket: string) => {
     try {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('*')
-        .eq('id', 'general')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        setSettings(data);
-        form.reset({
-          organization_name: data.organization_name,
-          primary_color: data.primary_color,
-          secondary_color: data.secondary_color,
-          theme_mode: data.theme_mode as "light" | "dark" | "system",
-          footer_text: data.footer_text || "",
-          app_version: data.app_version || ""
-        });
-
-        if (data.logo_url) {
-          setLogoPreview(data.logo_url);
-        }
-        if (data.favicon_url) {
-          setFaviconPreview(data.favicon_url);
-        }
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${Date.now()}.${fileExt}`;
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
+      
+      if (error) throw error;
+      
+      const { data } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
         
-        // Apply theme settings
-        applyThemeSettings(data);
-      }
+      return data.publicUrl;
     } catch (error) {
-      console.error('Error loading app settings:', error);
-    }
-  };
-  
-  // Apply theme settings to the document
-  const applyThemeSettings = (settings: any) => {
-    if (settings.primary_color) {
-      document.documentElement.style.setProperty('--primary', settings.primary_color);
-      document.documentElement.style.setProperty('--wp-primary', settings.primary_color);
-    }
-    
-    if (settings.secondary_color) {
-      document.documentElement.style.setProperty('--secondary', settings.secondary_color);
-    }
-    
-    // Apply theme mode
-    if (settings.theme_mode) {
-      if (settings.theme_mode === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      console.error(`Error uploading to ${bucket}:`, error);
+      return null;
     }
   };
 
-  const handleLogoClick = () => {
-    logoInputRef.current?.click();
-  };
-
-  const handleFaviconClick = () => {
-    faviconInputRef.current?.click();
-  };
-
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setFaviconFile(file);
-      setFaviconPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const uploadImage = async (file: File, bucket: string, folder: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
-
-    if (error) throw error;
-
-    const { data: publicUrl } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-
-    return publicUrl.publicUrl;
-  };
-
-  const onSubmit = async (data: GeneralSettingsValues) => {
+  const onSubmit = async (data: GeneralSettingsFormValues) => {
+    setIsLoading(true);
     try {
-      setIsSubmitting(true);
-
-      // Upload logo and favicon if provided
-      let logoUrl = settings?.logo_url || null;
-      let faviconUrl = settings?.favicon_url || null;
-
+      let logoUrl = undefined;
+      let faviconUrl = undefined;
+      
+      // Upload logo if selected
       if (logoFile) {
-        logoUrl = await uploadImage(logoFile, 'app-assets', 'logos');
+        logoUrl = await uploadFile(logoFile, 'app-assets');
       }
-
+      
+      // Upload favicon if selected
       if (faviconFile) {
-        faviconUrl = await uploadImage(faviconFile, 'app-assets', 'favicons');
+        faviconUrl = await uploadFile(faviconFile, 'app-assets');
       }
-
-      // Get current user for audit log
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Save settings to database
+      
+      // Update settings
       const { error } = await supabase
         .from('app_settings')
         .upsert({
@@ -191,317 +128,222 @@ export default function GeneralSettings() {
           secondary_color: data.secondary_color,
           theme_mode: data.theme_mode,
           footer_text: data.footer_text,
-          app_version: data.app_version,
-          logo_url: logoUrl,
-          favicon_url: faviconUrl,
-          updated_at: new Date().toISOString(),
-          updated_by: user?.id
+          ...(logoUrl && { logo_url: logoUrl }),
+          ...(faviconUrl && { favicon_url: faviconUrl })
         });
-
+      
       if (error) throw error;
-
-      // Log the update to audit log
-      await logUpdate('app_settings', 'general', 'Updated general settings');
       
       toast({
         title: "Settings updated",
         description: "General settings have been updated successfully."
       });
-
-      // Apply theme changes immediately
-      applyThemeSettings(data);
-
-      // Update favicon if changed
-      if (faviconUrl) {
-        const linkElement = document.querySelector("link[rel='icon']");
-        if (linkElement) {
-          linkElement.setAttribute('href', faviconUrl);
-        } else {
-          const newLink = document.createElement('link');
-          newLink.rel = 'icon';
-          newLink.href = faviconUrl;
-          document.head.appendChild(newLink);
-        }
-      }
-
-      // Fetch updated settings
-      fetchSettings();
-      
-      // Reload the page to apply all theme changes
-      window.location.reload();
-      
     } catch (error: any) {
-      console.error("Error saving settings:", error);
+      console.error('Error updating settings:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update settings",
+        description: error.message || "There was an error updating settings.",
         variant: "destructive"
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-wp-text-primary text-left">General Settings</h3>
-        <p className="text-sm text-wp-text-secondary text-left">
+        <h3 className="text-lg font-medium">General Settings</h3>
+        <p className="text-sm text-muted-foreground">
           Configure your organization and application settings.
         </p>
       </div>
       
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <FormField
-            control={form.control}
-            name="organization_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-wp-text-primary">Organization Name</FormLabel>
-                <FormControl>
-                  <Input {...field} className="border-wp-border focus:border-wp-primary focus:ring-wp-primary" />
-                </FormControl>
-                <FormDescription className="text-wp-text-secondary">
-                  This will be displayed throughout the application.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-wp-text-primary">Application Logo</label>
-              <div className="flex flex-col gap-4">
-                {logoPreview && (
-                  <div className="h-16 w-auto border rounded flex items-center justify-center p-2 bg-white">
-                    <img src={logoPreview} alt="Logo preview" className="h-full w-auto object-contain" />
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={logoInputRef}
-                    id="logo-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleLogoClick}
-                    className="flex items-center gap-2 border-wp-border"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {logoPreview ? "Change Logo" : "Upload Logo"}
-                  </Button>
-                  {logoPreview && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setLogoPreview(null);
-                        setLogoFile(null);
-                      }}
-                      className="border-wp-border"
-                    >
-                      Remove
-                    </Button>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Organization Settings Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Organization</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="organization_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Organization Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        This will be displayed throughout the application.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-                <p className="text-xs text-wp-text-secondary mt-1 text-left">
-                  Recommended size: 200x60px. PNG or SVG with transparent background.
-                </p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-wp-text-primary">Application Favicon</label>
-              <div className="flex flex-col gap-4">
-                {faviconPreview && (
-                  <div className="h-16 w-16 border rounded flex items-center justify-center p-1 bg-white">
-                    <img src={faviconPreview} alt="Favicon preview" className="h-full w-full object-contain" />
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={faviconInputRef}
-                    id="favicon-upload"
-                    type="file"
-                    accept="image/png,image/jpeg,image/x-icon"
-                    onChange={handleFaviconChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleFaviconClick}
-                    className="flex items-center gap-2 border-wp-border"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {faviconPreview ? "Change Favicon" : "Upload Favicon"}
-                  </Button>
-                  {faviconPreview && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setFaviconPreview(null);
-                        setFaviconFile(null);
-                      }}
-                      className="border-wp-border"
-                    >
-                      Remove
-                    </Button>
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="footer_text"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Footer Text</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Text to display in the footer of the application.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
                   )}
+                />
+                
+                <div className="space-y-2">
+                  <FormLabel>Logo</FormLabel>
+                  <div className="flex items-center gap-4">
+                    {settings.logo_url && (
+                      <div className="w-40 h-16 bg-muted flex items-center justify-center rounded border">
+                        <img 
+                          src={settings.logo_url} 
+                          alt="Organization Logo" 
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                      />
+                      <FormDescription>
+                        Recommended size: 200x60px
+                      </FormDescription>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-wp-text-secondary mt-1 text-left">
-                  Recommended size: 32x32px or 64x64px. PNG, JPG or ICO format.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Separator className="bg-wp-border" />
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="primary_color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-wp-text-primary">Primary Color</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input type="color" {...field} className="w-16 h-10 border-wp-border" />
-                    </FormControl>
-                    <Input
-                      value={field.value}
-                      onChange={field.onChange}
-                      className="flex-1 border-wp-border focus:border-wp-primary focus:ring-wp-primary"
-                    />
+                
+                <div className="space-y-2">
+                  <FormLabel>Favicon</FormLabel>
+                  <div className="flex items-center gap-4">
+                    {settings.favicon_url && (
+                      <div className="w-10 h-10 bg-muted flex items-center justify-center rounded border">
+                        <img 
+                          src={settings.favicon_url} 
+                          alt="Favicon" 
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setFaviconFile(e.target.files?.[0] || null)}
+                      />
+                      <FormDescription>
+                        Recommended size: 32x32px
+                      </FormDescription>
+                    </div>
                   </div>
-                  <FormDescription className="text-wp-text-secondary text-left">
-                    The main color used throughout the application.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="secondary_color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-wp-text-primary">Secondary Color</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input type="color" {...field} className="w-16 h-10 border-wp-border" />
-                    </FormControl>
-                    <Input
-                      value={field.value}
-                      onChange={field.onChange}
-                      className="flex-1 border-wp-border focus:border-wp-primary focus:ring-wp-primary"
-                    />
-                  </div>
-                  <FormDescription className="text-wp-text-secondary text-left">
-                    Used for accents and highlights.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Appearance Settings Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="theme_mode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Theme Mode</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select theme mode" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="light">Light</SelectItem>
+                          <SelectItem value="dark">Dark</SelectItem>
+                          <SelectItem value="system">System</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Choose the theme mode for the application.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="primary_color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Primary Color</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input type="color" {...field} className="w-16 h-10" />
+                        </FormControl>
+                        <Input 
+                          value={field.value} 
+                          onChange={field.onChange} 
+                          className="flex-1"
+                        />
+                      </div>
+                      <FormDescription>
+                        Select the primary color for the application.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="secondary_color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Secondary Color</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input type="color" {...field} className="w-16 h-10" />
+                        </FormControl>
+                        <Input 
+                          value={field.value} 
+                          onChange={field.onChange} 
+                          className="flex-1"
+                        />
+                      </div>
+                      <FormDescription>
+                        Select the secondary color for the application.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
           </div>
-          
-          <FormField
-            control={form.control}
-            name="theme_mode"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-wp-text-primary">Theme Mode</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="border-wp-border focus:ring-wp-primary">
-                      <SelectValue placeholder="Select theme mode" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="bg-white border border-wp-border">
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormDescription className="text-wp-text-secondary text-left">
-                  Choose the theme mode for the application.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="footer_text"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-wp-text-primary">Footer Text</FormLabel>
-                <FormControl>
-                  <Textarea
-                    {...field}
-                    placeholder="© 2025 Your Organization. All rights reserved."
-                    rows={2}
-                    className="border-wp-border focus:border-wp-primary focus:ring-wp-primary"
-                  />
-                </FormControl>
-                <FormDescription className="text-wp-text-secondary text-left">
-                  Text displayed in the footer of the application.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="app_version"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-wp-text-primary">App Version</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="1.0.0"
-                    className="border-wp-border focus:border-wp-primary focus:ring-wp-primary"
-                  />
-                </FormControl>
-                <FormDescription className="text-wp-text-secondary text-left">
-                  Version number displayed in the sidebar and login page.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           
           <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              variant="wp-primary"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save General Settings"
-              )}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
             </Button>
           </div>
         </form>
