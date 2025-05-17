@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -49,14 +50,21 @@ export const useSponsorDetails = (sponsorId: string) => {
         sponsorData.slug = slug;
       }
       
-      // Get relatives for the PDF generation
-      const { data: relativesData, error: relativesError } = await supabase
-        .from("sponsor_relatives")
-        .select("*")
-        .eq("sponsor_id", sponsorId);
+      // Get relatives using custom fetch since sponsor_relatives might not exist in the supabase types
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/sponsor_relatives?sponsor_id=eq.${sponsorId}`,
+          {
+            headers: getAuthHeaders(),
+          }
+        );
         
-      if (!relativesError && relativesData) {
-        sponsorData.relatives = relativesData;
+        if (response.ok) {
+          const relativesData = await response.json();
+          sponsorData.relatives = relativesData;
+        }
+      } catch (error) {
+        console.error("Error fetching relatives:", error);
       }
       
       return sponsorData as Sponsor;

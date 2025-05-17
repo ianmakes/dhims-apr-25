@@ -86,4 +86,5 @@ export type Sponsor = Database['public']['Tables']['sponsors']['Row'] & {
   profile_image_url?: string | null;
   primary_email_for_updates?: string | null;
   slug?: string | null;
+  relatives?: SponsorRelative[]; // Add this to fix type errors
 };
