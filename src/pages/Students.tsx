@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X } from "lucide-react";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +39,7 @@ export default function Students() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<string>("");
 
   // Fetch students data from Supabase
   const {
@@ -195,15 +196,16 @@ export default function Students() {
       if (error) throw error;
       return ids;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['students']
       });
       toast({
         title: "Students updated",
-        description: `${selectedRowIds.length} students have been updated successfully.`
+        description: `${selectedRowIds.length} students have been ${variables.status.toLowerCase()}.`
       });
       setSelectedRowIds([]);
+      setBulkActionType("");
     },
     onError: error => {
       toast({
@@ -267,11 +269,12 @@ export default function Students() {
     }
   };
 
-  const handleBulkDeactivate = () => {
+  const handleBulkStatusChange = (status: string) => {
+    setBulkActionType(status);
     if (selectedRowIds.length > 0) {
       bulkUpdateStudentsStatusMutation.mutate({ 
         ids: selectedRowIds, 
-        status: "Inactive" 
+        status: status 
       });
     }
   };
@@ -355,8 +358,10 @@ export default function Students() {
         const status = row.getValue("status");
         return <div className="capitalize">
           {status === "Active" ? <div className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-700">
+            <Check className="mr-1 h-3 w-3" />
             <span>Active</span>
           </div> : status === "Inactive" ? <div className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
+            <X className="mr-1 h-3 w-3" />
             <span>Inactive</span>
           </div> : <div className="inline-flex items-center justify-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-700">
             <span>{status}</span>
@@ -400,6 +405,30 @@ export default function Students() {
           </DropdownMenu>
         </div>;
       }
+    }
+  ];
+
+  // Define bulk actions for DataTable
+  const bulkActions = [
+    {
+      label: "Delete Selected",
+      action: () => setIsBulkDeleteAlertOpen(true)
+    },
+    {
+      label: "Mark as Active",
+      action: () => handleBulkStatusChange("Active")
+    },
+    {
+      label: "Mark as Inactive",
+      action: () => handleBulkStatusChange("Inactive")
+    },
+    {
+      label: "Mark as Graduated",
+      action: () => handleBulkStatusChange("Graduated")
+    },
+    {
+      label: "Mark as Transferred",
+      action: () => handleBulkStatusChange("Transferred")
     }
   ];
 
@@ -490,34 +519,7 @@ export default function Students() {
       </div>
     </div>
 
-    {/* Bulk actions */}
-    {selectedRowIds.length > 0 && (
-      <div className="bg-muted p-2 rounded-md flex items-center justify-between">
-        <span className="ml-2 text-sm font-medium">
-          {selectedRowIds.length} student{selectedRowIds.length !== 1 ? 's' : ''} selected
-        </span>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleBulkDeactivate}
-            disabled={bulkUpdateStudentsStatusMutation.isPending}
-          >
-            Deactivate
-          </Button>
-          <Button 
-            variant="destructive" 
-            size="sm"
-            onClick={() => setIsBulkDeleteAlertOpen(true)}
-            disabled={bulkDeleteStudentsMutation.isPending}
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
-    )}
-
-    {/* Students table */}
+    {/* Students table with bulk actions */}
     <DataTable 
       columns={columns} 
       data={filteredStudents} 
@@ -525,6 +527,7 @@ export default function Students() {
       searchPlaceholder="Search students..." 
       isLoading={isLoading} 
       onRowSelectionChange={setSelectedRowIds}
+      bulkActions={bulkActions}
     />
 
     {/* Add Student Modal */}

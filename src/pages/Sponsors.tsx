@@ -30,6 +30,7 @@ export default function Sponsors() {
   const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorFormValues | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [bulkActionType, setBulkActionType] = useState<string>("");
   
   const { toast } = useToast();
 
@@ -69,11 +70,13 @@ export default function Sponsors() {
     if (selectedRowIds.length > 0) {
       bulkDeleteSponsors(selectedRowIds);
       setIsBulkDeleteAlertOpen(false);
+      setBulkActionType("");
     }
   };
   
   const handleBulkUpdateStatus = (status: "active" | "inactive") => {
     if (selectedRowIds.length > 0) {
+      setBulkActionType(status);
       bulkUpdateSponsorStatus({ ids: selectedRowIds, status });
     }
   };
@@ -114,12 +117,12 @@ export default function Sponsors() {
       action: () => setIsBulkDeleteAlertOpen(true)
     },
     {
-      label: "Deactivate Selected",
-      action: () => handleBulkUpdateStatus("inactive")
-    },
-    {
       label: "Activate Selected",
       action: () => handleBulkUpdateStatus("active")
+    },
+    {
+      label: "Deactivate Selected",
+      action: () => handleBulkUpdateStatus("inactive")
     }
   ];
 
