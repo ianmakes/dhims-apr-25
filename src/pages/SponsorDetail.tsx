@@ -23,29 +23,42 @@ import { useQuery } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
 import { SponsorProfilePDF } from "@/components/sponsors/SponsorProfilePDF";
 import { toast } from "sonner";
-
 export default function SponsorDetail() {
-  
-  const { idOrSlug } = useParams<{ idOrSlug: string; }>();
+  const {
+    idOrSlug
+  } = useParams<{
+    idOrSlug: string;
+  }>();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  const [currentStudentToRemove, setCurrentStudentToRemove] = useState<{ id: string; name: string; } | null>(null);
+  const [currentStudentToRemove, setCurrentStudentToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  
+
   // First, get the actual sponsor ID from slug or ID
-  const { data: sponsorIdData, isLoading: isLoadingSponsorId } = useQuery({
+  const {
+    data: sponsorIdData,
+    isLoading: isLoadingSponsorId
+  } = useQuery({
     queryKey: ['sponsor-id', idOrSlug],
     queryFn: async () => {
       if (!idOrSlug) throw new Error('Sponsor ID or slug is required');
       if (isUuid(idOrSlug)) {
         // If it's already a UUID, just return it
-        return { id: idOrSlug };
+        return {
+          id: idOrSlug
+        };
       } else {
         // Otherwise query by slug
-        const { data, error } = await supabase.from('sponsors').select('id, slug').eq('slug', idOrSlug).single();
+        const {
+          data,
+          error
+        } = await supabase.from('sponsors').select('id, slug').eq('slug', idOrSlug).single();
         if (error) {
           console.error("Error fetching sponsor by slug:", error);
           throw error;
@@ -58,10 +71,7 @@ export default function SponsorDetail() {
     },
     enabled: !!idOrSlug
   });
-  
-  
   const sponsorId = sponsorIdData?.id;
-  
   const {
     sponsor,
     availableStudents,
@@ -79,16 +89,18 @@ export default function SponsorDetail() {
     updateTimelineEvent,
     deleteTimelineEvent
   } = useSponsorDetails(sponsorId || '');
-  
-  const { updateSponsor } = useSponsors();
-  
+  const {
+    updateSponsor
+  } = useSponsors();
+
   // Effect to update URL with slug if we loaded with ID
   useEffect(() => {
     if (sponsor && isUuid(idOrSlug as string) && sponsor.slug) {
-      navigate(`/sponsors/${sponsor.slug}`, { replace: true });
+      navigate(`/sponsors/${sponsor.slug}`, {
+        replace: true
+      });
     }
   }, [sponsor, idOrSlug, navigate]);
-  
   const handleEditSponsor = (data: SponsorFormValues) => {
     if (sponsorId) {
       updateSponsor({
@@ -98,17 +110,13 @@ export default function SponsorDetail() {
       setIsEditModalOpen(false);
     }
   };
-  
   const isLoading = isLoadingSponsorId || isLoadingSponsorDetails;
-  
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
   if (!sponsor) {
     return <div>Sponsor not found</div>;
   }
-  
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "";
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -126,11 +134,9 @@ export default function SponsorDetail() {
   const handleDownloadPDF = () => {
     setIsGeneratingPDF(true);
     toast.info("Generating PDF profile...", {
-      duration: 2000,
+      duration: 2000
     });
   };
-  
-  
   const handleOpenRemoveDialog = (studentId: string, studentName: string) => {
     setCurrentStudentToRemove({
       id: studentId,
@@ -138,13 +144,11 @@ export default function SponsorDetail() {
     });
     setIsRemoveDialogOpen(true);
   };
-  
   const handleRemoveStudent = (data: StudentRemovalForm) => {
     removeStudent(data);
     setIsRemoveDialogOpen(false);
     setCurrentStudentToRemove(null);
   };
-  
   const handleAssignStudents = () => {
     if (selectedStudentIds.length === 0) {
       toast.error("Please select at least one student to assign");
@@ -153,17 +157,13 @@ export default function SponsorDetail() {
     assignStudents(selectedStudentIds);
     setSelectedStudentIds([]);
   };
-  
   const toggleStudentSelection = (studentId: string) => {
-    setSelectedStudentIds(selectedStudentIds.includes(studentId) 
-      ? selectedStudentIds.filter(id => id !== studentId) 
-      : [...selectedStudentIds, studentId]);
+    setSelectedStudentIds(selectedStudentIds.includes(studentId) ? selectedStudentIds.filter(id => id !== studentId) : [...selectedStudentIds, studentId]);
   };
-  
   const handleToggleStatus = () => {
     if (sponsorId && sponsor) {
       const newStatus = sponsor.status === "active" ? "inactive" : "active";
-      
+
       // Create a complete SponsorFormValues object with all required fields
       const fullSponsorData: SponsorFormValues = {
         firstName: sponsor.first_name,
@@ -180,12 +180,11 @@ export default function SponsorDetail() {
         profileImageUrl: sponsor.profile_image_url || undefined,
         primaryEmailForUpdates: sponsor.primary_email_for_updates || undefined
       };
-      
       updateSponsor({
         id: sponsorId,
         ...fullSponsorData
       });
-      
+
       // If sponsor is deactivated, unassign all students
       if (newStatus === "inactive" && sponsor.students && sponsor.students.length > 0) {
         sponsor.students.forEach((student: any) => {
@@ -203,9 +202,7 @@ export default function SponsorDetail() {
   const filteredAvailableStudents = availableStudents.filter(student => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    return student.name.toLowerCase().includes(query) || 
-           student.admission_number.toLowerCase().includes(query) || 
-           student.current_grade && student.current_grade.toLowerCase().includes(query);
+    return student.name.toLowerCase().includes(query) || student.admission_number.toLowerCase().includes(query) || student.current_grade && student.current_grade.toLowerCase().includes(query);
   });
 
   // Map database fields to form fields for the modal
@@ -224,19 +221,14 @@ export default function SponsorDetail() {
     profileImageUrl: sponsor.profile_image_url || "",
     primaryEmailForUpdates: sponsor.primary_email_for_updates || ""
   } : {} as SponsorFormValues;
-  
   return <div className="space-y-6 fade-in">
-      {isGeneratingPDF && <SponsorProfilePDF 
-        sponsor={sponsor} 
-        onGenerated={() => {
-          setIsGeneratingPDF(false);
-          toast.success("PDF profile generated successfully!");
-        }}
-        onError={(error) => {
-          toast.error("Error generating PDF: " + error.message);
-          setIsGeneratingPDF(false);
-        }}
-      />}
+      {isGeneratingPDF && <SponsorProfilePDF sponsor={sponsor} onGenerated={() => {
+      setIsGeneratingPDF(false);
+      toast.success("PDF profile generated successfully!");
+    }} onError={error => {
+      toast.error("Error generating PDF: " + error.message);
+      setIsGeneratingPDF(false);
+    }} />}
       
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -259,14 +251,8 @@ export default function SponsorDetail() {
         <div className="flex gap-2 items-center">
           <div className="flex items-center gap-2 mr-2">
             <span className="text-sm font-medium">Status:</span>
-            <Switch 
-              checked={sponsor.status === "active"}
-              onCheckedChange={handleToggleStatus}
-              aria-label={`${sponsor.status === "active" ? "Deactivate" : "Activate"} sponsor`}
-            />
-            <span className={`text-sm ${sponsor.status === "active" ? "text-green-600" : "text-gray-500"}`}>
-              {sponsor.status === "active" ? "Active" : "Inactive"}
-            </span>
+            <Switch checked={sponsor.status === "active"} onCheckedChange={handleToggleStatus} aria-label={`${sponsor.status === "active" ? "Deactivate" : "Activate"} sponsor`} />
+            
           </div>
           <Button variant="outline" onClick={handleDownloadPDF}>
             <FileDown className="mr-2 h-4 w-4" />
@@ -285,12 +271,9 @@ export default function SponsorDetail() {
         <Card className="lg:col-span-2">
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-24 w-24">
-              {sponsor.profile_image_url ? 
-                <AvatarImage src={sponsor.profile_image_url} alt={`${sponsor.first_name} ${sponsor.last_name}`} /> : 
-                <AvatarFallback className="text-2xl">
+              {sponsor.profile_image_url ? <AvatarImage src={sponsor.profile_image_url} alt={`${sponsor.first_name} ${sponsor.last_name}`} /> : <AvatarFallback className="text-2xl">
                   {sponsor.first_name[0]}{sponsor.last_name[0]}
-                </AvatarFallback>
-              }
+                </AvatarFallback>}
             </Avatar>
             <CardTitle className="mt-2">
               {sponsor.first_name} {sponsor.last_name}
@@ -423,14 +406,7 @@ export default function SponsorDetail() {
                 </Card>}
 
               {/* Sponsor Relatives Section */}
-              <SponsorRelativesSection 
-                sponsorId={sponsorId!} 
-                relatives={sponsorRelatives}
-                isLoading={isLoadingRelatives}
-                onAddRelative={addSponsorRelative}
-                onUpdateRelative={updateSponsorRelative}
-                onDeleteRelative={deleteSponsorRelative}
-              />
+              <SponsorRelativesSection sponsorId={sponsorId!} relatives={sponsorRelatives} isLoading={isLoadingRelatives} onAddRelative={addSponsorRelative} onUpdateRelative={updateSponsorRelative} onDeleteRelative={deleteSponsorRelative} />
             </TabsContent>
 
             {/* Sponsored Students Tab */}
@@ -446,9 +422,9 @@ export default function SponsorDetail() {
                   {sponsor.students?.length === 0 ? <div className="text-center py-8">
                       <p className="text-muted-foreground">This sponsor is not currently sponsoring any students.</p>
                       <Button variant="outline" className="mt-4" onClick={() => {
-                        const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement;
-                        if (assignTab) assignTab.click();
-                      }}>
+                    const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement;
+                    if (assignTab) assignTab.click();
+                  }}>
                         <Plus className="mr-2 h-4 w-4" />
                         Assign Students
                       </Button>
@@ -467,10 +443,7 @@ export default function SponsorDetail() {
                             <TableCell>
                               <div className="flex items-center space-x-3">
                                 <Avatar className="h-8 w-8">
-                                  {student.profile_image_url ? 
-                                    <AvatarImage src={student.profile_image_url} alt={student.name} /> : 
-                                    <AvatarFallback>{student.name[0]}</AvatarFallback>
-                                  }
+                                  {student.profile_image_url ? <AvatarImage src={student.profile_image_url} alt={student.name} /> : <AvatarFallback>{student.name[0]}</AvatarFallback>}
                                 </Avatar>
                                 <div>
                                   <Link to={`/students/${student.id}`} className="font-medium text-primary hover:underline">
@@ -501,13 +474,7 @@ export default function SponsorDetail() {
 
             {/* Timeline Tab */}
             <TabsContent value="timeline" className="py-4">
-              <SponsorTimelineTab 
-                timelineEvents={timelineEvents} 
-                isLoading={isLoadingTimeline} 
-                onAddTimelineEvent={addTimelineEvent}
-                onUpdateTimelineEvent={updateTimelineEvent}
-                onDeleteTimelineEvent={deleteTimelineEvent}
-              />
+              <SponsorTimelineTab timelineEvents={timelineEvents} isLoading={isLoadingTimeline} onAddTimelineEvent={addTimelineEvent} onUpdateTimelineEvent={updateTimelineEvent} onDeleteTimelineEvent={deleteTimelineEvent} />
             </TabsContent>
 
             {/* Assign Students Tab */}
@@ -526,12 +493,7 @@ export default function SponsorDetail() {
                       {/* Search input */}
                       <div className="flex items-center space-x-2">
                         <Search className="h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          placeholder="Search students by name, admission number, or grade..." 
-                          value={searchQuery}
-                          onChange={e => setSearchQuery(e.target.value)}
-                          className="flex-1"
-                        />
+                        <Input placeholder="Search students by name, admission number, or grade..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1" />
                       </div>
 
                       {/* Students table */}
@@ -540,17 +502,13 @@ export default function SponsorDetail() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="w-12">
-                                <Checkbox 
-                                  checked={filteredAvailableStudents.length > 0 && filteredAvailableStudents.every(student => selectedStudentIds.includes(student.id))}
-                                  onCheckedChange={checked => {
-                                    if (checked) {
-                                      setSelectedStudentIds(filteredAvailableStudents.map(s => s.id));
-                                    } else {
-                                      setSelectedStudentIds([]);
-                                    }
-                                  }}
-                                  aria-label="Select all students"
-                                />
+                                <Checkbox checked={filteredAvailableStudents.length > 0 && filteredAvailableStudents.every(student => selectedStudentIds.includes(student.id))} onCheckedChange={checked => {
+                              if (checked) {
+                                setSelectedStudentIds(filteredAvailableStudents.map(s => s.id));
+                              } else {
+                                setSelectedStudentIds([]);
+                              }
+                            }} aria-label="Select all students" />
                               </TableHead>
                               <TableHead>Student</TableHead>
                               <TableHead>Admission #</TableHead>
@@ -566,19 +524,12 @@ export default function SponsorDetail() {
                                 </TableCell>
                               </TableRow> : filteredAvailableStudents.map(student => <TableRow key={student.id}>
                                   <TableCell>
-                                    <Checkbox 
-                                      checked={selectedStudentIds.includes(student.id)}
-                                      onCheckedChange={() => toggleStudentSelection(student.id)}
-                                      aria-label={`Select ${student.name}`}
-                                    />
+                                    <Checkbox checked={selectedStudentIds.includes(student.id)} onCheckedChange={() => toggleStudentSelection(student.id)} aria-label={`Select ${student.name}`} />
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center space-x-3">
                                       <Avatar className="h-8 w-8">
-                                        {student.profile_image_url ? 
-                                          <AvatarImage src={student.profile_image_url} alt={student.name} /> : 
-                                          <AvatarFallback>{student.name[0]}</AvatarFallback>
-                                        }
+                                        {student.profile_image_url ? <AvatarImage src={student.profile_image_url} alt={student.name} /> : <AvatarFallback>{student.name[0]}</AvatarFallback>}
                                       </Avatar>
                                       <div className="font-medium">{student.name}</div>
                                     </div>
@@ -587,11 +538,7 @@ export default function SponsorDetail() {
                                   <TableCell>{student.current_grade || "—"}</TableCell>
                                   <TableCell>{student.gender}</TableCell>
                                   <TableCell>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => navigate(`/students/${student.id}`)}
-                                    >
+                                    <Button variant="ghost" size="sm" onClick={() => navigate(`/students/${student.id}`)}>
                                       View
                                     </Button>
                                   </TableCell>
@@ -604,10 +551,7 @@ export default function SponsorDetail() {
                         <p className="text-sm text-muted-foreground">
                           {selectedStudentIds.length} students selected
                         </p>
-                        <Button 
-                          onClick={handleAssignStudents}
-                          disabled={selectedStudentIds.length === 0}
-                        >
+                        <Button onClick={handleAssignStudents} disabled={selectedStudentIds.length === 0}>
                           Assign Selected Students
                         </Button>
                       </div>
@@ -620,20 +564,9 @@ export default function SponsorDetail() {
       </div>
 
       {/* Edit Sponsor Modal */}
-      <AddEditSponsorModal 
-        open={isEditModalOpen} 
-        onOpenChange={setIsEditModalOpen} 
-        sponsor={sponsorForForm} 
-        onSubmit={handleEditSponsor} 
-      />
+      <AddEditSponsorModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} sponsor={sponsorForForm} onSubmit={handleEditSponsor} />
 
       {/* Remove Student Dialog */}
-      {currentStudentToRemove && <RemoveStudentDialog 
-        open={isRemoveDialogOpen}
-        onOpenChange={setIsRemoveDialogOpen}
-        onConfirm={handleRemoveStudent}
-        studentId={currentStudentToRemove.id}
-        studentName={currentStudentToRemove.name}
-      />}
+      {currentStudentToRemove && <RemoveStudentDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen} onConfirm={handleRemoveStudent} studentId={currentStudentToRemove.id} studentName={currentStudentToRemove.name} />}
     </div>;
 }
