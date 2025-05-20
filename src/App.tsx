@@ -1,8 +1,8 @@
+
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
-import { useUser } from "@supabase/auth-helpers-react";
 import { supabase } from "./integrations/supabase/client";
 
 import AppLayout from "./components/layout/AppLayout";
@@ -14,9 +14,6 @@ import Exams from "./pages/Exams";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Users from "./pages/Users";
-import Roles from "./pages/Roles";
-import AuditLogs from "./pages/AuditLogs";
-import AcademicYears from "./pages/AcademicYears";
 import GeneralSettings from "./pages/settings/GeneralSettings";
 import ProfileSettings from "./pages/settings/ProfileSettings";
 import EmailSettings from "./pages/settings/EmailSettings";
@@ -25,8 +22,28 @@ import { Footer } from "./components/layout/Footer";
 
 function App() {
   const { toast } = useToast();
-  const user = useUser();
+  const [user, setUser] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+    checkUser();
+    
+    // Subscribe to auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // Function to update online status
@@ -63,17 +80,19 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<AuthLayout />}>
-            <Route path="/login" element={<AuthLayout />} />
-            <Route path="/register" element={<AuthLayout />} />
-            <Route path="/forgot-password" element={<AuthLayout />} />
-            <Route path="/reset-password" element={<AuthLayout />} />
+            <Route path="/login" element={<div>Login Page</div>} />
+            <Route path="/register" element={<div>Register Page</div>} />
+            <Route path="/forgot-password" element={<div>Forgot Password Page</div>} />
+            <Route path="/reset-password" element={<div>Reset Password Page</div>} />
           </Route>
 
           <Route
             path="/"
             element={
               user ? (
-                <AppLayout />
+                <AppLayout>
+                  <Outlet />
+                </AppLayout>
               ) : (
                 <Navigate to="/login" replace={true} />
               )
@@ -85,9 +104,6 @@ function App() {
             <Route path="/exams" element={<Exams />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/users" element={<Users />} />
-            <Route path="/roles" element={<Roles />} />
-            <Route path="/audit" element={<AuditLogs />} />
-            <Route path="/academic" element={<AcademicYears />} />
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/general" element={<GeneralSettings />} />

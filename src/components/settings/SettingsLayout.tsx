@@ -58,11 +58,14 @@ export function SettingsLayout() {
           
           // Update favicon if available
           if (data.favicon_url) {
-            const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+            let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+            if (!link) {
+              link = document.createElement('link');
+              document.head.appendChild(link);
+            }
             link.type = 'image/png';
             link.rel = 'icon';
             link.href = data.favicon_url;
-            document.getElementsByTagName('head')[0].appendChild(link);
           }
           
           // Set document title to organization name

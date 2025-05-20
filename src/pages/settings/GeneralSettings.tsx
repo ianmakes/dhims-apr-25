@@ -105,11 +105,14 @@ export default function GeneralSettings() {
         
         // Set favicon if available
         if (data.favicon_url) {
-          const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+          let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+          if (!link) {
+            link = document.createElement('link');
+            document.head.appendChild(link);
+          }
           link.type = 'image/png';
           link.rel = 'icon';
           link.href = data.favicon_url;
-          document.getElementsByTagName('head')[0].appendChild(link);
         }
       }
     } catch (error) {
@@ -205,11 +208,14 @@ export default function GeneralSettings() {
       
       // Update favicon if changed
       if (faviconUrl) {
-        const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+        if (!link) {
+          link = document.createElement('link');
+          document.head.appendChild(link);
+        }
         link.type = 'image/png';
         link.rel = 'icon';
         link.href = faviconUrl;
-        document.getElementsByTagName('head')[0].appendChild(link);
       }
       
       toast({
