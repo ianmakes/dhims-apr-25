@@ -1,92 +1,104 @@
-
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import { AppLayout } from "./components/layout/AppLayout";
-import { SettingsLayout } from "./components/settings/SettingsLayout";
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@supabase/auth-helpers-react";
+import { supabase } from "./integrations/supabase/client";
+
+import AppLayout from "./components/layout/AppLayout";
+import AuthLayout from "./components/layout/AuthLayout";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
-import StudentDetail from "./pages/StudentDetail";
 import Sponsors from "./pages/Sponsors";
-import SponsorDetail from "./pages/SponsorDetail";
 import Exams from "./pages/Exams";
-import ExamDetail from "./pages/ExamDetail";
+import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import Users from "./pages/Users";
+import Roles from "./pages/Roles";
+import AuditLogs from "./pages/AuditLogs";
+import AcademicYears from "./pages/AcademicYears";
 import GeneralSettings from "./pages/settings/GeneralSettings";
 import ProfileSettings from "./pages/settings/ProfileSettings";
-import SmtpSettings from "./pages/settings/SmtpSettings";
-import AuditLogSettings from "./pages/settings/AuditLogSettings";
-import UserRolesSettings from "./pages/settings/UserRolesSettings";
-import AcademicYearsSettings from "./pages/settings/AcademicYearsSettings";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import Index from "./pages/Index";
-import "./App.css";
+import EmailSettings from "./pages/settings/EmailSettings";
+import { GlobalSettingsProvider } from "./components/settings/GlobalSettingsProvider";
+import { Footer } from "./components/layout/Footer";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000, // 1 minute
-      retry: 1,
-    },
-  },
-});
+function App() {
+  const { toast } = useToast();
+  const user = useUser();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Auth Routes */}
-            <Route path="/auth" element={<Auth />} />
-            
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              {/* Dashboard */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              
-              {/* Students */}
-              <Route path="/students" element={<Students />} />
-              <Route path="/students/:idOrSlug" element={<StudentDetail />} />
-              
-              {/* Sponsors */}
-              <Route path="/sponsors" element={<Sponsors />} />
-              <Route path="/sponsors/:idOrSlug" element={<SponsorDetail />} />
-              
-              {/* Exams */}
-              <Route path="/exams" element={<Exams />} />
-              <Route path="/exams/:id" element={<ExamDetail />} />
-              
-              {/* Users */}
-              <Route path="/users" element={<Users />} />
-              
-              {/* Settings */}
-              <Route path="/settings" element={<SettingsLayout />}>
-                <Route index element={<Navigate to="/settings/general" replace />} />
-                <Route path="general" element={<GeneralSettings />} />
-                <Route path="profile" element={<ProfileSettings />} />
-                <Route path="smtp" element={<SmtpSettings />} />
-                <Route path="audit" element={<AuditLogSettings />} />
-                <Route path="roles" element={<UserRolesSettings />} />
-                <Route path="academic" element={<AcademicYearsSettings />} />
-              </Route>
-            </Route>
-            
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+  useEffect(() => {
+    // Function to update online status
+    const updateOnlineStatus = () => {
+      setIsOnline(navigator.onLine);
+    };
+
+    // Set initial online status
+    setIsOnline(navigator.onLine);
+
+    // Add event listeners for online/offline events
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    // Clean up event listeners when component unmounts
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOnline) {
+      toast({
+        title: "No internet connection",
+        description: "Some features may be unavailable.",
+        variant: "destructive",
+      });
+    }
+  }, [isOnline, toast]);
+
+  return (
+    <GlobalSettingsProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<AuthLayout />} />
+            <Route path="/register" element={<AuthLayout />} />
+            <Route path="/forgot-password" element={<AuthLayout />} />
+            <Route path="/reset-password" element={<AuthLayout />} />
+          </Route>
+
+          <Route
+            path="/"
+            element={
+              user ? (
+                <AppLayout />
+              ) : (
+                <Navigate to="/login" replace={true} />
+              )
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/sponsors" element={<Sponsors />} />
+            <Route path="/exams" element={<Exams />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/roles" element={<Roles />} />
+            <Route path="/audit" element={<AuditLogs />} />
+            <Route path="/academic" element={<AcademicYears />} />
+
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/general" element={<GeneralSettings />} />
+            <Route path="/settings/profile" element={<ProfileSettings />} />
+            <Route path="/settings/smtp" element={<EmailSettings />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+      <Toaster />
+    </GlobalSettingsProvider>
+  );
+}
 
 export default App;
