@@ -10,11 +10,9 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
 interface StudentLettersTabProps {
   studentId: string;
 }
-
 export function StudentLettersTab({
   studentId
 }: StudentLettersTabProps) {
@@ -116,7 +114,6 @@ export function StudentLettersTab({
     link.click();
     document.body.removeChild(link);
   };
-
   return <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Student Letters</h2>
@@ -179,7 +176,7 @@ export function StudentLettersTab({
               <div>
                 <div>
                   <h3 className="text-md font-semibold text-left">{letter.title}</h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 text-right">
                     Created on {format(new Date(letter.created_at), "MMMM d, yyyy")}
                   </p>
                   {letter.file_url && <div className="flex items-center mt-1 text-xs text-muted-foreground">
