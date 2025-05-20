@@ -47,6 +47,7 @@ export function PdfPreviewModal({
               examData={processedData} 
               termData={termData} 
               trendData={trendData} 
+              selectedYear={selectedYear}
             />
           </div>
         </div>

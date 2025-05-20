@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -7,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Sponsor, SponsorRelative } from "@/types/database";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface SponsorProfilePDFProps {
   sponsor: Sponsor;
@@ -16,6 +17,28 @@ interface SponsorProfilePDFProps {
 
 export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProfilePDFProps) {
   const [isGenerating, setIsGenerating] = useState(true);
+  
+  // Fetch logo from settings
+  const { data: logoSettings } = useQuery({
+    queryKey: ['settings', 'logo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'organization_logo')
+        .single();
+        
+      if (error) {
+        console.error("Error fetching logo settings:", error);
+        return null;
+      }
+      
+      return data?.value || null;
+    }
+  });
+  
+  // Default logo path
+  const logoPath = logoSettings || "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
 
   useEffect(() => {
     const generatePDF = async () => {
@@ -73,7 +96,7 @@ export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProf
     if (isGenerating) {
       generatePDF();
     }
-  }, [isGenerating, sponsor, onGenerated, onError]);
+  }, [isGenerating, sponsor, onGenerated, onError, logoPath]);
 
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "—";
@@ -87,9 +110,23 @@ export function SponsorProfilePDF({ sponsor, onGenerated, onError }: SponsorProf
   return (
     <div className="hidden">
       <div id="sponsor-profile-pdf" className="bg-white p-8" style={{ width: "210mm", minHeight: "297mm" }}>
-        <div className="flex flex-col items-center mb-6">
-          <h1 className="text-3xl font-bold text-center mb-2">Sponsor Profile</h1>
-          <div className="w-16 h-1 bg-wp-primary mb-6"></div>
+        {/* Header with logo */}
+        <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-6">
+          <div className="flex items-center">
+            <img 
+              src={logoPath} 
+              alt="Organization Logo" 
+              className="h-12 mr-4"
+              style={{ objectFit: "contain" }}
+              onError={(e) => {
+                e.currentTarget.src = "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
+              }}
+            />
+            <div>
+              <h1 className="text-2xl font-bold">Sponsor Profile</h1>
+              <p className="text-sm text-gray-500">Generated on {format(new Date(), "MMMM d, yyyy")}</p>
+            </div>
+          </div>
         </div>
         
         <div className="flex items-center justify-center mb-6">

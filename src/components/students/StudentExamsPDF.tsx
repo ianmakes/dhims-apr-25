@@ -5,6 +5,8 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface ExamData {
   examName: string;
@@ -28,15 +30,39 @@ interface StudentExamsPDFProps {
   examData: ExamData[];
   termData: { term: string; average: number }[];
   trendData: ChartData[];
+  selectedYear?: string;
 }
 
 export function StudentExamsPDF({ 
   studentName, 
   examData,
   termData,
-  trendData 
+  trendData,
+  selectedYear
 }: StudentExamsPDFProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Fetch logo from settings
+  const { data: logoSettings } = useQuery({
+    queryKey: ['settings', 'logo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'organization_logo')
+        .single();
+        
+      if (error) {
+        console.error("Error fetching logo settings:", error);
+        return null;
+      }
+      
+      return data?.value || null;
+    }
+  });
+  
+  // Default logo path
+  const logoPath = logoSettings || "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
 
   const generatePDF = async () => {
     setIsGenerating(true);
@@ -52,7 +78,7 @@ export function StudentExamsPDF({
       document.body.appendChild(tempContainer);
       
       // Add content to the temporary container
-      tempContainer.innerHTML = createPDFContent(studentName, examData, termData, trendData);
+      tempContainer.innerHTML = createPDFContent(studentName, examData, termData, trendData, logoPath, selectedYear);
       
       // Wait for images to load
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -139,7 +165,9 @@ export function StudentExamsPDF({
     studentName: string, 
     examData: ExamData[], 
     termData: { term: string; average: number }[],
-    trendData: ChartData[]
+    trendData: ChartData[],
+    logoPath: string,
+    selectedYear?: string
   ) => {
     // Calculate some statistics
     const averageScore = examData.length > 0
@@ -178,7 +206,10 @@ export function StudentExamsPDF({
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; border-bottom: 3px solid #cc0000; padding-bottom: 10px; margin-bottom: 20px;">
           <div style="display: flex; align-items: center;">
-            <img src="/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png" alt="School Logo" style="height: 50px; margin-right: 15px;">
+            <img src="${logoPath}" 
+                alt="School Logo" 
+                style="height: 50px; margin-right: 15px; object-fit: contain"
+                onerror="this.src='/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png'">
             <div>
               <h1 style="margin: 0; font-size: 24px; font-weight: bold; color: #333;">David's Hope International</h1>
               <p style="margin: 0; font-size: 16px;">Student Exam Performance Report</p>
@@ -186,6 +217,7 @@ export function StudentExamsPDF({
           </div>
           <div style="text-align: right; font-size: 14px;">
             <p style="margin: 0;">Report Date: ${format(new Date(), 'MMM dd, yyyy')}</p>
+            ${selectedYear ? `<p style="margin: 0;">Academic Year: ${selectedYear}</p>` : ''}
           </div>
         </div>
         

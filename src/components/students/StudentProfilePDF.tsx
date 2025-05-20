@@ -6,6 +6,8 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface StudentProfilePDFProps {
   student: any;
@@ -14,6 +16,28 @@ interface StudentProfilePDFProps {
 
 export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Fetch logo from settings
+  const { data: logoSettings } = useQuery({
+    queryKey: ['settings', 'logo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'organization_logo')
+        .single();
+        
+      if (error) {
+        console.error("Error fetching logo settings:", error);
+        return null;
+      }
+      
+      return data?.value || null;
+    }
+  });
+  
+  // Default logo path
+  const logoPath = logoSettings || "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
 
   const generatePDF = async () => {
     setIsGenerating(true);
@@ -35,8 +59,6 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
         allowTaint: true,
         backgroundColor: "#ffffff",
         logging: false,
-        windowWidth: 794, // A4 width in pixels at 96 DPI
-        windowHeight: 1123, // A4 height in pixels at 96 DPI
       });
       
       // Restore original styles
@@ -107,14 +129,18 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
         <div style={{ borderBottom: "2px solid #cc0000", paddingBottom: "15px", marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
             <img 
-              src="/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png" 
-              alt="David's Hope Logo" 
-              style={{ height: "60px" }}
+              src={logoPath}
+              alt="Organization Logo" 
+              style={{ height: "60px", objectFit: "contain" }}
+              onError={(e) => {
+                e.currentTarget.src = "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
+              }}
             />
             <h1 style={{ marginLeft: "15px", fontSize: "24px", fontWeight: "bold", color: "#333" }}>David's Hope International</h1>
           </div>
           <div style={{ fontSize: "14px", color: "#666" }}>
             <p style={{ margin: 0 }}>Student Profile</p>
+            <p style={{ margin: 0, fontSize: "12px" }}>{format(new Date(), 'MMMM dd, yyyy')}</p>
           </div>
         </div>
         
@@ -180,17 +206,25 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
           {/* Right column with student photo */}
           <div style={{ flex: "1", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ width: "100%", aspectRatio: "3/4", overflow: "hidden", border: "1px solid #ddd", borderRadius: "4px", marginBottom: "10px" }}>
-              <img 
-                src={student.profile_image_url || 'https://source.unsplash.com/random/300x400/?student'} 
-                alt={student.name} 
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  e.currentTarget.src = 'https://source.unsplash.com/random/300x400/?student';
-                }}
-              />
+              {/* Improved image handling with proper aspect ratio preservation */}
+              <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+                <img 
+                  src={student.profile_image_url || 'https://source.unsplash.com/random/300x400/?student'} 
+                  alt={student.name} 
+                  style={{ 
+                    width: "100%",
+                    height: "100%", 
+                    objectFit: "cover",
+                    objectPosition: "center"
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://source.unsplash.com/random/300x400/?student';
+                  }}
+                />
+              </div>
             </div>
             {sponsor && (
-              <div style={{ fontSize: "14px", textAlign: "center", marginTop: "15px", padding: "10px", backgroundColor: "#f9f9f9", borderRadius: "4px", width: "100%" }}>
+              <div style={{ fontSize: "14px", textAlign: "center", marginTop: "15px", padding: "10px", backgroundColor: "#f9f9f9", borderRadius: "4px", width: "100%", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
                 <p style={{ fontWeight: "bold", margin: "0 0 5px 0" }}>Sponsor:</p>
                 <p style={{ margin: "0" }}>{sponsor.first_name} {sponsor.last_name}</p>
                 <p style={{ margin: "5px 0 0 0", fontSize: "12px" }}>Since: {student.sponsored_since ? 
@@ -218,6 +252,11 @@ export function StudentProfilePDF({ student, sponsor }: StudentProfilePDFProps) 
               <p style={{ fontWeight: "bold", margin: "0 0 5px 0" }}>Contact Us:</p>
               <p style={{ color: "#0066cc", margin: 0 }}>sponsorship@davidshope.org</p>
             </div>
+          </div>
+          
+          {/* Page number */}
+          <div style={{ fontSize: "12px", textAlign: "center", marginTop: "20px", color: "#666" }}>
+            <p style={{ margin: 0 }}>Page 1</p>
           </div>
         </div>
       </div>
