@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { type AcademicYear } from "@/types";
+import { type AcademicYear } from "@/types/exam";
 
 export function SettingsLayout() {
   const navigate = useNavigate();
