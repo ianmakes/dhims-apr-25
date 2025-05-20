@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +13,7 @@ import { StudentExamScore } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { StudentExamsPDF } from "./StudentExamsPDF";
 import html2canvas from "html2canvas";
+
 const gradeColors = {
   "EE": "#4ade80",
   "ME": "#3b82f6",
@@ -28,6 +28,7 @@ const calculateGrade = (score: number) => {
   if (score >= 40) return "AE";
   return "BE";
 };
+
 const getGradeDescription = (grade: string) => {
   switch (grade) {
     case "EE":
@@ -42,25 +43,45 @@ const getGradeDescription = (grade: string) => {
       return "Unknown";
   }
 };
+
 const getGradeCategory = (score: number) => {
   if (score >= 80) return "Exceeding Expectation";
   if (score >= 50) return "Meeting Expectation";
   if (score >= 40) return "Approaching Expectation";
   return "Below Expectation";
 };
+
 interface StudentExamsTabProps {
   studentName: string;
   studentId: string;
 }
+
 export function StudentExamsTab({
   studentName,
   studentId
 }: StudentExamsTabProps) {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
+
+  // Fetch current academic year from settings
+  const { data: currentAcademicYear } = useQuery({
+    queryKey: ['current-academic-year'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('academic_years')
+        .select('year_name')
+        .eq('is_current', true)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching current academic year:", error);
+        return null;
+      }
+      
+      return data?.year_name || null;
+    }
+  });
 
   // Get available academic years
   const {
@@ -93,14 +114,17 @@ export function StudentExamsTab({
       return uniqueYears.length ? uniqueYears : ["2024"];
     }
   });
+  
   const [selectedYear, setSelectedYear] = useState<string>("");
 
-  // Set initial selected year once data is loaded
+  // Set initial selected year to current academic year once data is loaded
   useEffect(() => {
-    if (academicYears.length > 0 && !selectedYear) {
+    if (currentAcademicYear && academicYears.includes(currentAcademicYear)) {
+      setSelectedYear(currentAcademicYear);
+    } else if (academicYears.length > 0 && !selectedYear) {
       setSelectedYear(academicYears[0]);
     }
-  }, [academicYears]);
+  }, [academicYears, currentAcademicYear]);
 
   // Get student exam scores
   const {
@@ -269,9 +293,11 @@ export function StudentExamsTab({
       });
     }
   };
+
   const togglePDFPreview = () => {
     setShowPDFPreview(!showPDFPreview);
   };
+
   return <div className="py-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -282,12 +308,20 @@ export function StudentExamsTab({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {loadingYears ? <Skeleton className="h-10 w-36" /> : <Select value={selectedYear} onValueChange={setSelectedYear}>
+            {loadingYears ? <Skeleton className="h-10 w-36" /> : <Select 
+                value={selectedYear} 
+                onValueChange={setSelectedYear}
+              >
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {academicYears.map(year => <SelectItem key={year} value={year || "all"}>{year || "All"} Academic Year</SelectItem>)}
+                  {academicYears.map(year => (
+                    <SelectItem key={year} value={year || "all"}>
+                      {year || "All"} 
+                      {year === currentAcademicYear && " (Current)"}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>}
             <DropdownMenu>
@@ -318,6 +352,7 @@ export function StudentExamsTab({
           <div>
             <h3 className="font-medium mb-4 text-lg">
               Exam Results - {selectedYear || "All Years"}
+              {selectedYear === currentAcademicYear && " (Current Year)"}
             </h3>
             
             {loadingScores ? <div className="space-y-2">
@@ -338,15 +373,15 @@ export function StudentExamsTab({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {examScores.map((score, idx) => {
-                  // Only render if we have exam data
-                  if (!score.exam) {
-                    return null;
-                  }
+                      // Only render if we have exam data
+                      if (!score.exam) {
+                        return null;
+                      }
 
-                  // Calculate percentage 
-                  const percentage = score.exam?.max_score ? Math.round(score.score / score.exam.max_score * 100) : 0;
-                  const grade = calculateGrade(percentage);
-                  return <tr key={score.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      // Calculate percentage 
+                      const percentage = score.exam?.max_score ? Math.round(score.score / score.exam.max_score * 100) : 0;
+                      const grade = calculateGrade(percentage);
+                      return <tr key={score.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {score.exam?.name || "Unknown"}
                           </td>
@@ -364,20 +399,20 @@ export function StudentExamsTab({
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {!score.did_not_sit && <div className="text-xs font-medium px-2 py-1 rounded-full text-center" style={{
-                        color: 'white',
-                        backgroundColor: gradeColors[grade],
-                        width: 'fit-content',
-                        minWidth: '2.5rem'
-                      }}>
+                                color: 'white',
+                                backgroundColor: gradeColors[grade],
+                                width: 'fit-content',
+                                minWidth: '2.5rem'
+                              }}>
                                 {grade} ({getGradeDescription(grade)})
                               </div>}
                           </td>
                         </tr>;
-                })}
+                    })}
                   </tbody>
                 </table>
               </div> : <div className="text-center p-10 border rounded-lg bg-muted/10">
-                <p className="text-muted-foreground">No exam records found for {studentName}</p>
+                <p className="text-muted-foreground">No exam records found for {selectedYear ? `${studentName} in ${selectedYear}` : studentName}</p>
               </div>}
           </div>
 

@@ -20,6 +20,7 @@ export interface StudentExamScoreWithStudent extends StudentExamScore {
     admission_number?: string;
   };
   status?: string;
+  exam?: Exam;
 }
 
 export interface StudentForExam {
