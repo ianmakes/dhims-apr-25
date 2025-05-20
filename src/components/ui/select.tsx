@@ -121,6 +121,12 @@ const SelectItem = React.forwardRef<
     props.value = "all";
   }
   
+  // Ensure value is properly defined
+  if (props.value === undefined) {
+    console.warn("SelectItem: value prop is undefined. Using a fallback value.");
+    props.value = children?.toString() || "fallback";
+  }
+  
   return (
     <SelectPrimitive.Item
       ref={ref}
