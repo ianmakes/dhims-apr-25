@@ -1,5 +1,4 @@
-
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,26 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Calendar as CalendarIcon,
-  Image,
-  Upload,
-  Check,
-  ChevronsUpDown,
-} from "lucide-react";
+import { Calendar as CalendarIcon, Image, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { SponsorFormValues } from "@/hooks/useSponsors";
@@ -57,7 +43,6 @@ import { RadioGroup, RadioIndicator, RadioItem } from "@/components/ui/radio-gro
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { COUNTRIES } from "@/lib/countries";
 
 // Define form schema
 const sponsorFormSchema = z.object({
@@ -100,9 +85,6 @@ export function AddEditSponsorModal({
   );
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [openCountryDropdown, setOpenCountryDropdown] = useState(false);
-  const [countrySearchTerm, setCountrySearchTerm] = useState("");
-  const [countrySearchResults, setCountrySearchResults] = useState<string[]>(COUNTRIES);
 
   // Helper function to format date to YYYY-MM-DD safely
   const formatDateSafely = (date: Date | string | undefined): string => {
@@ -162,36 +144,6 @@ export function AddEditSponsorModal({
           primaryEmailForUpdates: "",
         },
   });
-
-  // Handle country search with better error handling and limiting results to prevent performance issues
-  const handleCountrySearch = (search: string) => {
-    setCountrySearchTerm(search);
-    
-    try {
-      if (!search || search.trim() === "") {
-        // Show first 100 countries if no search term
-        setCountrySearchResults(COUNTRIES.slice(0, 100));
-        return;
-      }
-      
-      const searchLower = search.toLowerCase();
-      const filtered = COUNTRIES.filter(country => 
-        country.toLowerCase().includes(searchLower)
-      );
-      
-      // Limit the results to avoid rendering too many items
-      setCountrySearchResults(filtered.slice(0, 100));
-    } catch (error) {
-      console.error("Error searching countries:", error);
-      // Fallback to limited list in case of error
-      setCountrySearchResults(COUNTRIES.slice(0, 100));
-    }
-  };
-
-  // Initialize country results with limited set on component mount
-  useEffect(() => {
-    setCountrySearchResults(COUNTRIES.slice(0, 100));
-  }, []);
 
   // Direct file upload handling
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -494,67 +446,16 @@ export function AddEditSponsorModal({
                     )}
                   />
 
-                  {/* Country - Simplified implementation with better error handling */}
+                  {/* Country */}
                   <FormField
                     control={form.control}
                     name="country"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Country (Optional)</FormLabel>
-                        <Popover open={openCountryDropdown} onOpenChange={setOpenCountryDropdown}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={openCountryDropdown}
-                                className="w-full justify-between"
-                              >
-                                {field.value
-                                  ? field.value
-                                  : "Select country"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-full p-0" align="start">
-                            <Command>
-                              <CommandInput 
-                                placeholder="Search country..." 
-                                value={countrySearchTerm}
-                                onValueChange={handleCountrySearch}
-                              />
-                              <CommandEmpty>No country found.</CommandEmpty>
-                              <CommandGroup>
-                                {countrySearchResults && countrySearchResults.length > 0 ? (
-                                  countrySearchResults.map((country) => (
-                                    <CommandItem
-                                      key={country}
-                                      value={country}
-                                      onSelect={() => {
-                                        form.setValue("country", country);
-                                        setCountrySearchTerm("");
-                                        setOpenCountryDropdown(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          field.value === country ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {country}
-                                    </CommandItem>
-                                  ))
-                                ) : (
-                                  <CommandItem disabled value="no-results">
-                                    No results found
-                                  </CommandItem>
-                                )}
-                              </CommandGroup>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <Input placeholder="United States" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
