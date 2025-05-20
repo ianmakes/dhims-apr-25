@@ -175,7 +175,7 @@ export function StudentLettersTab({
           {letters.map(letter => <Card key={letter.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-md font-semibold">{letter.title}</h3>
+                  <h3 className="text-md font-semibold text-left">{letter.title}</h3>
                   <p className="text-sm text-gray-500">
                     Created on {format(new Date(letter.created_at), "MMMM d, yyyy")}
                   </p>
