@@ -1,32 +1,18 @@
 
-import Sidebar from "./Sidebar";
+import { Outlet } from "react-router-dom";
+import { Sidebar } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
-import { useState } from "react";
-import { Footer } from "./Footer";
-import { useAppSettings } from "../settings/GlobalSettingsProvider";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { settings } = useAppSettings();
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
+export function AppLayout() {
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full bg-background">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <AppHeader />
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-7xl space-y-6">
-            {children}
+        <main className="flex-1 overflow-auto bg-wp-gray-50">
+          <div className="page-content-container px-4 py-4 md:px-6 md:py-6">
+            <Outlet />
           </div>
-          <Footer />
         </main>
       </div>
     </div>

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -109,7 +110,7 @@
   
   /* WordPress-specific utility classes */
   .wp-header {
-    @apply bg-white border-b border-gray-300 py-2 px-4;
+    @apply bg-white border-b border-wp-border py-2 px-4;
   }
   
   .wp-container {
@@ -117,11 +118,11 @@
   }
   
   .wp-card {
-    @apply bg-white border border-gray-300 rounded shadow-sm;
+    @apply bg-white border border-wp-border rounded shadow-sm;
   }
   
   .wp-card-header {
-    @apply border-b border-gray-300 px-4 py-3 flex items-center justify-between;
+    @apply border-b border-wp-border px-4 py-3 flex items-center justify-between;
   }
   
   .wp-card-content {
@@ -129,23 +130,23 @@
   }
   
   .wp-input {
-    @apply border border-gray-300 rounded px-3 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
+    @apply border border-wp-gray-300 rounded px-3 py-2 focus:border-wp-primary focus:outline-none focus:ring-1 focus:ring-wp-primary;
   }
   
   .wp-button-primary {
-    @apply bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+    @apply bg-wp-primary text-white px-4 py-2 rounded hover:bg-wp-primary/90 focus:outline-none focus:ring-2 focus:ring-wp-primary focus:ring-offset-2;
   }
   
   .wp-button-secondary {
-    @apply bg-gray-200 text-gray-900 px-4 py-2 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2;
+    @apply bg-wp-gray-200 text-wp-gray-900 px-4 py-2 rounded hover:bg-wp-gray-300 focus:outline-none focus:ring-2 focus:ring-wp-gray-300 focus:ring-offset-2;
   }
   
   .wp-title {
-    @apply text-xl font-medium text-gray-900;
+    @apply text-xl font-medium text-wp-text-primary;
   }
   
   .wp-subtitle {
-    @apply text-sm text-gray-500;
+    @apply text-sm text-wp-text-secondary;
   }
   
   .fade-in {

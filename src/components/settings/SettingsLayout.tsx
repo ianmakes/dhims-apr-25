@@ -36,49 +36,6 @@ export function SettingsLayout() {
     };
     
     fetchCurrentYear();
-    
-    // Fetch general app settings
-    const fetchAppSettings = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('app_settings')
-          .select('*')
-          .eq('id', 'general')
-          .single();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching app settings:", error);
-          return;
-        }
-        
-        if (data) {
-          // Apply theme colors to CSS variables
-          document.documentElement.style.setProperty('--primary-color', data.primary_color);
-          document.documentElement.style.setProperty('--secondary-color', data.secondary_color);
-          
-          // Update favicon if available
-          if (data.favicon_url) {
-            let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-            if (!link) {
-              link = document.createElement('link');
-              document.head.appendChild(link);
-            }
-            link.type = 'image/png';
-            link.rel = 'icon';
-            link.href = data.favicon_url;
-          }
-          
-          // Set document title to organization name
-          if (data.organization_name) {
-            document.title = data.organization_name;
-          }
-        }
-      } catch (error) {
-        console.error("Error in fetchAppSettings:", error);
-      }
-    };
-    
-    fetchAppSettings();
   }, []);
   
   return (
