@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,14 +7,22 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { SUPABASE_URL, getAuthHeaders } from "@/utils/supabaseHelpers";
+
 interface StudentSponsorTabProps {
   student: {
     [key: string]: any;
+    sponsor?: {
+      id?: string;
+      first_name?: string;
+      last_name?: string;
+      profile_image_url?: string;
+    };
   };
   formatDate: (date: string | Date | null | undefined) => string;
   navigate: (to: string) => void;
   toast: any;
 }
+
 export function StudentSponsorTab({
   student,
   formatDate,
@@ -22,6 +31,7 @@ export function StudentSponsorTab({
 }: StudentSponsorTabProps) {
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
+  
   const handleRemoveSponsor = async () => {
     if (!student.id) return;
     setIsLoading(true);
@@ -82,15 +92,22 @@ export function StudentSponsorTab({
 
   // Get sponsor full name or display a meaningful placeholder
   const getSponsorDisplayName = () => {
-    if (student.sponsor && student.sponsor.first_name && student.sponsor.last_name) {
-      return `${student.sponsor.first_name} ${student.sponsor.last_name}`;
-    } else if (student.sponsor && (student.sponsor.first_name || student.sponsor.last_name)) {
-      // In case only one name is available
-      return student.sponsor.first_name || student.sponsor.last_name;
-    } else {
-      return "Unknown Sponsor";
+    // Check if sponsor object exists
+    if (student.sponsor) {
+      // Check if both first and last name exist
+      if (student.sponsor.first_name && student.sponsor.last_name) {
+        return `${student.sponsor.first_name} ${student.sponsor.last_name}`;
+      } 
+      // Check if either first or last name exists
+      else if (student.sponsor.first_name || student.sponsor.last_name) {
+        return student.sponsor.first_name || student.sponsor.last_name;
+      }
     }
+    
+    // If no data available, return a default message
+    return "Unknown Sponsor";
   };
+  
   if (student.sponsor_id) {
     return <div className="py-4">
         <Card className="wp-card">
@@ -103,9 +120,12 @@ export function StudentSponsorTab({
           <CardContent className="space-y-6 p-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Avatar className="h-16 w-16 border-2 border-wp-gray-100">
-                {student.sponsor?.profile_image_url ? <AvatarImage src={student.sponsor.profile_image_url} alt="Sponsor" /> : <AvatarFallback className="bg-wp-gray-200 text-wp-gray-600 text-xl">
+                {student.sponsor?.profile_image_url ? 
+                  <AvatarImage src={student.sponsor.profile_image_url} alt="Sponsor" /> : 
+                  <AvatarFallback className="bg-wp-gray-200 text-wp-gray-600 text-xl">
                     <User className="h-8 w-8" />
-                  </AvatarFallback>}
+                  </AvatarFallback>
+                }
               </Avatar>
               <div>
                 <h3 className="text-xl font-medium text-wp-text-primary text-left">
@@ -130,6 +150,7 @@ export function StudentSponsorTab({
         </Card>
       </div>;
   }
+  
   return <div className="py-4">
       <Card className="wp-card">
         <CardHeader className="border-b border-wp-gray-200">
