@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Mail, Eye, Trash2, FileImage, FilePdf, Download } from "lucide-react";
+import { Plus, Mail, Eye, Trash2, FileImage, FileText, Download } from "lucide-react";
 import { AddLetterModal } from "@/components/students/AddLetterModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +99,7 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
   // Helper function to get file icon based on file type
   const getFileIcon = (url: string) => {
     if (!url) return null;
-    if (isPdfFile(url)) return <FilePdf className="w-4 h-4 mr-1" />;
+    if (isPdfFile(url)) return <FileText className="w-4 h-4 mr-1" />;
     if (isImageFile(url)) return <FileImage className="w-4 h-4 mr-1" />;
     return null;
   };
