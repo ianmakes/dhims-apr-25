@@ -36,7 +36,7 @@ export interface StudentForExam {
 
 export enum ExamGrade {
   EXCEEDING = "Exceeding Expectation",
-  MEETING = "Meeting Expectation",
+  MEETING = "Meeting Expectation", 
   APPROACHING = "Approaching Expectation",
   BELOW = "Below Expectation"
 }
