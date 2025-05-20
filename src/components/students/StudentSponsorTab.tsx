@@ -108,7 +108,7 @@ export function StudentSponsorTab({
                   </AvatarFallback>}
               </Avatar>
               <div>
-                <h3 className="text-xl font-medium text-wp-text-primary">
+                <h3 className="text-xl font-medium text-wp-text-primary text-left">
                   {getSponsorDisplayName()}
                 </h3>
                 <p className="text-sm text-wp-text-secondary mt-1 flex items-center">
