@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -162,13 +163,14 @@ export function AddEditSponsorModal({
         },
   });
 
-  // Handle country search with better error handling
+  // Handle country search with better error handling and limiting results to prevent performance issues
   const handleCountrySearch = (search: string) => {
     setCountrySearchTerm(search);
     
     try {
       if (!search || search.trim() === "") {
-        setCountrySearchResults(COUNTRIES);
+        // Show first 100 countries if no search term
+        setCountrySearchResults(COUNTRIES.slice(0, 100));
         return;
       }
       
@@ -177,13 +179,19 @@ export function AddEditSponsorModal({
         country.toLowerCase().includes(searchLower)
       );
       
-      setCountrySearchResults(filtered);
+      // Limit the results to avoid rendering too many items
+      setCountrySearchResults(filtered.slice(0, 100));
     } catch (error) {
       console.error("Error searching countries:", error);
-      // Fallback to full list in case of error
-      setCountrySearchResults(COUNTRIES);
+      // Fallback to limited list in case of error
+      setCountrySearchResults(COUNTRIES.slice(0, 100));
     }
   };
+
+  // Initialize country results with limited set on component mount
+  useEffect(() => {
+    setCountrySearchResults(COUNTRIES.slice(0, 100));
+  }, []);
 
   // Direct file upload handling
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -514,14 +522,12 @@ export function AddEditSponsorModal({
                               <CommandInput 
                                 placeholder="Search country..." 
                                 value={countrySearchTerm}
-                                onValueChange={(value) => {
-                                  handleCountrySearch(value);
-                                }}
+                                onValueChange={handleCountrySearch}
                               />
                               <CommandEmpty>No country found.</CommandEmpty>
                               <CommandGroup>
                                 {countrySearchResults && countrySearchResults.length > 0 ? (
-                                  countrySearchResults.slice(0, 100).map((country) => (
+                                  countrySearchResults.map((country) => (
                                     <CommandItem
                                       key={country}
                                       value={country}
@@ -541,7 +547,7 @@ export function AddEditSponsorModal({
                                     </CommandItem>
                                   ))
                                 ) : (
-                                  <CommandItem disabled>
+                                  <CommandItem disabled value="no-results">
                                     No results found
                                   </CommandItem>
                                 )}
