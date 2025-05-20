@@ -100,6 +100,7 @@ export function AddEditSponsorModal({
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [openCountryDropdown, setOpenCountryDropdown] = useState(false);
+  const [countrySearchResults, setCountrySearchResults] = useState<string[]>(COUNTRIES);
 
   // Helper function to format date to YYYY-MM-DD safely
   const formatDateSafely = (date: Date | string | undefined): string => {
@@ -159,6 +160,19 @@ export function AddEditSponsorModal({
           primaryEmailForUpdates: "",
         },
   });
+
+  // Handle country search
+  const handleCountrySearch = (search: string) => {
+    if (!search) {
+      setCountrySearchResults(COUNTRIES);
+      return;
+    }
+    
+    const filtered = COUNTRIES.filter(country => 
+      country.toLowerCase().includes(search.toLowerCase())
+    );
+    setCountrySearchResults(filtered);
+  };
 
   // Direct file upload handling
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -461,7 +475,7 @@ export function AddEditSponsorModal({
                     )}
                   />
 
-                  {/* Country - Searchable Dropdown */}
+                  {/* Country - Updated Searchable Dropdown with better error handling */}
                   <FormField
                     control={form.control}
                     name="country"
@@ -478,7 +492,7 @@ export function AddEditSponsorModal({
                                 className="w-full justify-between"
                               >
                                 {field.value
-                                  ? COUNTRIES.find((country) => country === field.value)
+                                  ? COUNTRIES.find((country) => country === field.value) || "Select country"
                                   : "Select country"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
@@ -486,27 +500,35 @@ export function AddEditSponsorModal({
                           </PopoverTrigger>
                           <PopoverContent className="w-full p-0" align="start">
                             <Command>
-                              <CommandInput placeholder="Search country..." />
+                              <CommandInput 
+                                placeholder="Search country..." 
+                                onValueChange={handleCountrySearch}
+                              />
                               <CommandEmpty>No country found.</CommandEmpty>
-                              <CommandGroup className="max-h-[300px] overflow-y-auto">
-                                {COUNTRIES.map((country) => (
-                                  <CommandItem
-                                    key={country}
-                                    value={country}
-                                    onSelect={() => {
-                                      form.setValue("country", country);
-                                      setOpenCountryDropdown(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === country ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {country}
+                              <CommandGroup>
+                                {(countrySearchResults && countrySearchResults.length > 0) ? 
+                                  countrySearchResults.map((country) => (
+                                    <CommandItem
+                                      key={country}
+                                      value={country}
+                                      onSelect={() => {
+                                        form.setValue("country", country);
+                                        setOpenCountryDropdown(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === country ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {country}
+                                    </CommandItem>
+                                  )) : 
+                                  <CommandItem value="no-results">
+                                    No results found
                                   </CommandItem>
-                                ))}
+                                }
                               </CommandGroup>
                             </Command>
                           </PopoverContent>
