@@ -49,7 +49,9 @@ export function SettingsLayout() {
         </div>
         {currentAcademicYear && (
           <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 flex items-center">
-            <span className="text-sm text-green-800 font-medium">Current Academic Year: {currentAcademicYear.year_name}</span>
+            <span className="text-sm text-green-800 font-medium">
+              Current Academic Year: {currentAcademicYear.year_name}
+            </span>
           </div>
         )}
       </div>
