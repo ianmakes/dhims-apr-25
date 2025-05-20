@@ -168,12 +168,14 @@ export function AddEditStudentModal({
   const handlePickHealthStatus = (value: string) => setForm(f => ({ ...f, health_status: value }));
   const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
 
-  // Modified to explicitly check for final step submission
+  // Modified to close the modal after successful submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Only submit if we're on the last step
     if (currentStep === steps.length - 1) {
       onSubmit(form);
+      // Close the modal after submission
+      onOpenChange(false);
     }
   };
   
