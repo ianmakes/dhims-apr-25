@@ -96,7 +96,7 @@ export function StudentSponsorTab({
         <Card className="wp-card">
           <CardHeader className="border-b border-wp-gray-200">
             <CardTitle className="text-lg text-wp-text-primary text-left">Sponsor Information</CardTitle>
-            <CardDescription className="text-wp-text-secondary">
+            <CardDescription className="text-wp-text-secondary text-left">
               Details about {student.name}'s sponsor
             </CardDescription>
           </CardHeader>
