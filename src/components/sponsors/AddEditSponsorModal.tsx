@@ -100,6 +100,7 @@ export function AddEditSponsorModal({
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [openCountryDropdown, setOpenCountryDropdown] = useState(false);
+  const [countrySearchTerm, setCountrySearchTerm] = useState("");
   const [countrySearchResults, setCountrySearchResults] = useState<string[]>(COUNTRIES);
 
   // Helper function to format date to YYYY-MM-DD safely
@@ -161,17 +162,27 @@ export function AddEditSponsorModal({
         },
   });
 
-  // Handle country search
+  // Handle country search with better error handling
   const handleCountrySearch = (search: string) => {
-    if (!search) {
-      setCountrySearchResults(COUNTRIES);
-      return;
-    }
+    setCountrySearchTerm(search);
     
-    const filtered = COUNTRIES.filter(country => 
-      country.toLowerCase().includes(search.toLowerCase())
-    );
-    setCountrySearchResults(filtered);
+    try {
+      if (!search || search.trim() === "") {
+        setCountrySearchResults(COUNTRIES);
+        return;
+      }
+      
+      const searchLower = search.toLowerCase();
+      const filtered = COUNTRIES.filter(country => 
+        country.toLowerCase().includes(searchLower)
+      );
+      
+      setCountrySearchResults(filtered);
+    } catch (error) {
+      console.error("Error searching countries:", error);
+      // Fallback to full list in case of error
+      setCountrySearchResults(COUNTRIES);
+    }
   };
 
   // Direct file upload handling
@@ -475,7 +486,7 @@ export function AddEditSponsorModal({
                     )}
                   />
 
-                  {/* Country - Updated Searchable Dropdown with better error handling */}
+                  {/* Country - Simplified implementation with better error handling */}
                   <FormField
                     control={form.control}
                     name="country"
@@ -492,7 +503,7 @@ export function AddEditSponsorModal({
                                 className="w-full justify-between"
                               >
                                 {field.value
-                                  ? COUNTRIES.find((country) => country === field.value) || "Select country"
+                                  ? field.value
                                   : "Select country"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
@@ -502,17 +513,21 @@ export function AddEditSponsorModal({
                             <Command>
                               <CommandInput 
                                 placeholder="Search country..." 
-                                onValueChange={handleCountrySearch}
+                                value={countrySearchTerm}
+                                onValueChange={(value) => {
+                                  handleCountrySearch(value);
+                                }}
                               />
                               <CommandEmpty>No country found.</CommandEmpty>
                               <CommandGroup>
-                                {(countrySearchResults && countrySearchResults.length > 0) ? 
-                                  countrySearchResults.map((country) => (
+                                {countrySearchResults && countrySearchResults.length > 0 ? (
+                                  countrySearchResults.slice(0, 100).map((country) => (
                                     <CommandItem
                                       key={country}
                                       value={country}
                                       onSelect={() => {
                                         form.setValue("country", country);
+                                        setCountrySearchTerm("");
                                         setOpenCountryDropdown(false);
                                       }}
                                     >
@@ -524,11 +539,12 @@ export function AddEditSponsorModal({
                                       />
                                       {country}
                                     </CommandItem>
-                                  )) : 
-                                  <CommandItem value="no-results">
+                                  ))
+                                ) : (
+                                  <CommandItem disabled>
                                     No results found
                                   </CommandItem>
-                                }
+                                )}
                               </CommandGroup>
                             </Command>
                           </PopoverContent>

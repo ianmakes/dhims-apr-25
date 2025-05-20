@@ -90,7 +90,6 @@ const CommandGroup = React.forwardRef<
   
   // Ensure the children prop is defined and valid
   if (!React.Children.count(props.children)) {
-    console.warn("CommandGroup received empty or undefined children, using an empty array");
     safeProps.children = [];
   }
   
@@ -125,12 +124,11 @@ const CommandItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
 >(({ className, ...props }, ref) => {
   // Check for undefined or invalid values in props
-  if (!props.value || props.value === "") {
-    console.warn("CommandItem received empty or undefined value, using a fallback value");
-    props = {
-      ...props,
-      value: props.children?.toString() || "fallback-value"
-    };
+  const safeProps = { ...props };
+  
+  // Ensure the value prop is defined and valid
+  if (!safeProps.value || safeProps.value === "") {
+    safeProps.value = safeProps.children?.toString() || "fallback-value";
   }
   
   return (
@@ -140,7 +138,7 @@ const CommandItem = React.forwardRef<
         "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
-      {...props}
+      {...safeProps}
     />
   );
 })
