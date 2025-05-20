@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
@@ -12,7 +11,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
+// Make sure to export the context
+export const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   profile: null,
@@ -97,4 +97,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Keep the useAuth hook in the context file for now
 export const useAuth = () => useContext(AuthContext);

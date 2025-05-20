@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+// Update the import to use the context directly
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
