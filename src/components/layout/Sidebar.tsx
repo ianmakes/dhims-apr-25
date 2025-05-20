@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,7 +79,7 @@ const MobileNavItem = ({ label, icon: Icon, onClick }: MobileNavItemProps) => {
 export default function Sidebar() {
   const { signOut, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { setTheme } = useTheme();
+  const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { settings } = useAppSettings();
 
@@ -161,7 +161,7 @@ export default function Sidebar() {
           <div className="flex items-center justify-between rounded-md border p-2">
             <span className="text-sm font-medium">Dark Mode</span>
             <Switch
-              checked={mounted && useTheme().theme === "dark"}
+              checked={mounted && theme === "dark"}
               onCheckedChange={(checked) => {
                 if (checked) {
                   setTheme("dark");
