@@ -10,9 +10,11 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 interface StudentLettersTabProps {
   studentId: string;
 }
+
 export function StudentLettersTab({
   studentId
 }: StudentLettersTabProps) {
@@ -114,6 +116,7 @@ export function StudentLettersTab({
     link.click();
     document.body.removeChild(link);
   };
+
   return <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Student Letters</h2>
@@ -173,7 +176,7 @@ export function StudentLettersTab({
 
       {isLoading ? <p>Loading letters...</p> : letters && letters.length > 0 ? <div className="space-y-4">
           {letters.map(letter => <Card key={letter.id} className="p-4">
-              <div className="flex justify-between items-start">
+              <div>
                 <div>
                   <h3 className="text-md font-semibold text-left">{letter.title}</h3>
                   <p className="text-sm text-gray-500">
@@ -184,7 +187,10 @@ export function StudentLettersTab({
                       <span>Attachment available</span>
                     </div>}
                 </div>
-                <div className="flex space-x-2">
+                <Separator className="my-2" />
+                <p className="text-sm text-left mb-4">{letter.content}</p>
+                {/* Moved buttons here and aligned to the left */}
+                <div className="flex space-x-2 mt-4 justify-start">
                   <Button variant="outline" size="sm" onClick={() => handleEmailToSponsor(letter)}>
                     <Mail className="mr-2 h-4 w-4" />
                     Email to Sponsor
@@ -217,8 +223,6 @@ export function StudentLettersTab({
                   </AlertDialog>
                 </div>
               </div>
-              <Separator className="my-2" />
-              <p className="text-sm text-left">{letter.content}</p>
             </Card>)}
         </div> : <p>No letters found for this student.</p>}
     </div>;
