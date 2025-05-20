@@ -136,8 +136,9 @@ export function AddEditStudentModal({
   const handlePickHealthStatus = (value: string) => setForm(f => ({ ...f, health_status: value }));
   const handleImageChange = (url: string) => setForm((f) => ({ ...f, profile_image_url: url }));
 
-  const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  // Modified to explicitly check for final step submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     // Only submit if we're on the last step
     if (currentStep === steps.length - 1) {
       onSubmit(form);
@@ -168,13 +169,18 @@ export function AddEditStudentModal({
     }
   };
 
-  const nextStep = () => {
+  // Modified to prevent form submission when navigating steps
+  const nextStep = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission when clicking Next
     if (validateCurrentStep()) {
       setCurrentStep((current) => Math.min(current + 1, steps.length - 1));
     }
   };
   
-  const prevStep = () => setCurrentStep((current) => Math.max(current - 1, 0));
+  const prevStep = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission when clicking Back
+    setCurrentStep((current) => Math.max(current - 1, 0));
+  };
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
