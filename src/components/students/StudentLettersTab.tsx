@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Mail, Eye, Trash2 } from "lucide-react";
+import { Plus, Mail, Eye, Trash2, FileImage, FilePdf, Download } from "lucide-react";
 import { AddLetterModal } from "@/components/students/AddLetterModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +83,43 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
     setPreviewOpen(true);
   };
 
+  // Helper function to determine if a URL is for a PDF file
+  const isPdfFile = (url: string) => {
+    if (!url) return false;
+    return url.toLowerCase().endsWith('.pdf');
+  };
+
+  // Helper function to determine if a URL is for an image file
+  const isImageFile = (url: string) => {
+    if (!url) return false;
+    const extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    return extensions.some(ext => url.toLowerCase().endsWith(ext));
+  };
+
+  // Helper function to get file icon based on file type
+  const getFileIcon = (url: string) => {
+    if (!url) return null;
+    if (isPdfFile(url)) return <FilePdf className="w-4 h-4 mr-1" />;
+    if (isImageFile(url)) return <FileImage className="w-4 h-4 mr-1" />;
+    return null;
+  };
+
+  const handleDownloadAttachment = (letter: any) => {
+    if (!letter.file_url) {
+      toast.error("No attachment available for download");
+      return;
+    }
+
+    // Creating a temporary anchor element to trigger download
+    const link = document.createElement('a');
+    link.href = letter.file_url;
+    link.target = '_blank';
+    link.download = `letter-${letter.id}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -102,7 +139,7 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
 
       {/* Letter Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedLetter?.title}</DialogTitle>
           </DialogHeader>
@@ -111,9 +148,64 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
               Created on {selectedLetter && format(new Date(selectedLetter.created_at), "MMMM d, yyyy")}
             </p>
             <Separator className="my-2" />
-            <div className="max-h-[60vh] overflow-y-auto whitespace-pre-line">
+            
+            {/* Letter content */}
+            <div className="whitespace-pre-line mb-6">
               {selectedLetter?.content}
             </div>
+            
+            {/* Attachment preview */}
+            {selectedLetter?.file_url && (
+              <div className="mt-4">
+                <h3 className="text-md font-semibold mb-2">Attachment</h3>
+                <div className="border rounded-md p-2">
+                  {isPdfFile(selectedLetter.file_url) ? (
+                    <div className="h-[500px] max-w-full overflow-hidden">
+                      <iframe 
+                        src={selectedLetter.file_url} 
+                        className="w-full h-full"
+                        title="PDF Viewer"
+                      />
+                    </div>
+                  ) : isImageFile(selectedLetter.file_url) ? (
+                    <div className="text-center">
+                      <img 
+                        src={selectedLetter.file_url} 
+                        alt="Letter attachment" 
+                        className="max-w-full max-h-[500px] mx-auto rounded-md"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p>This file type cannot be previewed</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => handleDownloadAttachment(selectedLetter)}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Attachment
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Download button for all attachment types */}
+                  {(isPdfFile(selectedLetter.file_url) || isImageFile(selectedLetter.file_url)) && (
+                    <div className="mt-2 text-right">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownloadAttachment(selectedLetter)}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -130,6 +222,12 @@ export function StudentLettersTab({ studentId }: StudentLettersTabProps) {
                   <p className="text-sm text-gray-500">
                     Created on {format(new Date(letter.created_at), "MMMM d, yyyy")}
                   </p>
+                  {letter.file_url && (
+                    <div className="flex items-center mt-1 text-xs text-muted-foreground">
+                      {getFileIcon(letter.file_url)}
+                      <span>Attachment available</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex space-x-2">
                   <Button 
