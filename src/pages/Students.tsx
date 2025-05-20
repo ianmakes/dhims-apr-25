@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X, Filter, FilterX } from "lucide-react";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,7 @@ export default function Students() {
   const [status, setStatus] = useState<string>("all");
   const [sponsored, setSponsored] = useState<string>("all");
   const [academicYear, setAcademicYear] = useState<string>("2024");
+  const [filtersVisible, setFiltersVisible] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -223,6 +225,13 @@ export default function Students() {
     if (sponsored === "unsponsored" && student.sponsor_id) return false;
     return true;
   });
+
+  // Reset all filters to default values
+  const clearAllFilters = () => {
+    setGrade("all");
+    setStatus("all");
+    setSponsored("all");
+  };
 
   // Updated Add Student Modal logic
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
@@ -441,60 +450,135 @@ export default function Students() {
       </div>
     </div>
 
-    {/* Filter section */}
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="flex items-center gap-2">
-        <label htmlFor="grade" className="text-sm font-medium">
-          Grade:
-        </label>
-        <Select value={grade} onValueChange={setGrade}>
-          <SelectTrigger id="grade" className="w-28">
-            <SelectValue placeholder="All" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8"].map(g => <SelectItem key={g} value={g}>
-              {g}
-            </SelectItem>)}
-          </SelectContent>
-        </Select>
+    {/* Filter section - improved with toggle and clear functionality */}
+    <div className="border rounded-md p-4 bg-white">
+      <div className="flex justify-between items-center mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setFiltersVisible(!filtersVisible)}
+          className="flex items-center gap-2"
+        >
+          <Filter className="h-4 w-4" />
+          {filtersVisible ? "Hide Filters" : "Show Filters"}
+        </Button>
+        
+        {filtersVisible && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearAllFilters}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            disabled={grade === "all" && status === "all" && sponsored === "all"}
+          >
+            <FilterX className="h-4 w-4" />
+            Clear Filters
+          </Button>
+        )}
       </div>
+      
+      {filtersVisible && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label htmlFor="grade" className="text-sm font-medium block">
+              Grade:
+            </label>
+            <Select value={grade} onValueChange={setGrade}>
+              <SelectTrigger id="grade" className="w-full">
+                <SelectValue placeholder="All Grades" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Grades</SelectItem>
+                {["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8"].map(g => (
+                  <SelectItem key={g} value={g}>{g}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="flex items-center gap-2">
-        <label htmlFor="status" className="text-sm font-medium">
-          Status:
-        </label>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger id="status" className="w-32">
-            <SelectValue placeholder="All" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="Active">Active</SelectItem>
-            <SelectItem value="Inactive">Inactive</SelectItem>
-            <SelectItem value="Graduated">Graduated</SelectItem>
-            <SelectItem value="Transferred">Transferred</SelectItem>
-            <SelectItem value="Suspended">Suspended</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+          <div className="space-y-2">
+            <label htmlFor="status" className="text-sm font-medium block">
+              Status:
+            </label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="status" className="w-full">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Inactive">Inactive</SelectItem>
+                <SelectItem value="Graduated">Graduated</SelectItem>
+                <SelectItem value="Transferred">Transferred</SelectItem>
+                <SelectItem value="Suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="flex items-center gap-2">
-        <label htmlFor="sponsored" className="text-sm font-medium">
-          Sponsored:
-        </label>
-        <Select value={sponsored} onValueChange={setSponsored}>
-          <SelectTrigger id="sponsored" className="w-40">
-            <SelectValue placeholder="All" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="sponsored">Sponsored</SelectItem>
-            <SelectItem value="unsponsored">Unsponsored</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+          <div className="space-y-2">
+            <label htmlFor="sponsored" className="text-sm font-medium block">
+              Sponsorship:
+            </label>
+            <Select value={sponsored} onValueChange={setSponsored}>
+              <SelectTrigger id="sponsored" className="w-full">
+                <SelectValue placeholder="All Students" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Students</SelectItem>
+                <SelectItem value="sponsored">Sponsored</SelectItem>
+                <SelectItem value="unsponsored">Unsponsored</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
     </div>
+
+    {/* Display filter summary if filters are applied */}
+    {(grade !== "all" || status !== "all" || sponsored !== "all") && (
+      <div className="flex flex-wrap gap-2 text-sm">
+        <span className="text-muted-foreground">Active filters:</span>
+        {grade !== "all" && (
+          <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
+            <span>Grade: {grade}</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 p-0" 
+              onClick={() => setGrade("all")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        {status !== "all" && (
+          <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
+            <span>Status: {status}</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 p-0" 
+              onClick={() => setStatus("all")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        {sponsored !== "all" && (
+          <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
+            <span>Sponsorship: {sponsored === "sponsored" ? "Sponsored" : "Unsponsored"}</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 p-0" 
+              onClick={() => setSponsored("all")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+      </div>
+    )}
 
     {/* Students table with bulk actions */}
     <DataTable 
