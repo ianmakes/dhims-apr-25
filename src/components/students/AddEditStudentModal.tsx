@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import ImageUploadCropper from "./ImageUploadCropper";
 import { StudentFormInput } from "@/types/database";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Bold, Italic, Underline, AlignLeft } from "lucide-react";
 
 const ALL_CBC_GRADES = [
   "Playgroup", "PP1", "PP2",                      // Pre-Primary
@@ -109,6 +109,16 @@ export function AddEditStudentModal({
   const [formValid, setFormValid] = useState(false);
   const steps = ["Basic Info", "Academic Info", "Additional Info"];
   
+  const [formattingOptions, setFormattingOptions] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    align: 'left'
+  });
+  
+  const [wordCount, setWordCount] = useState(0);
+  const MAX_WORDS = 200;
+  
   const containerFixedHeight = "h-[500px]";
 
   // Effect to set category when grade changes
@@ -124,12 +134,34 @@ export function AddEditStudentModal({
     }
   }, [form.cbc_category]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // Calculate word count when description changes
+  useEffect(() => {
+    if (form.description) {
+      const words = form.description.trim().split(/\s+/);
+      setWordCount(words.length > 0 && form.description.trim() !== '' ? words.length : 0);
+    } else {
+      setWordCount(0);
+    }
+  }, [form.description]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // For description field, enforce word limit
+    if (name === 'description') {
+      const words = value.trim().split(/\s+/);
+      if (words.length <= MAX_WORDS || value.length < form.description?.length) {
+        setForm((prev) => ({
+          ...prev,
+          [name]: value,
+        }));
+      }
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handlePickGender = (value: "Male" | "Female") => setForm(f => ({ ...f, gender: value }));
@@ -180,6 +212,22 @@ export function AddEditStudentModal({
   const prevStep = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent form submission when clicking Back
     setCurrentStep((current) => Math.max(current - 1, 0));
+  };
+  
+  // Text formatting functions
+  const applyFormatting = (type: 'bold' | 'italic' | 'underline' | 'align') => {
+    setFormattingOptions(prev => {
+      if (type === 'align') {
+        return {
+          ...prev,
+          align: prev.align === 'left' ? 'center' : 'left'
+        };
+      }
+      return {
+        ...prev,
+        [type]: !prev[type]
+      };
+    });
   };
   
   return (
@@ -341,7 +389,63 @@ export function AddEditStudentModal({
                     </div>
                     <div>
                       <Label htmlFor="description">Description</Label>
-                      <Input name="description" value={form.description || ""} onChange={handleChange} className="mt-1" />
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2 rounded-md border border-input p-1">
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => applyFormatting('bold')}
+                            className={formattingOptions.bold ? "bg-gray-200" : ""}
+                          >
+                            <Bold className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => applyFormatting('italic')}
+                            className={formattingOptions.italic ? "bg-gray-200" : ""}
+                          >
+                            <Italic className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => applyFormatting('underline')}
+                            className={formattingOptions.underline ? "bg-gray-200" : ""}
+                          >
+                            <Underline className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => applyFormatting('align')}
+                            className={formattingOptions.align !== 'left' ? "bg-gray-200" : ""}
+                          >
+                            <AlignLeft className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Textarea 
+                          name="description"
+                          value={form.description || ""} 
+                          onChange={handleChange} 
+                          className={`mt-1 min-h-[120px] ${
+                            formattingOptions.bold ? 'font-bold' : ''
+                          } ${
+                            formattingOptions.italic ? 'italic' : ''
+                          } ${
+                            formattingOptions.underline ? 'underline' : ''
+                          } text-${formattingOptions.align}`}
+                          placeholder="Enter student description (max 200 words)"
+                        />
+                        <div className="text-xs text-gray-500 flex justify-between">
+                          <span>{wordCount} / {MAX_WORDS} words</span>
+                          {wordCount >= MAX_WORDS && <span className="text-red-500">Word limit reached</span>}
+                        </div>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
