@@ -81,3 +81,65 @@ export function getResizedDimensions(
   
   return { width: Math.round(newWidth), height: Math.round(newHeight) };
 }
+
+/**
+ * Create cropped image with specified dimensions while maintaining aspect ratio
+ */
+export function createCroppedImageWithAspect(
+  imageUrl: string,
+  targetWidth: number,
+  targetHeight: number
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageUrl;
+    
+    img.onload = () => {
+      // Calculate source dimensions to maintain aspect ratio
+      const sourceAspect = img.width / img.height;
+      const targetAspect = targetWidth / targetHeight;
+      
+      let sourceX = 0;
+      let sourceY = 0;
+      let sourceWidth = img.width;
+      let sourceHeight = img.height;
+      
+      // Crop source image to match target aspect ratio
+      if (sourceAspect > targetAspect) {
+        // Image is wider than target aspect ratio
+        sourceWidth = img.height * targetAspect;
+        sourceX = (img.width - sourceWidth) / 2;
+      } else if (sourceAspect < targetAspect) {
+        // Image is taller than target aspect ratio
+        sourceHeight = img.width / targetAspect;
+        sourceY = (img.height - sourceHeight) / 2;
+      }
+      
+      // Create canvas and draw cropped image
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return reject("Could not get canvas context");
+      
+      // Use high quality rendering
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      
+      // Draw image with proper cropping
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, sourceWidth, sourceHeight, 
+        0, 0, targetWidth, targetHeight
+      );
+      
+      // Return as data URL
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
+      resolve(dataUrl);
+    };
+    
+    img.onerror = (e) => reject(`Error loading image: ${e}`);
+  });
+}

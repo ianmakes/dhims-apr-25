@@ -42,14 +42,14 @@ export function StudentExamsPDF({
 }: StudentExamsPDFProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Fetch logo from settings
-  const { data: logoSettings } = useQuery({
-    queryKey: ['settings', 'logo'],
+  // Fetch logo from app_settings
+  const { data: logoSetting } = useQuery({
+    queryKey: ['app_settings', 'logo'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'organization_logo')
+        .from('app_settings')
+        .select('logo_url')
+        .eq('id', 'general')
         .single();
         
       if (error) {
@@ -57,12 +57,12 @@ export function StudentExamsPDF({
         return null;
       }
       
-      return data?.value || null;
+      return data?.logo_url || null;
     }
   });
   
   // Default logo path
-  const logoPath = logoSettings || "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
+  const logoPath = logoSetting || "/lovable-uploads/19e2739d-3195-4a9c-824b-c2db7c576520.png";
 
   const generatePDF = async () => {
     setIsGenerating(true);
