@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,13 +29,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Image, Upload } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Calendar as CalendarIcon,
+  Image,
+  Upload,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { SponsorFormValues } from "@/hooks/useSponsors";
@@ -43,6 +56,7 @@ import { RadioGroup, RadioIndicator, RadioItem } from "@/components/ui/radio-gro
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { COUNTRIES } from "@/lib/countries";
 
 // Define form schema
 const sponsorFormSchema = z.object({
@@ -85,6 +99,7 @@ export function AddEditSponsorModal({
   );
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [openCountryDropdown, setOpenCountryDropdown] = useState(false);
 
   // Helper function to format date to YYYY-MM-DD safely
   const formatDateSafely = (date: Date | string | undefined): string => {
@@ -446,16 +461,56 @@ export function AddEditSponsorModal({
                     )}
                   />
 
-                  {/* Country */}
+                  {/* Country - Searchable Dropdown */}
                   <FormField
                     control={form.control}
                     name="country"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Country (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="United States" {...field} />
-                        </FormControl>
+                        <Popover open={openCountryDropdown} onOpenChange={setOpenCountryDropdown}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openCountryDropdown}
+                                className="w-full justify-between"
+                              >
+                                {field.value
+                                  ? COUNTRIES.find((country) => country === field.value)
+                                  : "Select country"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search country..." />
+                              <CommandEmpty>No country found.</CommandEmpty>
+                              <CommandGroup className="max-h-[300px] overflow-y-auto">
+                                {COUNTRIES.map((country) => (
+                                  <CommandItem
+                                    key={country}
+                                    value={country}
+                                    onSelect={() => {
+                                      form.setValue("country", country);
+                                      setOpenCountryDropdown(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === country ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {country}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
