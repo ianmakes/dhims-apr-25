@@ -28,11 +28,19 @@ interface Student {
   [key: string]: any; // Allow for additional properties
 }
 
+interface AcademicYear {
+  id: string;
+  year_name: string;
+  is_current: boolean;
+  start_date: string;
+  end_date: string;
+}
+
 export default function Students() {
   const [grade, setGrade] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [sponsored, setSponsored] = useState<string>("all");
-  const [academicYear, setAcademicYear] = useState<string>("2024");
+  const [academicYear, setAcademicYear] = useState<string>("all");
   const [filtersVisible, setFiltersVisible] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -41,6 +49,35 @@ export default function Students() {
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<string>("");
+
+  // Fetch academic years from database
+  const {
+    data: academicYears = [],
+    isLoading: isLoadingYears
+  } = useQuery({
+    queryKey: ['academic-years'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('academic_years')
+        .select('*')
+        .order('start_date', { ascending: false });
+      
+      if (error) throw error;
+      return data as AcademicYear[];
+    }
+  });
+
+  // Set default academic year to current year if available
+  useEffect(() => {
+    if (academicYears.length > 0) {
+      const currentYear = academicYears.find(year => year.is_current);
+      if (currentYear) {
+        setAcademicYear(currentYear.year_name);
+      } else {
+        setAcademicYear(academicYears[0].year_name);
+      }
+    }
+  }, [academicYears]);
 
   // Fetch students data from Supabase
   const {
@@ -223,6 +260,10 @@ export default function Students() {
     if (status && status !== "all" && student.status !== status) return false;
     if (sponsored === "sponsored" && !student.sponsor_id) return false;
     if (sponsored === "unsponsored" && student.sponsor_id) return false;
+    if (academicYear !== "all") {
+      // Add academic year filtering logic if needed
+      // This would require the students table to have an academic_year field
+    }
     return true;
   });
 
@@ -231,6 +272,14 @@ export default function Students() {
     setGrade("all");
     setStatus("all");
     setSponsored("all");
+    
+    // Find current academic year to set as default
+    const currentYear = academicYears.find(year => year.is_current);
+    if (currentYear) {
+      setAcademicYear(currentYear.year_name);
+    } else {
+      setAcademicYear("all");
+    }
   };
 
   // Updated Add Student Modal logic
@@ -427,22 +476,6 @@ export default function Students() {
         </p>
       </div>
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="academicYear" className="text-sm font-medium">
-            Academic Year:
-          </label>
-          <Select value={academicYear} onValueChange={setAcademicYear}>
-            <SelectTrigger id="academicYear" className="w-36">
-              <SelectValue placeholder="Select year" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="2024">2024</SelectItem>
-              <SelectItem value="2023">2023</SelectItem>
-              <SelectItem value="2022">2022</SelectItem>
-              <SelectItem value="2021">2021</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
         <Button onClick={() => setIsAddStudentModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Student
@@ -469,7 +502,7 @@ export default function Students() {
             size="sm" 
             onClick={clearAllFilters}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-            disabled={grade === "all" && status === "all" && sponsored === "all"}
+            disabled={grade === "all" && status === "all" && sponsored === "all" && academicYear === "all"}
           >
             <FilterX className="h-4 w-4" />
             Clear Filters
@@ -478,7 +511,32 @@ export default function Students() {
       </div>
       
       {filtersVisible && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <label htmlFor="academicYear" className="text-sm font-medium block">
+              Academic Year:
+            </label>
+            <Select value={academicYear} onValueChange={setAcademicYear}>
+              <SelectTrigger id="academicYear" className="w-full">
+                <SelectValue placeholder="All Academic Years" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Academic Years</SelectItem>
+                {isLoadingYears ? (
+                  <SelectItem value="loading" disabled>Loading...</SelectItem>
+                ) : academicYears.length > 0 ? (
+                  academicYears.map(year => (
+                    <SelectItem key={year.id} value={year.year_name}>
+                      {year.year_name} {year.is_current && "(Current)"}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>No academic years found</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="grade" className="text-sm font-medium block">
               Grade:
@@ -535,9 +593,22 @@ export default function Students() {
     </div>
 
     {/* Display filter summary if filters are applied */}
-    {(grade !== "all" || status !== "all" || sponsored !== "all") && (
+    {(grade !== "all" || status !== "all" || sponsored !== "all" || academicYear !== "all") && (
       <div className="flex flex-wrap gap-2 text-sm">
         <span className="text-muted-foreground">Active filters:</span>
+        {academicYear !== "all" && (
+          <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
+            <span>Year: {academicYear}</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 p-0" 
+              onClick={() => setAcademicYear("all")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
         {grade !== "all" && (
           <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
             <span>Grade: {grade}</span>
