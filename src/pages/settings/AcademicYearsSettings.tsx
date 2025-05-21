@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -758,13 +757,15 @@ export default function AcademicYearsSettings() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-sm font-semibold text-left">Copy Year Data</h4>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsCopyDialogOpen(true)}
+                  >
+                    <CopyIcon className="mr-2 h-4 w-4" />
+                    Copy Year Data
+                  </Button>
                   <Dialog open={isCopyDialogOpen} onOpenChange={handleCopyDialogClose}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <CopyIcon className="mr-2 h-4 w-4" />
-                        Copy Year Data
-                      </Button>
-                    </DialogTrigger>
                     <DialogContent className="sm:max-w-[550px]">
                       <DialogHeader>
                         <DialogTitle>
