@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { type AcademicYear } from "@/types/exam";
 import { useAppSettings } from "./GlobalSettingsProvider";
+
 export function SettingsLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,6 +15,7 @@ export function SettingsLayout() {
   const {
     settings
   } = useAppSettings();
+
   useEffect(() => {
     // Fetch current academic year
     const fetchCurrentYear = async () => {
@@ -34,6 +37,7 @@ export function SettingsLayout() {
     };
     fetchCurrentYear();
   }, []);
+
   return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -61,6 +65,5 @@ export function SettingsLayout() {
       <Card className="p-6">
         <Outlet />
       </Card>
-      {settings?.footer_text}
     </div>;
 }
