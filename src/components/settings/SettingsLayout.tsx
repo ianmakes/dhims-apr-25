@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -6,29 +5,26 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { type AcademicYear } from "@/types/exam";
 import { useAppSettings } from "./GlobalSettingsProvider";
-
 export function SettingsLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentTab = location.pathname.split('/').pop() || 'general';
   const [currentAcademicYear, setCurrentAcademicYear] = useState<AcademicYear | null>(null);
-  const { settings } = useAppSettings();
-  
+  const {
+    settings
+  } = useAppSettings();
   useEffect(() => {
     // Fetch current academic year
     const fetchCurrentYear = async () => {
       try {
-        const { data, error } = await supabase
-          .from('academic_years')
-          .select('*')
-          .eq('is_current', true)
-          .single();
-          
+        const {
+          data,
+          error
+        } = await supabase.from('academic_years').select('*').eq('is_current', true).single();
         if (error) {
           console.error("Error fetching current academic year:", error);
           return;
         }
-        
         if (data) {
           setCurrentAcademicYear(data as AcademicYear);
         }
@@ -36,12 +32,9 @@ export function SettingsLayout() {
         console.error("Error in fetchCurrentYear:", error);
       }
     };
-    
     fetchCurrentYear();
   }, []);
-  
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-left">Settings</h2>
@@ -49,13 +42,11 @@ export function SettingsLayout() {
             Manage your account settings and preferences.
           </p>
         </div>
-        {currentAcademicYear && (
-          <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 flex items-center">
+        {currentAcademicYear && <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 flex items-center">
             <span className="text-sm text-green-800 font-medium">
               Current Academic Year: {currentAcademicYear.year_name}
             </span>
-          </div>
-        )}
+          </div>}
       </div>
       <Tabs value={currentTab} onValueChange={value => navigate(`/settings/${value}`)}>
         <TabsList className="w-full border-b overflow-auto flex justify-start">
@@ -70,11 +61,6 @@ export function SettingsLayout() {
       <Card className="p-6">
         <Outlet />
       </Card>
-      {settings?.footer_text && (
-        <footer className="text-center text-sm text-muted-foreground mt-6">
-          {settings.footer_text}
-        </footer>
-      )}
-    </div>
-  );
+      {settings?.footer_text}
+    </div>;
 }
