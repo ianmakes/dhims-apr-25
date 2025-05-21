@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2, Info, MoreHorizontal } from "lucide-react";
+import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2, Info, MoreHorizontal, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
@@ -103,6 +104,12 @@ const copyYearSchema = z.object({
 });
 type CopyYearFormValues = z.infer<typeof copyYearSchema>;
 
+// Schema for grade promotion
+const gradePromotionSchema = z.object({
+  gradePromotionMap: z.record(z.string(), z.string()),
+});
+type GradePromotionFormValues = z.infer<typeof gradePromotionSchema>;
+
 export default function AcademicYearsSettings() {
   const { toast } = useToast();
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
@@ -114,6 +121,9 @@ export default function AcademicYearsSettings() {
   const [copyProgress, setCopyProgress] = useState(0);
   const [isCopying, setIsCopying] = useState(false);
   const [currentAcademicYear, setCurrentAcademicYear] = useState<AcademicYear | null>(null);
+  const [copyStep, setCopyStep] = useState(1);
+  const [studentGrades, setStudentGrades] = useState<string[]>([]);
+  const [isPromotingGrades, setIsPromotingGrades] = useState(false);
   
   const form = useForm<AcademicYearFormValues>({
     resolver: zodResolver(academicYearSchema),
@@ -139,9 +149,17 @@ export default function AcademicYearsSettings() {
       copySponsorship: true
     }
   });
+
+  const gradePromotionForm = useForm<GradePromotionFormValues>({
+    resolver: zodResolver(gradePromotionSchema),
+    defaultValues: {
+      gradePromotionMap: {},
+    }
+  });
   
   useEffect(() => {
     fetchAcademicYears();
+    fetchStudentGrades();
   }, []);
   
   useEffect(() => {
@@ -171,6 +189,25 @@ export default function AcademicYearsSettings() {
     const current = academicYears.find(year => year.is_current);
     setCurrentAcademicYear(current || null);
   }, [academicYears]);
+
+  useEffect(() => {
+    if (studentGrades.length > 0) {
+      const defaultGradeMap: Record<string, string> = {};
+      studentGrades.forEach(grade => {
+        if (grade === 'Grade 12') {
+          defaultGradeMap[grade] = 'Alumni';
+        } else if (grade.startsWith('Grade ')) {
+          const gradeNum = parseInt(grade.replace('Grade ', ''));
+          defaultGradeMap[grade] = `Grade ${gradeNum + 1}`;
+        } else {
+          defaultGradeMap[grade] = grade; // Keep same if not a numbered grade
+        }
+      });
+      gradePromotionForm.reset({
+        gradePromotionMap: defaultGradeMap
+      });
+    }
+  }, [studentGrades, gradePromotionForm]);
   
   const fetchAcademicYears = async () => {
     setIsLoading(true);
@@ -191,6 +228,42 @@ export default function AcademicYearsSettings() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchStudentGrades = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('current_grade')
+        .not('current_grade', 'is', null)
+        .order('current_grade');
+        
+      if (error) throw error;
+      
+      if (data) {
+        // Extract unique grades
+        const uniqueGrades = Array.from(new Set(data.map(s => s.current_grade)))
+          .filter(Boolean)
+          .sort((a, b) => {
+            // Sort grades numerically
+            const aMatch = a.match(/Grade (\d+)/);
+            const bMatch = b.match(/Grade (\d+)/);
+            if (aMatch && bMatch) {
+              return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+            }
+            return a.localeCompare(b);
+          });
+        
+        setStudentGrades(uniqueGrades);
+      }
+    } catch (error: any) {
+      console.error("Error fetching student grades:", error);
+      toast({
+        title: "Error",
+        description: `Failed to fetch student grades: ${error.message}`,
+        variant: "destructive"
+      });
     }
   };
   
@@ -365,11 +438,9 @@ export default function AcademicYearsSettings() {
         description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
       });
       
-      setTimeout(() => {
-        setIsCopyDialogOpen(false);
-        setIsCopying(false);
-        copyForm.reset();
-      }, 1000);
+      // Move to grade promotion step
+      setCopyStep(2);
+      setIsCopying(false);
     } catch (error: any) {
       console.error("Error copying academic year data:", error);
       toast({
@@ -380,14 +451,69 @@ export default function AcademicYearsSettings() {
       setIsCopying(false);
     }
   };
+
+  const handlePromoteGrades = async (values: GradePromotionFormValues) => {
+    setIsPromotingGrades(true);
+    
+    try {
+      // For each grade mapping, update students with that grade
+      const promotionMap = values.gradePromotionMap;
+      const updates = Object.entries(promotionMap).map(async ([currentGrade, newGrade]) => {
+        // For Alumni status, we can handle differently if needed
+        const { error } = await supabase
+          .from('students')
+          .update({ current_grade: newGrade })
+          .eq('current_grade', currentGrade);
+          
+        if (error) throw error;
+        
+        return { currentGrade, newGrade, success: true };
+      });
+      
+      await Promise.all(updates);
+      
+      toast({
+        title: "Grades Updated",
+        description: "All student grades have been successfully updated to the next level."
+      });
+      
+      // Reset and close
+      setIsPromotingGrades(false);
+      setCopyStep(1);
+      setIsCopyDialogOpen(false);
+      copyForm.reset();
+      
+    } catch (error: any) {
+      console.error("Error promoting student grades:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update student grades: ${error.message}`,
+        variant: "destructive"
+      });
+      setIsPromotingGrades(false);
+    }
+  };
   
-  // Update the date formatting to use a more compact format (dd/MM/yyyy)
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'dd/MM/yyyy');
   };
   
   const watchCreateNewYear = copyForm.watch("createNewYear");
   const watchSourceYearId = copyForm.watch("sourceYearId");
+
+  const getAllGrades = () => {
+    return [
+      "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", 
+      "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+      "Grade 11", "Grade 12", "Alumni"
+    ];
+  };
+
+  const handleCopyDialogClose = () => {
+    setCopyStep(1);
+    setIsCopyDialogOpen(false);
+    copyForm.reset();
+  };
 
   return (
     <div>
@@ -632,7 +758,7 @@ export default function AcademicYearsSettings() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-sm font-semibold text-left">Copy Year Data</h4>
-                  <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
+                  <Dialog open={isCopyDialogOpen} onOpenChange={handleCopyDialogClose}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <CopyIcon className="mr-2 h-4 w-4" />
@@ -641,232 +767,321 @@ export default function AcademicYearsSettings() {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[550px]">
                       <DialogHeader>
-                        <DialogTitle>Copy Academic Year Data</DialogTitle>
+                        <DialogTitle>
+                          {copyStep === 1 ? "Copy Academic Year Data" : "Move Students to Next Grade"}
+                        </DialogTitle>
                         <DialogDescription>
-                          Copy data from one academic year to another. Select what data you want to copy.
+                          {copyStep === 1 
+                            ? "Copy data from one academic year to another. Select what data you want to copy."
+                            : "Review and adjust the grade levels students will be moved to for the new academic year."
+                          }
                         </DialogDescription>
                       </DialogHeader>
-                      <Form {...copyForm}>
-                        <form onSubmit={copyForm.handleSubmit(handleCopyYear)} className="space-y-4">
-                          {/* Source Year Selection */}
-                          <FormField
-                            control={copyForm.control}
-                            name="sourceYearId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Source Academic Year</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange} disabled={isCopying}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select source academic year" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {academicYears.map(year => (
-                                      <SelectItem key={year.id} value={year.id}>
-                                        {year.year_name} {year.is_current && "(Current)"}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormDescription>
-                                  Select the academic year from which to copy data.
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          {/* Create New Year Toggle */}
-                          <FormField
-                            control={copyForm.control}
-                            name="createNewYear"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                <FormControl>
-                                  <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                  <FormLabel>Create new academic year</FormLabel>
-                                  <FormDescription>
-                                    Create a new academic year as the destination.
-                                  </FormDescription>
-                                </div>
-                              </FormItem>
-                            )}
-                          />
 
-                          {/* Conditional fields for destination */}
-                          {watchCreateNewYear ? (
-                            <>
-                              {/* New Year Name */}
-                              <FormField
-                                control={copyForm.control}
-                                name="newYearName"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>New Academic Year</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} placeholder="e.g. 2024" disabled={isCopying} />
-                                    </FormControl>
-                                    <FormDescription>
-                                      Enter a 4-digit year (e.g. 2024)
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              
-                              {/* Date fields */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                  control={copyForm.control}
-                                  name="newStartDate"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Start Date</FormLabel>
-                                      <FormControl>
-                                        <Input type="date" {...field} disabled={isCopying} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={copyForm.control}
-                                  name="newEndDate"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>End Date</FormLabel>
-                                      <FormControl>
-                                        <Input type="date" {...field} disabled={isCopying} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            </>
-                          ) : (
-                            /* Existing Year Selection */
+                      {copyStep === 1 ? (
+                        <Form {...copyForm}>
+                          <form onSubmit={copyForm.handleSubmit(handleCopyYear)} className="space-y-4">
+                            {/* Source Year Selection */}
                             <FormField
                               control={copyForm.control}
-                              name="destinationYearId"
+                              name="sourceYearId"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Destination Academic Year</FormLabel>
+                                  <FormLabel>Source Academic Year</FormLabel>
                                   <Select value={field.value} onValueChange={field.onChange} disabled={isCopying}>
                                     <FormControl>
                                       <SelectTrigger>
-                                        <SelectValue placeholder="Select destination academic year" />
+                                        <SelectValue placeholder="Select source academic year" />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {academicYears
-                                        .filter(year => year.id !== watchSourceYearId)
-                                        .map(year => (
-                                          <SelectItem key={year.id} value={year.id}>
-                                            {year.year_name} {year.is_current && "(Current)"}
-                                          </SelectItem>
-                                        ))}
+                                      {academicYears.map(year => (
+                                        <SelectItem key={year.id} value={year.id}>
+                                          {year.year_name} {year.is_current && "(Current)"}
+                                        </SelectItem>
+                                      ))}
                                     </SelectContent>
                                   </Select>
                                   <FormDescription>
-                                    Select the academic year to which data will be copied.
+                                    Select the academic year from which to copy data.
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
-                          )}
-                          
-                          {/* Data to copy section */}
-                          <div className="space-y-4 border rounded-md p-4">
-                            <h4 className="font-medium text-left">What data to copy?</h4>
                             
+                            {/* Create New Year Toggle */}
                             <FormField
                               control={copyForm.control}
-                              name="copyStudentData"
+                              name="createNewYear"
                               render={({ field }) => (
                                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                   <FormControl>
                                     <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
                                   </FormControl>
                                   <div className="space-y-1 leading-none">
-                                    <FormLabel>Student Data</FormLabel>
+                                    <FormLabel>Create new academic year</FormLabel>
                                     <FormDescription>
-                                      Copy student data (excluding grades and scores).
+                                      Create a new academic year as the destination.
                                     </FormDescription>
                                   </div>
                                 </FormItem>
                               )}
                             />
+
+                            {/* Conditional fields for destination */}
+                            {watchCreateNewYear ? (
+                              <>
+                                {/* New Year Name */}
+                                <FormField
+                                  control={copyForm.control}
+                                  name="newYearName"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>New Academic Year</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="e.g. 2024" disabled={isCopying} />
+                                      </FormControl>
+                                      <FormDescription>
+                                        Enter a 4-digit year (e.g. 2024)
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                
+                                {/* Date fields */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <FormField
+                                    control={copyForm.control}
+                                    name="newStartDate"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Start Date</FormLabel>
+                                        <FormControl>
+                                          <Input type="date" {...field} disabled={isCopying} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={copyForm.control}
+                                    name="newEndDate"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>End Date</FormLabel>
+                                        <FormControl>
+                                          <Input type="date" {...field} disabled={isCopying} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                              </>
+                            ) : (
+                              /* Existing Year Selection */
+                              <FormField
+                                control={copyForm.control}
+                                name="destinationYearId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Destination Academic Year</FormLabel>
+                                    <Select value={field.value} onValueChange={field.onChange} disabled={isCopying}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select destination academic year" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {academicYears
+                                          .filter(year => year.id !== watchSourceYearId)
+                                          .map(year => (
+                                            <SelectItem key={year.id} value={year.id}>
+                                              {year.year_name} {year.is_current && "(Current)"}
+                                            </SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                      Select the academic year to which data will be copied.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            )}
                             
-                            <FormField
-                              control={copyForm.control}
-                              name="copyExamTemplates"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                  <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
-                                  </FormControl>
-                                  <div className="space-y-1 leading-none">
-                                    <FormLabel>Exam Templates</FormLabel>
-                                    <FormDescription>
-                                      Copy exam templates without results.
-                                    </FormDescription>
-                                  </div>
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={copyForm.control}
-                              name="copySponsorship"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                  <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
-                                  </FormControl>
-                                  <div className="space-y-1 leading-none">
-                                    <FormLabel>Sponsorship Relationships</FormLabel>
-                                    <FormDescription>
-                                      Copy student-sponsor relationships.
-                                    </FormDescription>
-                                  </div>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          {/* Progress indicator */}
-                          {isCopying && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-xs">
-                                <span>Copying data...</span>
-                                <span>{copyProgress}%</span>
-                              </div>
-                              <Progress value={copyProgress} />
+                            {/* Data to copy section */}
+                            <div className="space-y-4 border rounded-md p-4">
+                              <h4 className="font-medium text-left">What data to copy?</h4>
+                              
+                              <FormField
+                                control={copyForm.control}
+                                name="copyStudentData"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                      <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                      <FormLabel>Student Data</FormLabel>
+                                      <FormDescription>
+                                        Copy student data (excluding grades and scores).
+                                      </FormDescription>
+                                    </div>
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={copyForm.control}
+                                name="copyExamTemplates"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                      <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                      <FormLabel>Exam Templates</FormLabel>
+                                      <FormDescription>
+                                        Copy exam templates without results.
+                                      </FormDescription>
+                                    </div>
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={copyForm.control}
+                                name="copySponsorship"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                      <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isCopying} />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                      <FormLabel>Sponsorship Relationships</FormLabel>
+                                      <FormDescription>
+                                        Copy student-sponsor relationships.
+                                      </FormDescription>
+                                    </div>
+                                  </FormItem>
+                                )}
+                              />
                             </div>
-                          )}
-                          
-                          <DialogFooter>
-                            <DialogClose asChild>
-                              <Button type="button" variant="outline" disabled={isCopying}>
-                                Cancel
+                            
+                            {/* Progress indicator */}
+                            {isCopying && (
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-xs">
+                                  <span>Copying data...</span>
+                                  <span>{copyProgress}%</span>
+                                </div>
+                                <Progress value={copyProgress} />
+                              </div>
+                            )}
+                            
+                            <DialogFooter>
+                              <DialogClose asChild>
+                                <Button type="button" variant="outline" disabled={isCopying}>
+                                  Cancel
+                                </Button>
+                              </DialogClose>
+                              <Button type="submit" disabled={isCopying}>
+                                {isCopying ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Copying...
+                                  </>
+                                ) : (
+                                  <>
+                                    Next
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                  </>
+                                )}
                               </Button>
-                            </DialogClose>
-                            <Button type="submit" disabled={isCopying}>
-                              {isCopying ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Copying...
-                                </>
-                              ) : "Copy Data"}
-                            </Button>
-                          </DialogFooter>
-                        </form>
-                      </Form>
+                            </DialogFooter>
+                          </form>
+                        </Form>
+                      ) : (
+                        <Form {...gradePromotionForm}>
+                          <form onSubmit={gradePromotionForm.handleSubmit(handlePromoteGrades)} className="space-y-6">
+                            <div className="border rounded-md p-4">
+                              <h3 className="text-lg font-medium mb-4 text-left">Move students to Next Grade</h3>
+                              
+                              <div className="grid grid-cols-[2fr_3fr] gap-4 mb-2">
+                                <div className="font-medium text-sm">Current Grade</div>
+                                <div className="font-medium text-sm">Move to Grade</div>
+                              </div>
+                              
+                              <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
+                                {studentGrades.map(grade => (
+                                  <div key={grade} className="grid grid-cols-[2fr_3fr] gap-4 items-center">
+                                    <div className="text-sm">{grade}</div>
+                                    <FormField
+                                      control={gradePromotionForm.control}
+                                      name={`gradePromotionMap.${grade}`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <Select 
+                                            value={field.value} 
+                                            onValueChange={field.onChange}
+                                            disabled={isPromotingGrades}
+                                          >
+                                            <FormControl>
+                                              <SelectTrigger className="h-9">
+                                                <SelectValue placeholder="Select Grade" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              {getAllGrades().map(gradeOption => (
+                                                <SelectItem key={gradeOption} value={gradeOption}>
+                                                  {gradeOption}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {/* Notes section for Grade 12 */}
+                              <div className="mt-5 bg-amber-50 p-3 rounded-md">
+                                <div className="flex">
+                                  <Info className="h-4 w-4 text-amber-500 mt-1 mr-2 flex-shrink-0" />
+                                  <p className="text-sm text-amber-700 text-left">
+                                    <span className="font-semibold">Note:</span> Grade 12 students will be moved to alumni because grades end at Grade 12.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <DialogFooter>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={() => setCopyStep(1)} 
+                                disabled={isPromotingGrades}
+                              >
+                                Back
+                              </Button>
+                              <Button type="submit" disabled={isPromotingGrades}>
+                                {isPromotingGrades ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : "Save"}
+                              </Button>
+                            </DialogFooter>
+                          </form>
+                        </Form>
+                      )}
                     </DialogContent>
                   </Dialog>
                 </div>
