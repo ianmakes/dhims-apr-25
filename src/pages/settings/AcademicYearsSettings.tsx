@@ -227,6 +227,11 @@ export default function AcademicYearsSettings() {
       
       await fetchAcademicYears();
       setIsDialogOpen(false);
+      
+      // If the current year was changed, reload the app
+      if (values.is_current) {
+        window.location.reload();
+      }
     } catch (error: any) {
       console.error("Error saving academic year:", error);
       toast({
@@ -283,6 +288,9 @@ export default function AcademicYearsSettings() {
       
       setYearToSetCurrent(null);
       await fetchAcademicYears();
+      
+      // Reload the app to apply the new academic year context
+      window.location.reload();
     } catch (error: any) {
       console.error("Error updating current academic year:", error);
       toast({
@@ -372,13 +380,14 @@ export default function AcademicYearsSettings() {
     }
   };
   
+  // Update the date formatting to use a more compact format (dd/MM/yyyy)
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'PP');
+    return format(new Date(dateString), 'dd/MM/yyyy');
   };
   
   const watchCreateNewYear = copyForm.watch("createNewYear");
   const watchSourceYearId = copyForm.watch("sourceYearId");
-  
+
   return (
     <div>
       {/* Two-column layout with cards side by side in one row */}
@@ -505,8 +514,8 @@ export default function AcademicYearsSettings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-left w-1/4">Academic Year</TableHead>
-                      <TableHead className="text-left w-1/4">Start Date</TableHead>
-                      <TableHead className="text-left w-1/4">End Date</TableHead>
+                      <TableHead className="text-left w-1/6">Start Date</TableHead>
+                      <TableHead className="text-left w-1/6">End Date</TableHead>
                       <TableHead className="text-left w-1/6">Status</TableHead>
                       <TableHead className="text-right w-1/6">Actions</TableHead>
                     </TableRow>
@@ -515,8 +524,8 @@ export default function AcademicYearsSettings() {
                     {academicYears.map(year => (
                       <TableRow key={year.id}>
                         <TableCell className="font-medium text-left">{year.year_name}</TableCell>
-                        <TableCell className="text-left">{formatDate(year.start_date)}</TableCell>
-                        <TableCell className="text-left">{formatDate(year.end_date)}</TableCell>
+                        <TableCell className="text-left whitespace-nowrap">{formatDate(year.start_date)}</TableCell>
+                        <TableCell className="text-left whitespace-nowrap">{formatDate(year.end_date)}</TableCell>
                         <TableCell className="text-left">
                           {year.is_current ? (
                             <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
