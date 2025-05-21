@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -335,7 +334,7 @@ export default function Students() {
       });
     }
   };
-
+  
   // Define columns for DataTable with checkbox selection
   const columns = [
     {
