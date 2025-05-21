@@ -438,8 +438,10 @@ export default function AcademicYearsSettings() {
       });
       
       // Move to grade promotion step
-      setCopyStep(2);
-      setIsCopying(false);
+      setTimeout(() => {
+        setCopyStep(2);
+        setIsCopying(false);
+      }, 500); // Add a slight delay to ensure the UI updates properly
     } catch (error: any) {
       console.error("Error copying academic year data:", error);
       toast({
@@ -988,7 +990,16 @@ export default function AcademicYearsSettings() {
                               <Button type="button" variant="outline" disabled={isCopying} onClick={() => setIsCopyDialogOpen(false)}>
                                 Cancel
                               </Button>
-                              <Button type="submit" disabled={isCopying || !watchSourceYearId || (watchCreateNewYear ? !(copyForm.watch("newYearName") && copyForm.watch("newStartDate") && copyForm.watch("newEndDate")) : !copyForm.watch("destinationYearId"))}>
+                              <Button 
+                                type="submit" 
+                                disabled={
+                                  isCopying || 
+                                  !watchSourceYearId || 
+                                  (watchCreateNewYear ? 
+                                    !(copyForm.watch("newYearName") && copyForm.watch("newStartDate") && copyForm.watch("newEndDate")) : 
+                                    !copyForm.watch("destinationYearId"))
+                                }
+                              >
                                 {isCopying ? (
                                   <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
