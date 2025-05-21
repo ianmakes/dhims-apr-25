@@ -2,8 +2,11 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
+import { useAppSettings } from "../settings/GlobalSettingsProvider";
 
 export function AppLayout() {
+  const { settings } = useAppSettings();
+  
   return (
     <div className="flex h-screen w-full bg-background">
       <Sidebar />
@@ -13,6 +16,11 @@ export function AppLayout() {
           <div className="page-content-container px-4 py-4 md:px-6 md:py-6">
             <Outlet />
           </div>
+          {settings?.footer_text && (
+            <footer className="text-center text-sm text-muted-foreground py-4 border-t">
+              {settings.footer_text}
+            </footer>
+          )}
         </main>
       </div>
     </div>

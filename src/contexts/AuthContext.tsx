@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { Profile } from "@/types/database";
+import { GlobalSettingsProvider } from "@/components/settings/GlobalSettingsProvider";
 
 interface AuthContextType {
   session: Session | null;
@@ -12,7 +13,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
+export const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   profile: null,
@@ -92,7 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ session, user, profile, isLoading, signOut }}>
-      {children}
+      <GlobalSettingsProvider>
+        {children}
+      </GlobalSettingsProvider>
     </AuthContext.Provider>
   );
 }

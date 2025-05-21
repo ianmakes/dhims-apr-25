@@ -5,12 +5,14 @@ import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { type AcademicYear } from "@/types/exam";
+import { useAppSettings } from "./GlobalSettingsProvider";
 
 export function SettingsLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentTab = location.pathname.split('/').pop() || 'general';
   const [currentAcademicYear, setCurrentAcademicYear] = useState<AcademicYear | null>(null);
+  const { settings } = useAppSettings();
   
   useEffect(() => {
     // Fetch current academic year
@@ -68,6 +70,11 @@ export function SettingsLayout() {
       <Card className="p-6">
         <Outlet />
       </Card>
+      {settings?.footer_text && (
+        <footer className="text-center text-sm text-muted-foreground mt-6">
+          {settings.footer_text}
+        </footer>
+      )}
     </div>
   );
 }
