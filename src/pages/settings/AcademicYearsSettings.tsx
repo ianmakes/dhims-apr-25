@@ -985,12 +985,10 @@ export default function AcademicYearsSettings() {
                             )}
                             
                             <DialogFooter>
-                              <DialogClose asChild>
-                                <Button type="button" variant="outline" disabled={isCopying}>
-                                  Cancel
-                                </Button>
-                              </DialogClose>
-                              <Button type="submit" disabled={isCopying}>
+                              <Button type="button" variant="outline" disabled={isCopying} onClick={() => setIsCopyDialogOpen(false)}>
+                                Cancel
+                              </Button>
+                              <Button type="submit" disabled={isCopying || !watchSourceYearId || (watchCreateNewYear ? !(copyForm.watch("newYearName") && copyForm.watch("newStartDate") && copyForm.watch("newEndDate")) : !copyForm.watch("destinationYearId"))}>
                                 {isCopying ? (
                                   <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
