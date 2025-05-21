@@ -13,11 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2, Info } from "lucide-react";
+import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2, Info, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Update the schema to validate single-year format
 const academicYearSchema = z.object({
@@ -517,7 +518,7 @@ export default function AcademicYearsSettings() {
                       <TableHead className="text-left w-1/6">Start Date</TableHead>
                       <TableHead className="text-left w-1/6">End Date</TableHead>
                       <TableHead className="text-left w-1/6">Status</TableHead>
-                      <TableHead className="text-right w-1/6">Actions</TableHead>
+                      <TableHead className="text-right w-1/12">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -535,60 +536,48 @@ export default function AcademicYearsSettings() {
                           ) : "Inactive"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            {!year.is_current && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm" onClick={() => setYearToSetCurrent(year)}>
-                                    <Star className="h-4 w-4" />
-                                    <span className="sr-only">Set as Current</span>
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Set as Current Academic Year</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      <p className="mb-2">
-                                        Are you sure you want to set {year.year_name} as the current academic year?
-                                      </p>
-                                      <div className="flex items-center text-amber-500 bg-amber-50 p-3 rounded-md mb-2">
-                                        <AlertTriangle className="h-5 w-5 mr-2" />
-                                        <p className="text-sm">
-                                          This will automatically update all student grades to the next level.
-                                        </p>
-                                      </div>
-                                      <p>This action cannot be undone.</p>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleSetCurrent}>Continue</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingYear(year);
-                                setIsDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            {!year.is_current && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(year)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Delete</span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
                               </Button>
-                            )}
-                          </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {!year.is_current && (
+                                <DropdownMenuItem 
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setYearToSetCurrent(year);
+                                  }}
+                                >
+                                  <Star className="mr-2 h-4 w-4" />
+                                  <span>Set as Current</span>
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem 
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setEditingYear(year);
+                                  setIsDialogOpen(true);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                              </DropdownMenuItem>
+                              {!year.is_current && (
+                                <DropdownMenuItem 
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    handleDelete(year);
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Delete</span>
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -905,6 +894,31 @@ export default function AcademicYearsSettings() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Alert Dialog for confirming year change */}
+      <AlertDialog open={!!yearToSetCurrent} onOpenChange={(open) => !open && setYearToSetCurrent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set as Current Academic Year</AlertDialogTitle>
+            <AlertDialogDescription>
+              <p className="mb-2">
+                Are you sure you want to set {yearToSetCurrent?.year_name} as the current academic year?
+              </p>
+              <div className="flex items-center text-amber-500 bg-amber-50 p-3 rounded-md mb-2">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                <p className="text-sm">
+                  This will automatically update all student grades to the next level.
+                </p>
+              </div>
+              <p>This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setYearToSetCurrent(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSetCurrent}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
