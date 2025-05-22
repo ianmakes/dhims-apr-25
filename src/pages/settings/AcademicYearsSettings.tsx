@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2, Info, MoreHorizontal, ArrowRight } from "lucide-react";
+import { CopyIcon, PlusCircle, Edit, Trash2, Star, AlertTriangle, Loader2, Info, MoreHorizontal, ArrowRight, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
@@ -437,11 +438,11 @@ export default function AcademicYearsSettings() {
         description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
       });
       
-      // Move to grade promotion step
+      // Move to grade promotion step with a delay to ensure UI updates properly
       setTimeout(() => {
         setCopyStep(2);
         setIsCopying(false);
-      }, 500); // Add a slight delay to ensure the UI updates properly
+      }, 500);
     } catch (error: any) {
       console.error("Error copying academic year data:", error);
       toast({
@@ -1019,17 +1020,17 @@ export default function AcademicYearsSettings() {
                         <Form {...gradePromotionForm}>
                           <form onSubmit={gradePromotionForm.handleSubmit(handlePromoteGrades)} className="space-y-6">
                             <div className="border rounded-md p-4">
-                              <h3 className="text-lg font-medium mb-4 text-left">Move students to Next Grade</h3>
+                              <h3 className="text-xl font-semibold mb-6 text-center">Move students to Next Grade</h3>
                               
-                              <div className="grid grid-cols-[2fr_3fr] gap-4 mb-2">
-                                <div className="font-medium text-sm">Current Grade</div>
-                                <div className="font-medium text-sm">Move to Grade</div>
+                              <div className="grid grid-cols-[1fr_1fr] gap-6 mb-2">
+                                <div className="font-medium text-base text-center">Current Grade</div>
+                                <div className="font-medium text-base text-center">Move to Grade</div>
                               </div>
                               
-                              <div className="space-y-3 max-h-[300px] overflow-auto pr-2">
+                              <div className="space-y-4 max-h-[300px] overflow-auto pr-2">
                                 {studentGrades.map(grade => (
-                                  <div key={grade} className="grid grid-cols-[2fr_3fr] gap-4 items-center">
-                                    <div className="text-sm">{grade}</div>
+                                  <div key={grade} className="grid grid-cols-[1fr_1fr] gap-6 items-center">
+                                    <div className="text-base font-medium text-center">{grade}</div>
                                     <FormField
                                       control={gradePromotionForm.control}
                                       name={`gradePromotionMap.${grade}`}
@@ -1041,7 +1042,7 @@ export default function AcademicYearsSettings() {
                                             disabled={isPromotingGrades}
                                           >
                                             <FormControl>
-                                              <SelectTrigger className="h-9">
+                                              <SelectTrigger className="h-10">
                                                 <SelectValue placeholder="Select Grade" />
                                               </SelectTrigger>
                                             </FormControl>
@@ -1061,11 +1062,11 @@ export default function AcademicYearsSettings() {
                               </div>
                               
                               {/* Notes section for Grade 12 */}
-                              <div className="mt-5 bg-amber-50 p-3 rounded-md">
+                              <div className="mt-6 bg-amber-50 p-4 rounded-md">
                                 <div className="flex">
-                                  <Info className="h-4 w-4 text-amber-500 mt-1 mr-2 flex-shrink-0" />
-                                  <p className="text-sm text-amber-700 text-left">
-                                    <span className="font-semibold">Note:</span> Grade 12 students will be moved to alumni because grades end at Grade 12.
+                                  <Info className="h-5 w-5 text-amber-500 mt-1 mr-2 flex-shrink-0" />
+                                  <p className="text-base text-amber-700">
+                                    <span className="font-semibold">Notes:</span> Grade 12 students will be moved to alumni because grades end at Grade 12.
                                   </p>
                                 </div>
                               </div>
@@ -1078,9 +1079,14 @@ export default function AcademicYearsSettings() {
                                 onClick={() => setCopyStep(1)} 
                                 disabled={isPromotingGrades}
                               >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
                               </Button>
-                              <Button type="submit" disabled={isPromotingGrades}>
+                              <Button 
+                                type="submit" 
+                                variant="default"
+                                disabled={isPromotingGrades}
+                              >
                                 {isPromotingGrades ? (
                                   <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
