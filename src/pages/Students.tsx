@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X, Filter, FilterX } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2, Check, X, Filter, FilterX, Upload } from "lucide-react";
 import { AddEditStudentModal } from "@/components/students/AddEditStudentModal";
+import { ImportStudentsModal } from "@/components/students/ImportStudentsModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -466,6 +467,9 @@ export default function Students() {
     }
   ];
 
+  // Add state for import students modal
+  const [isImportStudentsModalOpen, setIsImportStudentsModalOpen] = useState(false);
+
   return <div className="space-y-6 fade-in">
     <div className="flex items-center justify-between">
       <div>
@@ -475,6 +479,13 @@ export default function Students() {
         </p>
       </div>
       <div className="flex items-center gap-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setIsImportStudentsModalOpen(true)}
+        >
+          <Upload className="mr-2 h-4 w-4" />
+          Import Students
+        </Button>
         <Button onClick={() => setIsAddStudentModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Student
@@ -667,6 +678,15 @@ export default function Students() {
       onOpenChange={setIsAddStudentModalOpen} 
       onSubmit={handleAddStudent} 
       isLoading={addStudentMutation.isPending} 
+    />
+
+    {/* Import Students Modal */}
+    <ImportStudentsModal 
+      open={isImportStudentsModalOpen}
+      onOpenChange={setIsImportStudentsModalOpen}
+      onSuccess={() => {
+        queryClient.invalidateQueries({ queryKey: ['students'] });
+      }}
     />
 
     {/* Edit Student Modal */}
