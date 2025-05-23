@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -437,11 +438,10 @@ export default function AcademicYearsSettings() {
         description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
       });
       
-      // Move to grade promotion step with a longer delay to ensure UI updates properly
-      setTimeout(() => {
-        setIsCopying(false);
-        setCopyStep(2);
-      }, 800);
+      // Reset copying state and move to step 2
+      setIsCopying(false);
+      setCopyStep(2);
+      
     } catch (error: any) {
       console.error("Error copying academic year data:", error);
       toast({
