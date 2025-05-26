@@ -119,13 +119,13 @@ export default function Auth() {
           {/* Top Section - Logo and Brand */}
           <div className="space-y-6">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 bg-white rounded">
               {logoUrl ? <img src={logoUrl} alt={`${organizationName} Logo`} className="h-12 w-auto object-contain" /> : <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-lg" style={{
               backgroundColor: 'rgba(255,255,255,0.2)'
             }}>
                   {organizationName.split(' ').map(word => word[0]).join('').slice(0, 2)}
                 </div>}
-              <h1 className="text-2xl font-bold">{organizationName}</h1>
+              
             </div>
             
             {/* Description */}
