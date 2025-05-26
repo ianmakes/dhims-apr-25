@@ -104,15 +104,15 @@ export default function Auth() {
   return <div className="min-h-screen flex">
       {/* Left Side - Branding and Illustration */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{
-      background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
-    }}>
+        background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
+      }}>
         {/* Background Illustration */}
         <div className="absolute inset-0 opacity-20" style={{
-        backgroundImage: `url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&q=80')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }} />
+          backgroundImage: `url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&q=80')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }} />
         
         {/* Content Overlay */}
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
@@ -123,7 +123,7 @@ export default function Auth() {
             
             {/* Description */}
             <div className="space-y-4 max-w-md">
-              <h2 className="text-3xl font-bold leading-tight text-left">David's Hope International</h2>
+              <h2 className="text-3xl font-bold leading-tight text-left">{organizationName}</h2>
               <p className="opacity-90 leading-relaxed text-left text-sm">DHI Management System</p>
             </div>
           </div>
@@ -163,49 +163,48 @@ export default function Auth() {
               <p className="text-muted-foreground">Sign in to access your account</p>
             </div>
 
-            <Card className="border shadow-lg">
-              <CardContent className="p-6 space-y-6">
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
-                    <FormField control={loginForm.control} name="email" render={({
+            {/* Minimalist Form Card */}
+            <div className="bg-background/50 backdrop-blur-sm rounded-2xl p-8 space-y-6 border-0 shadow-none">
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
+                  <FormField control={loginForm.control} name="email" render={({
                     field
                   }) => <FormItem>
-                          <FormLabel className="text-sm font-medium">Email address</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground/80">Email address</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                              <Input placeholder="you@example.com" type="email" className="pl-10 h-11 bg-background border-border focus:border-primary/50 focus:ring-primary/20" {...field} />
+                              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                              <Input placeholder="you@example.com" type="email" className="pl-12 h-12 bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>} />
-                    
-                    <FormField control={loginForm.control} name="password" render={({
+                  
+                  <FormField control={loginForm.control} name="password" render={({
                     field
                   }) => <FormItem>
-                          <FormLabel className="text-sm font-medium">Password</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                              <Input placeholder="Enter your password" type="password" className="pl-10 h-11 bg-background border-border focus:border-primary/50 focus:ring-primary/20" {...field} />
+                              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                              <Input placeholder="Enter your password" type="password" className="pl-12 h-12 bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>} />
-                    
-                    <Button type="submit" className="w-full h-11 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200" style={{
+                  
+                  <Button type="submit" className="w-full h-12 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border-0" style={{
                     backgroundColor: primaryColor,
                     borderColor: primaryColor
                   }} disabled={isLoading}>
-                      {isLoading ? <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Signing in...
-                        </> : "Sign in"}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+                    {isLoading ? <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </> : "Sign in"}
+                  </Button>
+                </form>
+              </Form>
+            </div>
           </div>
 
           {/* Footer for mobile */}
