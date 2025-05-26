@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthError } from "@supabase/supabase-js";
 import { Loader2, Mail, Lock } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
+import { logLogin } from "@/utils/auditLog";
 const loginSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address"
@@ -64,21 +65,30 @@ export default function Auth() {
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
       setIsLoading(true);
-      const {
-        error
-      } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password
       });
+
       if (error) {
         throw error;
       }
+
+      // Log the successful login
+      if (data.user) {
+        await logLogin(data.user.id, `User ${values.email} logged in successfully`);
+      }
+
       toast({
         title: "Login successful",
         description: "Welcome back!"
       });
     } catch (error) {
       const authError = error as AuthError;
+      
+      // Log failed login attempt
+      await logLogin('unknown', `Failed login attempt for email: ${values.email}. Error: ${authError?.message}`);
+      
       toast({
         title: "Login failed",
         description: authError?.message || "Something went wrong. Please try again.",

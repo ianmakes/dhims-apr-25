@@ -20,11 +20,9 @@ export const recordAuditLog = async (params: AuditLogParams): Promise<void> => {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) {
+    if (!user && action !== 'login') {
       console.warn("No user found for audit log");
     }
-    
-    // Get the client's IP address (will be captured by Supabase automatically in RLS)
     
     // Create audit log entry
     await supabase.from('audit_logs').insert({
@@ -110,6 +108,18 @@ export const logLogout = async (userId: string, details: string = "User logged o
     action: 'logout',
     entity: 'auth',
     entity_id: userId,
+    details
+  });
+};
+
+/**
+ * Log a view action
+ */
+export const logView = async (entity: string, entityId: string, details: string): Promise<void> => {
+  return recordAuditLog({
+    action: 'view',
+    entity,
+    entity_id: entityId,
     details
   });
 };

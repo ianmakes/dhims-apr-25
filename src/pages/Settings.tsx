@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -29,6 +28,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileText, Filter, Search } from "lucide-react";
+import { logUpdate, logSystem } from "@/utils/auditLog";
+import AuditLogSettings from "./settings/AuditLogSettings";
 
 // Form schema for general settings
 const generalSettingsSchema = z.object({
@@ -159,28 +160,67 @@ export default function Settings() {
     defaultValues: emailDefaultValues,
   });
 
-  const onGeneralSubmit = (data: GeneralSettingsValues) => {
-    console.log("General settings updated:", data);
-    toast({
-      title: "Settings updated",
-      description: "General settings have been updated successfully.",
-    });
+  const onGeneralSubmit = async (data: GeneralSettingsValues) => {
+    try {
+      console.log("General settings updated:", data);
+      
+      // Log the settings update
+      await logSystem('settings', 'general', `Updated general settings: ${JSON.stringify(data)}`);
+      
+      toast({
+        title: "Settings updated",
+        description: "General settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating general settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update general settings.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const onAccountSubmit = (data: AccountSettingsValues) => {
-    console.log("Account settings updated:", data);
-    toast({
-      title: "Account updated",
-      description: "Your account settings have been updated successfully.",
-    });
+  const onAccountSubmit = async (data: AccountSettingsValues) => {
+    try {
+      console.log("Account settings updated:", data);
+      
+      // Log the account update
+      await logUpdate('user_account', 'current', `Updated account settings for user: ${data.email}`);
+      
+      toast({
+        title: "Account updated",
+        description: "Your account settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating account settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update account settings.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const onEmailSubmit = (data: EmailSettingsValues) => {
-    console.log("Email settings updated:", data);
-    toast({
-      title: "Email settings updated",
-      description: "Email settings have been updated successfully.",
-    });
+  const onEmailSubmit = async (data: EmailSettingsValues) => {
+    try {
+      console.log("Email settings updated:", data);
+      
+      // Log the email settings update
+      await logSystem('settings', 'email', `Updated email settings: SMTP host ${data.smtpHost}, notifications enabled: ${data.emailNotifications}`);
+      
+      toast({
+        title: "Email settings updated",
+        description: "Email settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating email settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update email settings.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Filter audit logs based on search term
@@ -758,82 +798,7 @@ export default function Settings() {
 
         {/* Audit Logs Tab */}
         <TabsContent value="audit" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Audit Logs</CardTitle>
-              <CardDescription>
-                View and search system audit logs
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search audit logs..."
-                    className="pl-8"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button variant="outline">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
-                </Button>
-                <Button variant="outline">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              </div>
-              
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Entity</TableHead>
-                      <TableHead>Entity ID</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredAuditLogs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No audit logs found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredAuditLogs.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell>{log.user}</TableCell>
-                          <TableCell>{log.action}</TableCell>
-                          <TableCell>{log.entity}</TableCell>
-                          <TableCell>{log.entityId}</TableCell>
-                          <TableCell>{log.details}</TableCell>
-                          <TableCell>{log.timestamp}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" disabled>
-                Previous
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                Page 1 of 1
-              </div>
-              <Button variant="outline" disabled>
-                Next
-              </Button>
-            </CardFooter>
-          </Card>
+          <AuditLogSettings />
         </TabsContent>
       </Tabs>
     </div>
