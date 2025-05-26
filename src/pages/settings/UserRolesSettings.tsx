@@ -153,17 +153,32 @@ export default function UserRolesSettings() {
 
   const fetchCurrentUserRole = async () => {
     try {
-      const { data: profile } = await supabase
+      console.log("Fetching current user role for user:", user?.id);
+      
+      if (!user?.id) {
+        console.log("No user ID available");
+        return;
+      }
+
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", user?.id)
+        .eq("id", user.id)
         .single();
+      
+      if (error) {
+        console.error("Error fetching user profile:", error);
+        return;
+      }
+
+      console.log("Current user profile:", profile);
       
       if (profile) {
         setCurrentUserRole(profile.role);
+        console.log("Current user role set to:", profile.role);
       }
     } catch (error) {
-      console.error("Error fetching user role:", error);
+      console.error("Error in fetchCurrentUserRole:", error);
     }
   };
 
@@ -236,12 +251,14 @@ export default function UserRolesSettings() {
   };
 
   const isSuperAdmin = () => {
-    return currentUserRole === 'super admin' || currentUserRole === 'admin';
+    console.log("Checking if super admin. Current role:", currentUserRole);
+    // Check for both "super admin" and "superuser" for backward compatibility
+    return currentUserRole === 'super admin' || currentUserRole === 'superuser' || currentUserRole === 'admin';
   };
 
   const canEditRole = (role: Role) => {
     if (!isSuperAdmin()) return false;
-    if (role.name.toLowerCase() === 'super admin' && currentUserRole !== 'super admin') return false;
+    if (role.name.toLowerCase() === 'super admin' && currentUserRole !== 'super admin' && currentUserRole !== 'superuser') return false;
     return true;
   };
 
@@ -324,7 +341,7 @@ export default function UserRolesSettings() {
       }
 
       // Prevent editing super admin role by non-super admins
-      if (editingRole?.name.toLowerCase() === 'super admin' && currentUserRole !== 'super admin') {
+      if (editingRole?.name.toLowerCase() === 'super admin' && currentUserRole !== 'super admin' && currentUserRole !== 'superuser') {
         toast({
           title: "Access Denied",
           description: "Only super administrators can edit the Super Admin role",
@@ -458,6 +475,7 @@ export default function UserRolesSettings() {
               <h4 className="text-sm font-medium text-yellow-800">Limited Access</h4>
               <p className="text-sm text-yellow-700">
                 You have read-only access to roles. Contact a super administrator to create or modify roles.
+                Current role: {currentUserRole || 'Unknown'}
               </p>
             </div>
           </div>
