@@ -8,18 +8,18 @@ export const createSuperuser = async (email = "itest6904@gmail.com", password = 
     const { data: existingUsers, error: checkError } = await supabase
       .from("profiles")
       .select("id")
-      .eq("role", "superuser");
+      .eq("role", "super admin");
     
     if (checkError) {
       throw new Error(`Error checking superuser: ${checkError.message}`);
     }
     
     if (existingUsers && existingUsers.length > 0) {
-      console.log("Superuser already exists");
+      console.log("Super admin already exists");
       return;
     }
     
-    console.log("Creating superuser with email:", email);
+    console.log("Creating super admin with email:", email);
     
     // Create the superuser
     const { data, error } = await supabase.auth.signUp({
@@ -28,29 +28,29 @@ export const createSuperuser = async (email = "itest6904@gmail.com", password = 
       options: {
         data: {
           name: "Super Admin",
-          role: "superuser"
+          role: "super admin"
         },
       }
     });
     
     if (error) {
-      throw new Error(`Error creating superuser: ${error.message}`);
+      throw new Error(`Error creating super admin: ${error.message}`);
     }
     
-    console.log("Superuser created:", data);
+    console.log("Super admin created:", data);
     
     // Directly update the user role in the profiles table to ensure it's set
     if (data.user) {
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ role: "superuser" })
+        .update({ role: "super admin" })
         .eq("id", data.user.id);
       
       if (updateError) {
-        throw new Error(`Error updating superuser role: ${updateError.message}`);
+        throw new Error(`Error updating super admin role: ${updateError.message}`);
       }
       
-      console.log("Superuser role updated in profiles table");
+      console.log("Super admin role updated in profiles table");
     }
     
     return data;
