@@ -16,8 +16,19 @@ interface AppSettings {
   updated_by?: string;
 }
 
+interface AcademicYear {
+  id: string;
+  year_name: string;
+  is_current: boolean;
+  start_date: string;
+  end_date: string;
+}
+
 interface GlobalSettingsContextType {
   settings: AppSettings | null;
+  currentAcademicYear: AcademicYear | null;
+  selectedAcademicYear: string | null;
+  setSelectedAcademicYear: (year: string) => void;
   loading: boolean;
   error: Error | null;
   refreshSettings: () => Promise<void>;
@@ -33,6 +44,9 @@ const defaultSettings: AppSettings = {
 
 const GlobalSettingsContext = createContext<GlobalSettingsContextType>({
   settings: defaultSettings,
+  currentAcademicYear: null,
+  selectedAcademicYear: null,
+  setSelectedAcademicYear: () => {},
   loading: false,
   error: null,
   refreshSettings: async () => {}
@@ -40,45 +54,61 @@ const GlobalSettingsContext = createContext<GlobalSettingsContextType>({
 
 export function GlobalSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<AcademicYear | null>(null);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch app settings
+      const { data: settingsData, error: settingsError } = await supabase
         .from('app_settings')
         .select('*')
         .eq('id', 'general')
         .single();
       
-      if (error) {
-        // If no settings exist, use default settings
-        if (error.code === 'PGRST116') {
-          setSettings(defaultSettings);
-        } else {
-          console.error("Error fetching app settings:", error);
-          setError(new Error(error.message));
-        }
-        return;
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        console.error("Error fetching app settings:", settingsError);
+        setError(new Error(settingsError.message));
+      } else {
+        setSettings(settingsData || defaultSettings);
       }
       
-      setSettings(data as AppSettings);
+      // Fetch current academic year
+      const { data: academicYearData, error: academicYearError } = await supabase
+        .from('academic_years')
+        .select('*')
+        .eq('is_current', true)
+        .single();
       
-      // Apply colors to document root to make them globally available
-      if (data) {
-        document.documentElement.style.setProperty('--color-primary', data.primary_color);
-        document.documentElement.style.setProperty('--color-secondary', data.secondary_color);
+      if (academicYearError && academicYearError.code !== 'PGRST116') {
+        console.error("Error fetching current academic year:", academicYearError);
+      } else if (academicYearData) {
+        setCurrentAcademicYear(academicYearData as AcademicYear);
+        // Set selected academic year to current if not already set
+        if (!selectedAcademicYear) {
+          setSelectedAcademicYear(academicYearData.year_name);
+        }
+      }
+      
+      // Apply colors to document root
+      if (settingsData || defaultSettings) {
+        const settingsToUse = settingsData || defaultSettings;
+        document.documentElement.style.setProperty('--color-primary', settingsToUse.primary_color);
+        document.documentElement.style.setProperty('--color-secondary', settingsToUse.secondary_color);
         
         // Set favicon if available
-        if (data.favicon_url) {
+        if (settingsToUse.favicon_url) {
           const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
           if (link) {
-            link.href = data.favicon_url;
+            link.href = settingsToUse.favicon_url;
           } else {
             const newLink = document.createElement('link');
             newLink.rel = 'icon';
-            newLink.href = data.favicon_url;
+            newLink.href = settingsToUse.favicon_url;
             document.head.appendChild(newLink);
           }
         }
@@ -101,7 +131,15 @@ export function GlobalSettingsProvider({ children }: { children: ReactNode }) {
   }, []);
   
   return (
-    <GlobalSettingsContext.Provider value={{ settings, loading, error, refreshSettings }}>
+    <GlobalSettingsContext.Provider value={{ 
+      settings, 
+      currentAcademicYear,
+      selectedAcademicYear,
+      setSelectedAcademicYear,
+      loading, 
+      error, 
+      refreshSettings 
+    }}>
       {children}
     </GlobalSettingsContext.Provider>
   );

@@ -314,33 +314,42 @@ export type Database = {
       }
       student_exam_scores: {
         Row: {
+          academic_year_recorded: string | null
           created_at: string | null
           created_by: string | null
           did_not_sit: boolean
           exam_id: string | null
           id: string
+          is_current_record: boolean | null
+          record_date: string | null
           score: number
           student_id: string | null
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          academic_year_recorded?: string | null
           created_at?: string | null
           created_by?: string | null
           did_not_sit?: boolean
           exam_id?: string | null
           id?: string
+          is_current_record?: boolean | null
+          record_date?: string | null
           score: number
           student_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          academic_year_recorded?: string | null
           created_at?: string | null
           created_by?: string | null
           did_not_sit?: boolean
           exam_id?: string | null
           id?: string
+          is_current_record?: boolean | null
+          record_date?: string | null
           score?: number
           student_id?: string | null
           updated_at?: string | null
@@ -365,32 +374,41 @@ export type Database = {
       }
       student_letters: {
         Row: {
+          academic_year_recorded: string | null
           content: string | null
           created_at: string | null
           created_by: string | null
           date: string | null
           file_url: string | null
           id: string
+          is_current_record: boolean | null
+          record_date: string | null
           student_id: string | null
           title: string
         }
         Insert: {
+          academic_year_recorded?: string | null
           content?: string | null
           created_at?: string | null
           created_by?: string | null
           date?: string | null
           file_url?: string | null
           id?: string
+          is_current_record?: boolean | null
+          record_date?: string | null
           student_id?: string | null
           title?: string
         }
         Update: {
+          academic_year_recorded?: string | null
           content?: string | null
           created_at?: string | null
           created_by?: string | null
           date?: string | null
           file_url?: string | null
           id?: string
+          is_current_record?: boolean | null
+          record_date?: string | null
           student_id?: string | null
           title?: string
         }
@@ -406,31 +424,40 @@ export type Database = {
       }
       student_photos: {
         Row: {
+          academic_year_recorded: string | null
           caption: string
           created_at: string
           date: string
           id: string
+          is_current_record: boolean | null
           location: string | null
+          record_date: string | null
           student_id: string | null
           updated_at: string
           url: string
         }
         Insert: {
+          academic_year_recorded?: string | null
           caption: string
           created_at?: string
           date?: string
           id?: string
+          is_current_record?: boolean | null
           location?: string | null
+          record_date?: string | null
           student_id?: string | null
           updated_at?: string
           url: string
         }
         Update: {
+          academic_year_recorded?: string | null
           caption?: string
           created_at?: string
           date?: string
           id?: string
+          is_current_record?: boolean | null
           location?: string | null
+          record_date?: string | null
           student_id?: string | null
           updated_at?: string
           url?: string
@@ -488,6 +515,7 @@ export type Database = {
       }
       students: {
         Row: {
+          academic_year_recorded: string | null
           accommodation_status: string | null
           admission_date: string | null
           admission_number: string
@@ -502,9 +530,11 @@ export type Database = {
           health_status: string | null
           height_cm: number | null
           id: string
+          is_current_record: boolean | null
           location: string | null
           name: string
           profile_image_url: string | null
+          record_date: string | null
           school_level: string | null
           slug: string | null
           sponsor_id: string | null
@@ -515,6 +545,7 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          academic_year_recorded?: string | null
           accommodation_status?: string | null
           admission_date?: string | null
           admission_number: string
@@ -529,9 +560,11 @@ export type Database = {
           health_status?: string | null
           height_cm?: number | null
           id?: string
+          is_current_record?: boolean | null
           location?: string | null
           name: string
           profile_image_url?: string | null
+          record_date?: string | null
           school_level?: string | null
           slug?: string | null
           sponsor_id?: string | null
@@ -542,6 +575,7 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          academic_year_recorded?: string | null
           accommodation_status?: string | null
           admission_date?: string | null
           admission_number?: string
@@ -556,9 +590,11 @@ export type Database = {
           health_status?: string | null
           height_cm?: number | null
           id?: string
+          is_current_record?: boolean | null
           location?: string | null
           name?: string
           profile_image_url?: string | null
+          record_date?: string | null
           school_level?: string | null
           slug?: string | null
           sponsor_id?: string | null
@@ -580,11 +616,14 @@ export type Database = {
       }
       timeline_events: {
         Row: {
+          academic_year_recorded: string | null
           created_at: string | null
           created_by: string | null
           date: string | null
           description: string | null
           id: string
+          is_current_record: boolean | null
+          record_date: string | null
           student_id: string | null
           title: string
           type: string
@@ -592,11 +631,14 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          academic_year_recorded?: string | null
           created_at?: string | null
           created_by?: string | null
           date?: string | null
           description?: string | null
           id?: string
+          is_current_record?: boolean | null
+          record_date?: string | null
           student_id?: string | null
           title: string
           type?: string
@@ -604,11 +646,14 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          academic_year_recorded?: string | null
           created_at?: string | null
           created_by?: string | null
           date?: string | null
           description?: string | null
           id?: string
+          is_current_record?: boolean | null
+          record_date?: string | null
           student_id?: string | null
           title?: string
           type?: string

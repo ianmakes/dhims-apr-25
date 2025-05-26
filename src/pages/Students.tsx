@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 interface Student {
   id: string;
@@ -25,7 +26,10 @@ interface Student {
   sponsor_id?: string;
   status: string;
   profile_image_url?: string;
-  [key: string]: any; // Allow for additional properties
+  academic_year_recorded?: string;
+  record_date?: string;
+  is_current_record?: boolean;
+  [key: string]: any;
 }
 
 interface AcademicYear {
@@ -40,10 +44,10 @@ export default function Students() {
   const [grade, setGrade] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [sponsored, setSponsored] = useState<string>("all");
-  const [academicYear, setAcademicYear] = useState<string>("all");
   const [filtersVisible, setFiltersVisible] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { selectedAcademicYear, setSelectedAcademicYear, currentAcademicYear } = useAppSettings();
   const queryClient = useQueryClient();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
@@ -69,33 +73,32 @@ export default function Students() {
 
   // Set default academic year to current year if available
   useEffect(() => {
-    if (academicYears.length > 0) {
-      const currentYear = academicYears.find(year => year.is_current);
-      if (currentYear) {
-        setAcademicYear(currentYear.year_name);
-      } else {
-        setAcademicYear(academicYears[0].year_name);
-      }
+    if (currentAcademicYear && !selectedAcademicYear) {
+      setSelectedAcademicYear(currentAcademicYear.year_name);
     }
-  }, [academicYears]);
+  }, [currentAcademicYear, selectedAcademicYear, setSelectedAcademicYear]);
 
-  // Fetch students data from Supabase
+  // Fetch students data from Supabase with academic year filtering
   const {
     data: students = [],
     isLoading,
     error
   } = useQuery({
-    queryKey: ['students'],
+    queryKey: ['students', selectedAcademicYear],
     queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from('students').select('*').order('created_at', {
-        ascending: false
-      });
+      let query = supabase.from('students').select('*');
+      
+      // Filter by academic year if selected
+      if (selectedAcademicYear && selectedAcademicYear !== "all") {
+        query = query.eq('academic_year_recorded', selectedAcademicYear);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
       if (error) throw error;
       return data as Student[];
-    }
+    },
+    enabled: !!selectedAcademicYear
   });
 
   // Mutation for adding a student
@@ -107,7 +110,8 @@ export default function Students() {
       } = await supabase.from('students').insert([{
         ...studentData,
         created_by: user?.id,
-        updated_by: user?.id
+        updated_by: user?.id,
+        academic_year_recorded: selectedAcademicYear
       }]).select().single();
       if (error) throw error;
       return data;
@@ -145,7 +149,8 @@ export default function Students() {
       } = await supabase.from('students').update({
         ...data,
         updated_by: user?.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        academic_year_recorded: selectedAcademicYear
       }).eq('id', id).select().single();
       if (error) throw error;
       return updatedData;
@@ -228,7 +233,8 @@ export default function Students() {
         .update({ 
           status, 
           updated_by: user?.id, 
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString(),
+          academic_year_recorded: selectedAcademicYear
         })
         .in('id', ids);
       if (error) throw error;
@@ -260,10 +266,6 @@ export default function Students() {
     if (status && status !== "all" && student.status !== status) return false;
     if (sponsored === "sponsored" && !student.sponsor_id) return false;
     if (sponsored === "unsponsored" && student.sponsor_id) return false;
-    if (academicYear !== "all") {
-      // Add academic year filtering logic if needed
-      // This would require the students table to have an academic_year field
-    }
     return true;
   });
 
@@ -273,12 +275,9 @@ export default function Students() {
     setStatus("all");
     setSponsored("all");
     
-    // Find current academic year to set as default
-    const currentYear = academicYears.find(year => year.is_current);
-    if (currentYear) {
-      setAcademicYear(currentYear.year_name);
-    } else {
-      setAcademicYear("all");
+    // Reset to current academic year
+    if (currentAcademicYear) {
+      setSelectedAcademicYear(currentAcademicYear.year_name);
     }
   };
 
@@ -476,6 +475,12 @@ export default function Students() {
         <h1 className="text-3xl font-bold tracking-tight text-left">Students</h1>
         <p className="text-muted-foreground">
           Manage and track all students in the system
+          {selectedAcademicYear && selectedAcademicYear !== "all" && (
+            <span className="ml-2 text-primary font-medium">
+              • Academic Year: {selectedAcademicYear}
+              {selectedAcademicYear === currentAcademicYear?.year_name && " (Current)"}
+            </span>
+          )}
         </p>
       </div>
       <div className="flex items-center gap-4">
@@ -512,7 +517,7 @@ export default function Students() {
             size="sm" 
             onClick={clearAllFilters}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-            disabled={grade === "all" && status === "all" && sponsored === "all" && academicYear === "all"}
+            disabled={grade === "all" && status === "all" && sponsored === "all" && selectedAcademicYear === currentAcademicYear?.year_name}
           >
             <FilterX className="h-4 w-4" />
             Clear Filters
@@ -526,7 +531,7 @@ export default function Students() {
             <label htmlFor="academicYear" className="text-sm font-medium block">
               Academic Year:
             </label>
-            <Select value={academicYear} onValueChange={setAcademicYear}>
+            <Select value={selectedAcademicYear || ""} onValueChange={setSelectedAcademicYear}>
               <SelectTrigger id="academicYear" className="w-full">
                 <SelectValue placeholder="All Academic Years" />
               </SelectTrigger>
@@ -603,17 +608,17 @@ export default function Students() {
     </div>
 
     {/* Display filter summary if filters are applied */}
-    {(grade !== "all" || status !== "all" || sponsored !== "all" || academicYear !== "all") && (
+    {(grade !== "all" || status !== "all" || sponsored !== "all" || selectedAcademicYear !== currentAcademicYear?.year_name) && (
       <div className="flex flex-wrap gap-2 text-sm">
         <span className="text-muted-foreground">Active filters:</span>
-        {academicYear !== "all" && (
+        {selectedAcademicYear && selectedAcademicYear !== "all" && selectedAcademicYear !== currentAcademicYear?.year_name && (
           <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
-            <span>Year: {String(academicYear)}</span>
+            <span>Year: {selectedAcademicYear}</span>
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-4 w-4 p-0" 
-              onClick={() => setAcademicYear("all")}
+              onClick={() => setSelectedAcademicYear(currentAcademicYear?.year_name || "all")}
             >
               <X className="h-3 w-3" />
             </Button>
