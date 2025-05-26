@@ -233,7 +233,6 @@ export default function AuditLogSettings() {
                   <Checkbox
                     id={`action-${action}`}
                     checked={filters.action.includes(action)}
-                    readOnly
                   />
                   <span>{action}</span>
                 </DropdownMenuItem>
@@ -266,7 +265,6 @@ export default function AuditLogSettings() {
                   <Checkbox
                     id={`entity-${entity}`}
                     checked={filters.entity.includes(entity)}
-                    readOnly
                   />
                   <span>{entity}</span>
                 </DropdownMenuItem>
