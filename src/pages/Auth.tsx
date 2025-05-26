@@ -104,15 +104,15 @@ export default function Auth() {
   return <div className="min-h-screen flex">
       {/* Left Side - Branding and Illustration */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{
-        background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
-      }}>
+      background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
+    }}>
         {/* Background Illustration */}
         <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&q=80')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }} />
+        backgroundImage: `url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&q=80')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }} />
         
         {/* Content Overlay */}
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
@@ -164,12 +164,12 @@ export default function Auth() {
             </div>
 
             {/* Minimalist Form Card */}
-            <div className="bg-background/50 backdrop-blur-sm rounded-2xl p-8 space-y-6 border-0 shadow-none">
+            <div className="bg-background/50 backdrop-blur-sm rounded-2xl p-8 space-y-6 border-0 shadow-none px-0">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
                   <FormField control={loginForm.control} name="email" render={({
-                    field
-                  }) => <FormItem>
+                  field
+                }) => <FormItem>
                           <FormLabel className="text-sm font-medium text-foreground/80">Email address</FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -181,8 +181,8 @@ export default function Auth() {
                         </FormItem>} />
                   
                   <FormField control={loginForm.control} name="password" render={({
-                    field
-                  }) => <FormItem>
+                  field
+                }) => <FormItem>
                           <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -194,9 +194,9 @@ export default function Auth() {
                         </FormItem>} />
                   
                   <Button type="submit" className="w-full h-12 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border-0" style={{
-                    backgroundColor: primaryColor,
-                    borderColor: primaryColor
-                  }} disabled={isLoading}>
+                  backgroundColor: primaryColor,
+                  borderColor: primaryColor
+                }} disabled={isLoading}>
                     {isLoading ? <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Signing in...
