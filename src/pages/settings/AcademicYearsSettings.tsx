@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -267,112 +266,65 @@ export default function AcademicYearsSettings() {
     }
   };
   
-  const handleSubmit = async (values: AcademicYearFormValues) => {
-    try {
-      let response;
-      if (editingYear) {
-        response = await supabase
-          .from('academic_years')
-          .update({
-            year_name: values.year_name,
-            is_current: values.is_current,
-            start_date: values.start_date,
-            end_date: values.end_date,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingYear.id);
-      } else {
-        response = await supabase
-          .from('academic_years')
-          .insert([{
-            year_name: values.year_name,
-            is_current: values.is_current,
-            start_date: values.start_date,
-            end_date: values.end_date
-          }]);
-      }
-      
-      if (response.error) throw response.error;
-      
-      toast({
-        title: editingYear ? "Updated" : "Created",
-        description: `Academic year ${values.year_name} has been ${editingYear ? "updated" : "created"} successfully.`
-      });
-      
-      await fetchAcademicYears();
-      setIsDialogOpen(false);
-      
-      // If the current year was changed, reload the app
-      if (values.is_current) {
-        window.location.reload();
-      }
-    } catch (error: any) {
-      console.error("Error saving academic year:", error);
-      toast({
-        title: "Error",
-        description: `Failed to save academic year: ${error.message}`,
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleDelete = async (academicYear: AcademicYear) => {
-    try {
-      const { error } = await supabase
-        .from('academic_years')
-        .delete()
-        .eq('id', academicYear.id);
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Deleted",
-        description: `Academic year ${academicYear.year_name} has been deleted.`
-      });
-      
-      await fetchAcademicYears();
-    } catch (error: any) {
-      console.error("Error deleting academic year:", error);
-      toast({
-        title: "Error",
-        description: `Failed to delete academic year: ${error.message}`,
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleSetCurrent = async () => {
-    if (!yearToSetCurrent) return;
+  const handleNextStep = () => {
+    // Validate the form before proceeding to next step
+    const values = copyForm.getValues();
     
-    try {
-      const { error } = await supabase
-        .from('academic_years')
-        .update({
-          is_current: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', yearToSetCurrent.id);
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Current Year Updated",
-        description: `${yearToSetCurrent.year_name} is now set as the current academic year. Student grades have been automatically promoted to the next level.`
+    // Check if source year is selected
+    if (!values.sourceYearId) {
+      copyForm.setError("sourceYearId", {
+        type: "manual",
+        message: "Please select a source academic year"
       });
-      
-      setYearToSetCurrent(null);
-      await fetchAcademicYears();
-      
-      // Reload the app to apply the new academic year context
-      window.location.reload();
-    } catch (error: any) {
-      console.error("Error updating current academic year:", error);
-      toast({
-        title: "Error",
-        description: `Failed to update current academic year: ${error.message}`,
-        variant: "destructive"
-      });
+      return;
     }
+    
+    // Check destination requirements
+    if (values.createNewYear) {
+      if (!values.newYearName || !values.newStartDate || !values.newEndDate) {
+        if (!values.newYearName) {
+          copyForm.setError("newYearName", {
+            type: "manual", 
+            message: "New academic year name is required"
+          });
+        }
+        if (!values.newStartDate) {
+          copyForm.setError("newStartDate", {
+            type: "manual",
+            message: "Start date is required"
+          });
+        }
+        if (!values.newEndDate) {
+          copyForm.setError("newEndDate", {
+            type: "manual", 
+            message: "End date is required"
+          });
+        }
+        return;
+      }
+      
+      // Validate date range
+      if (values.newStartDate && values.newEndDate) {
+        const start = new Date(values.newStartDate);
+        const end = new Date(values.newEndDate);
+        if (end <= start) {
+          copyForm.setError("newEndDate", {
+            type: "manual",
+            message: "End date must be after start date"
+          });
+          return;
+        }
+      }
+    } else if (!values.destinationYearId) {
+      copyForm.setError("destinationYearId", {
+        type: "manual",
+        message: "Please select a destination academic year"
+      });
+      return;
+    }
+    
+    // If validation passes, proceed to next step
+    setCopyStep(2);
   };
   
   const handleCopyYear = async (values: CopyYearFormValues) => {
@@ -438,9 +390,8 @@ export default function AcademicYearsSettings() {
         description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
       });
       
-      // Reset copying state and move to step 2
+      // Reset copying state
       setIsCopying(false);
-      setCopyStep(2);
       
     } catch (error: any) {
       console.error("Error copying academic year data:", error);
@@ -453,45 +404,62 @@ export default function AcademicYearsSettings() {
     }
   };
 
-  const handlePromoteGrades = async (values: GradePromotionFormValues) => {
-    setIsPromotingGrades(true);
-    
+  const handleDelete = async (academicYear: AcademicYear) => {
     try {
-      // For each grade mapping, update students with that grade
-      const promotionMap = values.gradePromotionMap;
-      const updates = Object.entries(promotionMap).map(async ([currentGrade, newGrade]) => {
-        // For Alumni status, we can handle differently if needed
-        const { error } = await supabase
-          .from('students')
-          .update({ current_grade: newGrade })
-          .eq('current_grade', currentGrade);
-          
-        if (error) throw error;
+      const { error } = await supabase
+        .from('academic_years')
+        .delete()
+        .eq('id', academicYear.id);
         
-        return { currentGrade, newGrade, success: true };
-      });
-      
-      await Promise.all(updates);
+      if (error) throw error;
       
       toast({
-        title: "Grades Updated",
-        description: "All student grades have been successfully updated to the next level."
+        title: "Deleted",
+        description: `Academic year ${academicYear.year_name} has been deleted.`
       });
       
-      // Reset and close
-      setIsPromotingGrades(false);
-      setCopyStep(1);
-      setIsCopyDialogOpen(false);
-      copyForm.reset();
-      
+      await fetchAcademicYears();
     } catch (error: any) {
-      console.error("Error promoting student grades:", error);
+      console.error("Error deleting academic year:", error);
       toast({
         title: "Error",
-        description: `Failed to update student grades: ${error.message}`,
+        description: `Failed to delete academic year: ${error.message}`,
         variant: "destructive"
       });
-      setIsPromotingGrades(false);
+    }
+  };
+  
+  const handleSetCurrent = async () => {
+    if (!yearToSetCurrent) return;
+    
+    try {
+      const { error } = await supabase
+        .from('academic_years')
+        .update({
+          is_current: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', yearToSetCurrent.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Current Year Updated",
+        description: `${yearToSetCurrent.year_name} is now set as the current academic year. Student grades have been automatically promoted to the next level.`
+      });
+      
+      setYearToSetCurrent(null);
+      await fetchAcademicYears();
+      
+      // Reload the app to apply the new academic year context
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Error updating current academic year:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update current academic year: ${error.message}`,
+        variant: "destructive"
+      });
     }
   };
   
@@ -783,7 +751,7 @@ export default function AcademicYearsSettings() {
 
                       {copyStep === 1 ? (
                         <Form {...copyForm}>
-                          <form onSubmit={copyForm.handleSubmit(handleCopyYear)} className="space-y-4">
+                          <div className="space-y-4">
                             {/* Source Year Selection */}
                             <FormField
                               control={copyForm.control}
@@ -975,45 +943,20 @@ export default function AcademicYearsSettings() {
                               />
                             </div>
                             
-                            {/* Progress indicator */}
-                            {isCopying && (
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-xs">
-                                  <span>Copying data...</span>
-                                  <span>{copyProgress}%</span>
-                                </div>
-                                <Progress value={copyProgress} />
-                              </div>
-                            )}
-                            
                             <DialogFooter>
                               <Button type="button" variant="outline" disabled={isCopying} onClick={() => setIsCopyDialogOpen(false)}>
                                 Cancel
                               </Button>
                               <Button 
-                                type="submit" 
-                                disabled={
-                                  isCopying || 
-                                  !watchSourceYearId || 
-                                  (watchCreateNewYear ? 
-                                    !(copyForm.watch("newYearName") && copyForm.watch("newStartDate") && copyForm.watch("newEndDate")) : 
-                                    !copyForm.watch("destinationYearId"))
-                                }
+                                type="button" 
+                                onClick={handleNextStep}
+                                disabled={isCopying}
                               >
-                                {isCopying ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Copying...
-                                  </>
-                                ) : (
-                                  <>
-                                    Next
-                                    <ArrowRight className="ml-2 h-4 w-4" />
-                                  </>
-                                )}
+                                Next
+                                <ArrowRight className="ml-2 h-4 w-4" />
                               </Button>
                             </DialogFooter>
-                          </form>
+                          </div>
                         </Form>
                       ) : (
                         <Form {...gradePromotionForm}>
