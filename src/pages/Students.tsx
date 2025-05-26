@@ -537,7 +537,7 @@ export default function Students() {
                 ) : academicYears.length > 0 ? (
                   academicYears.map(year => (
                     <SelectItem key={year.id} value={year.year_name}>
-                      {year.year_name} {year.is_current && "(Current)"}
+                      {year.year_name}{year.is_current ? " (Current)" : ""}
                     </SelectItem>
                   ))
                 ) : (
