@@ -119,8 +119,8 @@ export default function Auth() {
         {/* Login Card */}
         <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
           <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-2xl font-semibold text-center">Welcome Back</CardTitle>
-            <CardDescription className="text-center text-muted-foreground">
+            <CardTitle className="text-2xl font-semibold text-left">Welcome Back</CardTitle>
+            <CardDescription className="text-muted-foreground text-left">
               Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
