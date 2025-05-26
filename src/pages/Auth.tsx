@@ -123,9 +123,7 @@ export default function Auth() {
             
             {/* Description */}
             <div className="space-y-4 max-w-md">
-              <h2 className="text-3xl font-bold leading-tight text-left">
-                Streamline your workflow and boost productivity
-              </h2>
+              <h2 className="text-3xl font-bold leading-tight text-left">David's Hope International</h2>
               <p className="opacity-90 leading-relaxed text-left text-sm">
                 Access your comprehensive management solution with our intuitive platform designed to help you achieve more.
               </p>
