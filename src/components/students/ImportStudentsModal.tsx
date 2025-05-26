@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -327,7 +326,7 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] md:max-w-[900px] w-[90vw]">
+      <DialogContent className="sm:max-w-[800px] md:max-w-[1200px] lg:max-w-[1400px] w-[95vw] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Import Students</DialogTitle>
           <DialogDescription>
@@ -448,32 +447,44 @@ export const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted sticky top-0">
-                      <tr>
-                        {headers
-                          .filter(header => fieldMapping[header])
-                          .map((header, i) => (
-                            <th key={i} className="p-2 text-left">
-                              {fieldMapping[header]} 
-                              <span className="text-muted-foreground ml-1">({header})</span>
-                            </th>
+                <div className="w-full overflow-x-auto border rounded-md">
+                  <div className="min-w-fit">
+                    <div className="overflow-y-auto max-h-[300px]">
+                      <table className="w-full text-sm border-collapse">
+                        <thead className="bg-muted sticky top-0 z-10">
+                          <tr>
+                            {headers
+                              .filter(header => fieldMapping[header])
+                              .map((header, i) => (
+                                <th key={i} className="p-3 text-left border-r border-border whitespace-nowrap font-medium">
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold text-foreground">
+                                      {fieldMapping[header]?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground font-normal">
+                                      ({header})
+                                    </span>
+                                  </div>
+                                </th>
+                              ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvData.slice(0, 10).map((row, i) => (
+                            <tr key={i} className="border-t hover:bg-muted/50">
+                              {headers
+                                .filter(header => fieldMapping[header])
+                                .map((header, j) => (
+                                  <td key={j} className="p-3 border-r border-border whitespace-nowrap">
+                                    {row[header] || '-'}
+                                  </td>
+                                ))}
+                            </tr>
                           ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {csvData.slice(0, 10).map((row, i) => (
-                        <tr key={i} className="border-t">
-                          {headers
-                            .filter(header => fieldMapping[header])
-                            .map((header, j) => (
-                              <td key={j} className="p-2">{row[header]}</td>
-                            ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
                 
                 {csvData.length > 10 && (
