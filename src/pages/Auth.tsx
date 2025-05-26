@@ -110,7 +110,7 @@ export default function Auth() {
           <div className="space-y-2">
             
             <p className="text-lg text-muted-foreground font-medium">DHI Management System</p>
-            <p className="text-sm text-muted-foreground/80">
+            <p className="text-muted-foreground/80 text-xs">
               Sign in to your account to continue
             </p>
           </div>
