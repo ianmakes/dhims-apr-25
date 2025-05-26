@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -12,10 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Trash2, Plus, PenLine, Loader2 } from "lucide-react";
+import { Trash2, Plus, PenLine, Loader2, Shield, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logCreate, logUpdate, logDelete } from "@/utils/auditLog";
+import { useAuth } from "@/hooks/use-auth";
+
 const roleSchema = z.object({
   name: z.string().min(2, {
     message: "Role name must be at least 2 characters"
@@ -26,7 +29,9 @@ const roleSchema = z.object({
   is_system: z.boolean().default(false),
   permissions: z.array(z.string()).default([])
 });
+
 type RoleFormValues = z.infer<typeof roleSchema>;
+
 interface Role {
   id: string;
   name: string;
@@ -36,69 +41,71 @@ interface Role {
   permissions?: string[];
 }
 
-// Default permissions that can be assigned to roles
-const availablePermissions = [{
-  id: "students.view",
-  label: "View Students"
-}, {
-  id: "students.create",
-  label: "Create Students"
-}, {
-  id: "students.edit",
-  label: "Edit Students"
-}, {
-  id: "students.delete",
-  label: "Delete Students"
-}, {
-  id: "sponsors.view",
-  label: "View Sponsors"
-}, {
-  id: "sponsors.create",
-  label: "Create Sponsors"
-}, {
-  id: "sponsors.edit",
-  label: "Edit Sponsors"
-}, {
-  id: "sponsors.delete",
-  label: "Delete Sponsors"
-}, {
-  id: "academic.view",
-  label: "View Academic Records"
-}, {
-  id: "academic.create",
-  label: "Create Academic Records"
-}, {
-  id: "academic.edit",
-  label: "Edit Academic Records"
-}, {
-  id: "settings.view",
-  label: "View Settings"
-}, {
-  id: "settings.edit",
-  label: "Edit Settings"
-}, {
-  id: "users.view",
-  label: "View Users"
-}, {
-  id: "users.create",
-  label: "Create Users"
-}, {
-  id: "users.edit",
-  label: "Edit Users"
-}, {
-  id: "users.delete",
-  label: "Delete Users"
-}, {
-  id: "reports.view",
-  label: "View Reports"
-}, {
-  id: "reports.export",
-  label: "Export Reports"
-}];
+// Enhanced permissions with categories for better organization
+const permissionCategories = [
+  {
+    category: "Students",
+    permissions: [
+      { id: "students.view", label: "View Students" },
+      { id: "students.create", label: "Create Students" },
+      { id: "students.edit", label: "Edit Students" },
+      { id: "students.delete", label: "Delete Students" },
+      { id: "students.export", label: "Export Students" }
+    ]
+  },
+  {
+    category: "Sponsors",
+    permissions: [
+      { id: "sponsors.view", label: "View Sponsors" },
+      { id: "sponsors.create", label: "Create Sponsors" },
+      { id: "sponsors.edit", label: "Edit Sponsors" },
+      { id: "sponsors.delete", label: "Delete Sponsors" },
+      { id: "sponsors.export", label: "Export Sponsors" }
+    ]
+  },
+  {
+    category: "Academic",
+    permissions: [
+      { id: "academic.view", label: "View Academic Records" },
+      { id: "academic.create", label: "Create Academic Records" },
+      { id: "academic.edit", label: "Edit Academic Records" },
+      { id: "academic.delete", label: "Delete Academic Records" },
+      { id: "exams.view", label: "View Exams" },
+      { id: "exams.create", label: "Create Exams" },
+      { id: "exams.edit", label: "Edit Exams" },
+      { id: "exams.delete", label: "Delete Exams" }
+    ]
+  },
+  {
+    category: "System Administration",
+    permissions: [
+      { id: "users.view", label: "View Users" },
+      { id: "users.create", label: "Create Users" },
+      { id: "users.edit", label: "Edit Users" },
+      { id: "users.delete", label: "Delete Users" },
+      { id: "roles.view", label: "View Roles" },
+      { id: "roles.create", label: "Create Roles" },
+      { id: "roles.edit", label: "Edit Roles" },
+      { id: "roles.delete", label: "Delete Roles" },
+      { id: "settings.view", label: "View Settings" },
+      { id: "settings.edit", label: "Edit Settings" },
+      { id: "audit.view", label: "View Audit Logs" }
+    ]
+  },
+  {
+    category: "Reports & Analytics",
+    permissions: [
+      { id: "reports.view", label: "View Reports" },
+      { id: "reports.export", label: "Export Reports" },
+      { id: "analytics.view", label: "View Analytics" },
+      { id: "dashboard.view", label: "View Dashboard" }
+    ]
+  }
+];
+
 export default function UserRolesSettings() {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,6 +113,9 @@ export default function UserRolesSettings() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [selectAllStates, setSelectAllStates] = useState<Record<string, boolean>>({});
+
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleSchema),
     defaultValues: {
@@ -115,9 +125,12 @@ export default function UserRolesSettings() {
       permissions: []
     }
   });
+
   useEffect(() => {
     fetchRoles();
+    fetchCurrentUserRole();
   }, []);
+
   useEffect(() => {
     if (editingRole) {
       form.reset({
@@ -126,6 +139,7 @@ export default function UserRolesSettings() {
         is_system: editingRole.is_system,
         permissions: editingRole.permissions || []
       });
+      updateSelectAllStates(editingRole.permissions || []);
     } else {
       form.reset({
         name: "",
@@ -133,47 +147,81 @@ export default function UserRolesSettings() {
         is_system: false,
         permissions: []
       });
+      setSelectAllStates({});
     }
   }, [editingRole, form]);
+
+  const fetchCurrentUserRole = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      
+      if (profile) {
+        setCurrentUserRole(profile.role);
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+    }
+  };
+
+  const updateSelectAllStates = (permissions: string[]) => {
+    const newSelectAllStates: Record<string, boolean> = {};
+    permissionCategories.forEach(category => {
+      const categoryPermissions = category.permissions.map(p => p.id);
+      newSelectAllStates[category.category] = categoryPermissions.every(p => permissions.includes(p));
+    });
+    setSelectAllStates(newSelectAllStates);
+  };
+
   const fetchRoles = async () => {
     try {
       setLoading(true);
-      const {
-        data: roleData,
-        error
-      } = await supabase.from("user_roles").select("*").order("name");
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("*")
+        .order("name");
+
       if (error) {
         throw error;
       }
 
-      // Map database results to our Role interface
-      const rolesWithPermissions: Role[] = roleData?.map(role => {
-        // Since is_system is not in the database schema, we'll add it with a default value of false
-        // We can determine if a role is a system role based on some criteria (e.g., name or some other logic)
-        // For now, we'll just set a default value
-        const is_system = false;
-
-        // Extract permissions from the JSONB field if it exists
+      // Add a default super admin role if it doesn't exist
+      let rolesWithPermissions: Role[] = roleData?.map(role => {
+        const is_system = role.name.toLowerCase() === 'super admin';
         let permissions: string[] = [];
+        
         if (role.permissions) {
-          // Handle different types of permission storage
           if (Array.isArray(role.permissions)) {
             permissions = role.permissions as unknown as string[];
           } else if (typeof role.permissions === 'object' && role.permissions !== null) {
-            // Extract keys where the value is true
             permissions = Object.keys(role.permissions).filter(key => (role.permissions as any)[key] === true);
           }
         }
+
+        // Super admin gets all permissions automatically
+        if (is_system && role.name.toLowerCase() === 'super admin') {
+          permissions = permissionCategories.flatMap(cat => cat.permissions.map(p => p.id));
+        }
+
         return {
           id: role.id,
           name: role.name,
           description: role.description,
-          is_system: is_system,
-          // Using our determined value
+          is_system,
           created_at: role.created_at,
           permissions
         };
       }) || [];
+
+      // Check if super admin role exists, if not suggest creating it
+      const hasSuperAdmin = rolesWithPermissions.some(role => role.name.toLowerCase() === 'super admin');
+      if (!hasSuperAdmin) {
+        console.log("No Super Admin role found. Consider creating one for full system access.");
+      }
+
       setRoles(rolesWithPermissions);
     } catch (error) {
       console.error("Error fetching roles:", error);
@@ -186,61 +234,149 @@ export default function UserRolesSettings() {
       setLoading(false);
     }
   };
+
+  const isSuperAdmin = () => {
+    return currentUserRole === 'super admin' || currentUserRole === 'admin';
+  };
+
+  const canEditRole = (role: Role) => {
+    if (!isSuperAdmin()) return false;
+    if (role.name.toLowerCase() === 'super admin' && currentUserRole !== 'super admin') return false;
+    return true;
+  };
+
+  const canDeleteRole = (role: Role) => {
+    if (!isSuperAdmin()) return false;
+    if (role.is_system) return false;
+    if (role.name.toLowerCase() === 'super admin') return false;
+    return true;
+  };
+
   const openCreateDialog = () => {
+    if (!isSuperAdmin()) {
+      toast({
+        title: "Access Denied",
+        description: "Only super administrators can create roles",
+        variant: "destructive"
+      });
+      return;
+    }
     setEditingRole(null);
     setDialogOpen(true);
   };
+
   const openEditDialog = (role: Role) => {
+    if (!canEditRole(role)) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to edit this role",
+        variant: "destructive"
+      });
+      return;
+    }
     setEditingRole(role);
     setDialogOpen(true);
   };
+
   const openDeleteDialog = (role: Role) => {
+    if (!canDeleteRole(role)) {
+      toast({
+        title: "Access Denied",
+        description: "This role cannot be deleted",
+        variant: "destructive"
+      });
+      return;
+    }
     setRoleToDelete(role);
     setDeleteDialogOpen(true);
   };
+
+  const handleSelectAllCategory = (category: string, checked: boolean) => {
+    const categoryPermissions = permissionCategories
+      .find(cat => cat.category === category)
+      ?.permissions.map(p => p.id) || [];
+    
+    const currentPermissions = form.getValues("permissions");
+    let newPermissions: string[];
+    
+    if (checked) {
+      newPermissions = [...new Set([...currentPermissions, ...categoryPermissions])];
+    } else {
+      newPermissions = currentPermissions.filter(p => !categoryPermissions.includes(p));
+    }
+    
+    form.setValue("permissions", newPermissions);
+    setSelectAllStates(prev => ({ ...prev, [category]: checked }));
+  };
+
   const onSubmit = async (data: RoleFormValues) => {
     try {
       setIsSubmitting(true);
 
-      // Convert permissions array to JSONB object for storage
+      // Prevent non-super admins from creating/editing roles
+      if (!isSuperAdmin()) {
+        toast({
+          title: "Access Denied",
+          description: "Only super administrators can manage roles",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Prevent editing super admin role by non-super admins
+      if (editingRole?.name.toLowerCase() === 'super admin' && currentUserRole !== 'super admin') {
+        toast({
+          title: "Access Denied",
+          description: "Only super administrators can edit the Super Admin role",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const permissionsObject: Record<string, boolean> = {};
       data.permissions.forEach(permission => {
         permissionsObject[permission] = true;
       });
+
       if (editingRole) {
-        // Update existing role
-        const {
-          error
-        } = await supabase.from("user_roles").update({
-          name: data.name,
-          description: data.description,
-          permissions: permissionsObject
-          // Note: we don't store is_system in the database since it's not a field there
-        }).eq("id", editingRole.id);
+        const { error } = await supabase
+          .from("user_roles")
+          .update({
+            name: data.name,
+            description: data.description,
+            permissions: permissionsObject
+          })
+          .eq("id", editingRole.id);
+
         if (error) throw error;
-        await logUpdate("user_roles", editingRole.id, `Updated role: ${data.name}`);
+
+        await logUpdate("user_roles", editingRole.id, `Updated role: ${data.name} with ${data.permissions.length} permissions`);
+        
         toast({
           title: "Role updated",
           description: "The role has been updated successfully"
         });
       } else {
-        // Create new role
-        const {
-          data: newRole,
-          error
-        } = await supabase.from("user_roles").insert({
-          name: data.name,
-          description: data.description,
-          permissions: permissionsObject
-          // Note: we don't store is_system in the database since it's not a field there
-        }).select().single();
+        const { data: newRole, error } = await supabase
+          .from("user_roles")
+          .insert({
+            name: data.name,
+            description: data.description,
+            permissions: permissionsObject
+          })
+          .select()
+          .single();
+
         if (error) throw error;
-        await logCreate("user_roles", newRole.id, `Created role: ${data.name}`);
+
+        await logCreate("user_roles", newRole.id, `Created role: ${data.name} with ${data.permissions.length} permissions`);
+        
         toast({
           title: "Role created",
           description: "The new role has been created successfully"
         });
       }
+
       setDialogOpen(false);
       fetchRoles();
     } catch (error: any) {
@@ -254,21 +390,36 @@ export default function UserRolesSettings() {
       setIsSubmitting(false);
     }
   };
+
   const handleDeleteRole = async () => {
     if (!roleToDelete) return;
+    
     try {
       setIsSubmitting(true);
 
-      // Delete the role directly
-      const {
-        error
-      } = await supabase.from("user_roles").delete().eq("id", roleToDelete.id);
+      if (!canDeleteRole(roleToDelete)) {
+        toast({
+          title: "Access Denied",
+          description: "This role cannot be deleted",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("id", roleToDelete.id);
+
       if (error) throw error;
+
       await logDelete("user_roles", roleToDelete.id, `Deleted role: ${roleToDelete.name}`);
+      
       toast({
         title: "Role deleted",
         description: "The role has been deleted successfully"
       });
+
       setDeleteDialogOpen(false);
       setRoleToDelete(null);
       fetchRoles();
@@ -283,19 +434,35 @@ export default function UserRolesSettings() {
       setIsSubmitting(false);
     }
   };
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-left">User Roles</h3>
+          <h3 className="text-lg font-medium text-left">User Roles & Permissions</h3>
           <p className="text-muted-foreground text-sm">
-            Manage user roles and permissions
+            Manage user roles and their permissions. Only super administrators can create and modify roles.
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreateDialog} disabled={!isSuperAdmin()}>
           <Plus className="h-4 w-4 mr-2" />
           Add Role
         </Button>
       </div>
+
+      {!isSuperAdmin() && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <div className="flex">
+            <Shield className="h-5 w-5 text-yellow-400 mr-2" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800">Limited Access</h4>
+              <p className="text-sm text-yellow-700">
+                You have read-only access to roles. Contact a super administrator to create or modify roles.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="border rounded-md">
         <Table>
@@ -309,47 +476,80 @@ export default function UserRolesSettings() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? <TableRow>
+            {loading ? (
+              <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                   <div className="flex justify-center items-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
                     Loading roles...
                   </div>
                 </TableCell>
-              </TableRow> : roles.length === 0 ? <TableRow>
+              </TableRow>
+            ) : roles.length === 0 ? (
+              <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                   No roles found. Create your first role to get started.
                 </TableCell>
-              </TableRow> : roles.map(role => <TableRow key={role.id}>
-                  <TableCell className="font-medium">{role.name}</TableCell>
+              </TableRow>
+            ) : (
+              roles.map((role) => (
+                <TableRow key={role.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {role.name.toLowerCase() === 'super admin' && (
+                        <Shield className="h-4 w-4 text-yellow-500" />
+                      )}
+                      {role.name}
+                    </div>
+                  </TableCell>
                   <TableCell>{role.description}</TableCell>
                   <TableCell>
-                    {role.is_system ? <Badge variant="secondary">System</Badge> : <Badge variant="outline">Custom</Badge>}
+                    {role.is_system ? (
+                      <Badge variant="secondary">System</Badge>
+                    ) : (
+                      <Badge variant="outline">Custom</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {role.permissions && role.permissions.length > 0 ? <span className="text-sm text-muted-foreground">
+                      {role.permissions && role.permissions.length > 0 ? (
+                        <span className="text-sm text-muted-foreground">
                           {role.permissions.length} permission{role.permissions.length !== 1 ? "s" : ""}
-                        </span> : <span className="text-sm text-muted-foreground">No permissions</span>}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No permissions</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(role)}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => openEditDialog(role)}
+                        disabled={!canEditRole(role)}
+                      >
                         <PenLine className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" disabled={role.is_system} onClick={() => openDeleteDialog(role)}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        disabled={!canDeleteRole(role)}
+                        onClick={() => openDeleteDialog(role)}
+                      >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
                   </TableCell>
-                </TableRow>)}
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRole ? "Edit Role" : "Create New Role"}</DialogTitle>
             <DialogDescription>
@@ -359,37 +559,53 @@ export default function UserRolesSettings() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField control={form.control} name="name" render={({
-              field
-            }) => <FormItem>
-                    <FormLabel>Role Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      A unique name for this role
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        A unique name for this role
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField control={form.control} name="description" render={({
-              field
-            }) => <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Brief description of this role's purpose
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>} />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Brief description of this role's purpose
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField control={form.control} name="is_system" render={({
-              field
-            }) => <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormField
+                control={form.control}
+                name="is_system"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      <Switch 
+                        checked={field.value} 
+                        onCheckedChange={field.onChange}
+                        disabled={editingRole?.name.toLowerCase() === 'super admin'}
+                      />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>System Role</FormLabel>
@@ -397,26 +613,68 @@ export default function UserRolesSettings() {
                         System roles cannot be deleted and have special privileges
                       </FormDescription>
                     </div>
-                  </FormItem>} />
+                  </FormItem>
+                )}
+              />
 
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <FormLabel>Permissions</FormLabel>
                 <FormDescription>
-                  Select the permissions for this role
+                  Select the permissions for this role. Use "Select All" for each category to quickly assign all permissions in that group.
                 </FormDescription>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-md p-4">
-                  {availablePermissions.map(permission => <FormField key={permission.id} control={form.control} name="permissions" render={({
-                  field
-                }) => <FormItem key={permission.id} className="flex flex-row items-start space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox checked={field.value?.includes(permission.id)} onCheckedChange={checked => {
-                      return checked ? field.onChange([...field.value, permission.id]) : field.onChange(field.value?.filter(value => value !== permission.id));
-                    }} />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {permission.label}
-                          </FormLabel>
-                        </FormItem>} />)}
+                
+                <div className="space-y-6 border rounded-md p-4 max-h-96 overflow-y-auto">
+                  {permissionCategories.map((category) => (
+                    <div key={category.category} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">{category.category}</h4>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`select-all-${category.category}`}
+                            checked={selectAllStates[category.category] || false}
+                            onCheckedChange={(checked) => 
+                              handleSelectAllCategory(category.category, checked as boolean)
+                            }
+                          />
+                          <label 
+                            htmlFor={`select-all-${category.category}`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            Select All
+                          </label>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pl-4">
+                        {category.permissions.map((permission) => (
+                          <FormField
+                            key={permission.id}
+                            control={form.control}
+                            name="permissions"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(permission.id)}
+                                    onCheckedChange={(checked) => {
+                                      const updatedPermissions = checked
+                                        ? [...field.value, permission.id]
+                                        : field.value?.filter((value) => value !== permission.id);
+                                      field.onChange(updatedPermissions);
+                                      updateSelectAllStates(updatedPermissions);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal text-sm">
+                                  {permission.label}
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <Separator />
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -425,10 +683,14 @@ export default function UserRolesSettings() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? <>
+                  {isSubmitting ? (
+                    <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {editingRole ? "Updating..." : "Creating..."}
-                    </> : <>{editingRole ? "Update Role" : "Create Role"}</>}
+                    </>
+                  ) : (
+                    <>{editingRole ? "Update Role" : "Create Role"}</>
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -448,14 +710,23 @@ export default function UserRolesSettings() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteRole} disabled={isSubmitting} className="bg-red-600 hover:bg-red-700">
-              {isSubmitting ? <>
+            <AlertDialogAction 
+              onClick={handleDeleteRole} 
+              disabled={isSubmitting} 
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isSubmitting ? (
+                <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
-                </> : "Delete Role"}
+                </>
+              ) : (
+                "Delete Role"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>;
+    </div>
+  );
 }
