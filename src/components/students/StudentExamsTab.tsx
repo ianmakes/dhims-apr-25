@@ -18,12 +18,10 @@ interface StudentExamsTabProps {
   studentId: string;
 }
 
-interface AcademicYear {
-  id: string;
-  year_name: string;
-  is_current: boolean;
-  start_date: string;
-  end_date: string;
+interface AcademicYearOption {
+  value: string;
+  label: string;
+  isCurrent: boolean;
 }
 
 export function StudentExamsTab({
@@ -34,63 +32,63 @@ export function StudentExamsTab({
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const { currentAcademicYear } = useAppSettings();
 
-  // Fetch all academic years from the database
+  // Get available academic years that have exam data for this student
   const {
-    data: academicYears = [],
+    data: availableYears = [],
     isLoading: loadingYears
   } = useQuery({
-    queryKey: ['academic-years-all'],
+    queryKey: ['student-available-years', studentId],
     queryFn: async () => {
-      console.log('Fetching all academic years from database');
+      console.log('Fetching available academic years for student:', studentId);
       
-      const { data, error } = await supabase
+      // First get all academic years from the database
+      const { data: allYears, error: yearsError } = await supabase
         .from('academic_years')
         .select('*')
         .order('start_date', { ascending: false });
         
-      if (error) {
-        console.error('Error fetching academic years:', error);
-        throw error;
+      if (yearsError) {
+        console.error('Error fetching academic years:', yearsError);
+        throw yearsError;
       }
-      
-      console.log('Fetched academic years:', data);
-      return data as AcademicYear[];
-    }
-  });
 
-  // Get available academic years that have exam data for this student
-  const {
-    data: studentAcademicYears = [],
-    isLoading: loadingStudentYears
-  } = useQuery({
-    queryKey: ['student-academic-years', studentId],
-    queryFn: async () => {
-      console.log('Fetching academic years with exam data for student:', studentId);
-      
-      // Get distinct academic years from student exam scores
-      const { data: examScores, error } = await supabase
+      // Then get years that have exam data for this student
+      const { data: examScores, error: scoresError } = await supabase
         .from('student_exam_scores')
         .select('academic_year_recorded')
         .eq('student_id', studentId)
         .not('academic_year_recorded', 'is', null);
         
-      if (error) {
-        console.error('Error fetching exam scores:', error);
-        throw error;
+      if (scoresError) {
+        console.error('Error fetching exam scores:', scoresError);
+        throw scoresError;
       }
-      
+
       if (!examScores || examScores.length === 0) {
         console.log('No exam scores found for student');
         return [];
       }
 
-      // Get unique academic years
-      const uniqueYears = Array.from(
+      // Get unique academic years from exam scores
+      const yearsWithData = Array.from(
         new Set(examScores.map(score => score.academic_year_recorded).filter(Boolean))
-      ).sort().reverse();
+      );
+
+      // Create options array with labels
+      const yearOptions: AcademicYearOption[] = yearsWithData.map(yearName => {
+        const yearData = allYears?.find(y => y.year_name === yearName);
+        return {
+          value: yearName,
+          label: yearName,
+          isCurrent: yearData?.is_current || false
+        };
+      }).sort((a, b) => {
+        // Sort by year, newest first
+        return b.value.localeCompare(a.value);
+      });
       
-      console.log('Available academic years for student:', uniqueYears);
-      return uniqueYears;
+      console.log('Available years with data:', yearOptions);
+      return yearOptions;
     },
     enabled: !!studentId
   });
@@ -99,14 +97,19 @@ export function StudentExamsTab({
 
   // Set initial selected year to current academic year if it has data, otherwise first available
   useEffect(() => {
-    if (currentAcademicYear && studentAcademicYears.includes(currentAcademicYear.year_name)) {
-      console.log('Setting selected year to current academic year:', currentAcademicYear.year_name);
-      setSelectedYear(currentAcademicYear.year_name);
-    } else if (studentAcademicYears.length > 0 && !selectedYear) {
-      console.log('Setting selected year to first available year:', studentAcademicYears[0]);
-      setSelectedYear(studentAcademicYears[0]);
+    if (availableYears.length === 0) return;
+
+    // Try to find current academic year in available years
+    const currentYear = availableYears.find(year => year.isCurrent);
+    
+    if (currentYear && !selectedYear) {
+      console.log('Setting selected year to current academic year:', currentYear.value);
+      setSelectedYear(currentYear.value);
+    } else if (!selectedYear && availableYears.length > 0) {
+      console.log('Setting selected year to first available year:', availableYears[0].value);
+      setSelectedYear(availableYears[0].value);
     }
-  }, [studentAcademicYears, currentAcademicYear, selectedYear]);
+  }, [availableYears, selectedYear]);
 
   // Get student exam scores filtered by selected academic year
   const {
@@ -213,7 +216,7 @@ export function StudentExamsTab({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {loadingYears || loadingStudentYears ? (
+            {loadingYears ? (
               <Skeleton className="h-10 w-36" />
             ) : (
               <Select 
@@ -224,13 +227,13 @@ export function StudentExamsTab({
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {studentAcademicYears.map(year => (
-                    <SelectItem key={year} value={year}>
-                      {year}
-                      {year === currentAcademicYear?.year_name && " (Current)"}
+                  {availableYears.map(yearOption => (
+                    <SelectItem key={yearOption.value} value={yearOption.value}>
+                      {yearOption.label}
+                      {yearOption.isCurrent && " (Current)"}
                     </SelectItem>
                   ))}
-                  {studentAcademicYears.length === 0 && (
+                  {availableYears.length === 0 && (
                     <SelectItem value="none" disabled>
                       No exam data available
                     </SelectItem>
@@ -250,7 +253,7 @@ export function StudentExamsTab({
           <div>
             <h3 className="font-medium mb-4 text-lg">
               Exam Results - {selectedYear || "No Year Selected"}
-              {selectedYear === currentAcademicYear?.year_name && " (Current Year)"}
+              {availableYears.find(y => y.value === selectedYear)?.isCurrent && " (Current Year)"}
             </h3>
             
             <ExamResultsTable 
