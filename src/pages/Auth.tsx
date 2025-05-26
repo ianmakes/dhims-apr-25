@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,7 @@ import { AuthError } from "@supabase/supabase-js";
 import { Loader2, Mail, Lock } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 import { logLogin } from "@/utils/auditLog";
+
 const loginSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address"
@@ -21,40 +23,34 @@ const loginSchema = z.object({
     message: "Password must be at least 6 characters"
   })
 });
+
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    settings
-  } = useAppSettings();
+  const { toast } = useToast();
+  const { settings } = useAppSettings();
 
   // Check if user is already logged in
   useEffect(() => {
     const checkSession = async () => {
-      const {
-        data
-      } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
       if (data.session) {
         navigate("/");
       }
     };
     checkSession();
-    const {
-      data: {
-        subscription
-      }
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate("/");
       }
     });
+    
     return () => {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -62,6 +58,7 @@ export default function Auth() {
       password: ""
     }
   });
+
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
       setIsLoading(true);
@@ -98,91 +95,189 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
+
   const organizationName = settings?.organization_name || "David's Hope International";
   const logoUrl = settings?.logo_url;
   const primaryColor = settings?.primary_color || "#9b87f5";
-  return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4" style={{
-    background: `linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--background)) 50%, ${primaryColor}10 100%)`
-  }}>
-      <div className="w-full max-w-md">
-        {/* Header Section */}
-        <div className="text-center mb-8 space-y-6">
-          {/* Logo */}
-          {logoUrl ? <div className="flex justify-center">
-              <img src={logoUrl} alt={`${organizationName} Logo`} className="h-16 w-auto object-contain" />
-            </div> : <div className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{
-          backgroundColor: primaryColor
-        }}>
-              {organizationName.split(' ').map(word => word[0]).join('').slice(0, 2)}
-            </div>}
-          
-          {/* Organization Name and Description */}
-          <div className="space-y-2">
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left Side - Branding and Illustration */}
+      <div 
+        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
+        }}
+      >
+        {/* Background Illustration */}
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&q=80')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        />
+        
+        {/* Content Overlay */}
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+          {/* Top Section - Logo and Brand */}
+          <div className="space-y-6">
+            {/* Logo */}
+            <div className="flex items-center space-x-3">
+              {logoUrl ? (
+                <img 
+                  src={logoUrl} 
+                  alt={`${organizationName} Logo`} 
+                  className="h-12 w-auto object-contain" 
+                />
+              ) : (
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-lg"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                >
+                  {organizationName.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                </div>
+              )}
+              <h1 className="text-2xl font-bold">{organizationName}</h1>
+            </div>
             
-            <p className="text-lg text-muted-foreground font-medium">DHI Management System</p>
-            <p className="text-muted-foreground/80 text-xs">
-              Sign in to your account to continue
+            {/* Description */}
+            <div className="space-y-4 max-w-md">
+              <h2 className="text-3xl font-bold leading-tight">
+                Streamline your workflow and boost productivity
+              </h2>
+              <p className="text-lg opacity-90 leading-relaxed">
+                Access your comprehensive management solution with our intuitive platform designed to help you achieve more.
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom Section - Footer */}
+          <div className="space-y-4">
+            <div className="h-px bg-white/20 w-full"></div>
+            <p className="text-sm opacity-75">
+              {settings?.footer_text || `© ${new Date().getFullYear()} ${organizationName}. All rights reserved.`}
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Login Card */}
-        <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-          <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-2xl font-semibold text-left">Welcome Back</CardTitle>
-            <CardDescription className="text-muted-foreground text-left">
-              Enter your credentials to access your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
-                <FormField control={loginForm.control} name="email" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel className="text-sm font-medium">Email Address</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                          <Input placeholder="you@example.com" type="email" className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>} />
-                
-                <FormField control={loginForm.control} name="password" render={({
-                field
-              }) => <FormItem>
-                      <FormLabel className="text-sm font-medium">Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                          <Input placeholder="Enter your password" type="password" className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>} />
-                
-                <Button type="submit" className="w-full h-11 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200" style={{
-                backgroundColor: primaryColor,
-                borderColor: primaryColor
-              }} disabled={isLoading}>
-                  {isLoading ? <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
-                    </> : "Sign In"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo (only shown on small screens) */}
+          <div className="lg:hidden text-center space-y-4">
+            {logoUrl ? (
+              <div className="flex justify-center">
+                <img 
+                  src={logoUrl} 
+                  alt={`${organizationName} Logo`} 
+                  className="h-16 w-auto object-contain" 
+                />
+              </div>
+            ) : (
+              <div 
+                className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {organizationName.split(' ').map(word => word[0]).join('').slice(0, 2)}
+              </div>
+            )}
+            <div>
+              <h1 className="text-xl font-bold text-foreground">{organizationName}</h1>
+              <p className="text-sm text-muted-foreground">DHI Management System</p>
+            </div>
+          </div>
 
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-muted-foreground/60">
-            {settings?.footer_text || `© ${new Date().getFullYear()} ${organizationName}. All rights reserved.`}
-          </p>
+          {/* Login Form */}
+          <div className="space-y-6">
+            <div className="space-y-2 text-center lg:text-left">
+              <h2 className="text-3xl font-bold text-foreground">Login</h2>
+              <p className="text-muted-foreground">Sign in to access your account</p>
+            </div>
+
+            <Card className="border shadow-lg">
+              <CardContent className="p-6 space-y-6">
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Email address</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                              <Input
+                                placeholder="you@example.com"
+                                type="email"
+                                className="pl-10 h-11 bg-background border-border focus:border-primary/50 focus:ring-primary/20"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                              <Input
+                                placeholder="Enter your password"
+                                type="password"
+                                className="pl-10 h-11 bg-background border-border focus:border-primary/50 focus:ring-primary/20"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button
+                      type="submit"
+                      className="w-full h-11 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                      style={{
+                        backgroundColor: primaryColor,
+                        borderColor: primaryColor
+                      }}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Signing in...
+                        </>
+                      ) : (
+                        "Sign in"
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Footer for mobile */}
+          <div className="lg:hidden text-center">
+            <p className="text-xs text-muted-foreground/60">
+              {settings?.footer_text || `© ${new Date().getFullYear()} ${organizationName}. All rights reserved.`}
+            </p>
+          </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }
