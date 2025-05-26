@@ -115,14 +115,9 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange: (updatedRowSelection) => {
       setRowSelection(updatedRowSelection);
       if (onRowSelectionChange) {
-        // Extract the IDs of selected rows and pass to the callback
-        const selectedRowKeys = Object.keys(updatedRowSelection).filter(
-          (key) => updatedRowSelection[key]
-        );
-        const selectedRowIds = selectedRowKeys.map((idx) => {
-          const rowData = data[parseInt(idx)];
-          return (rowData as any).id;
-        });
+        // Get the selected rows and extract their IDs
+        const selectedRows = table.getFilteredSelectedRowModel().rows;
+        const selectedRowIds = selectedRows.map((row) => (row.original as any).id);
         onRowSelectionChange(selectedRowIds);
       }
     },
@@ -139,6 +134,12 @@ export function DataTable<TData, TValue>({
     if (onRowClick) {
       onRowClick(row.original);
     }
+  };
+
+  // Get currently selected row IDs for bulk actions
+  const getSelectedRowIds = () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+    return selectedRows.map((row) => (row.original as any).id);
   };
 
   return (
@@ -174,13 +175,7 @@ export function DataTable<TData, TValue>({
                   <DropdownMenuItem 
                     key={index}
                     onClick={() => {
-                      const selectedRowKeys = Object.keys(rowSelection).filter(
-                        (key) => rowSelection[key]
-                      );
-                      const selectedRowIds = selectedRowKeys.map((idx) => {
-                        const rowData = data[parseInt(idx)];
-                        return (rowData as any).id;
-                      });
+                      const selectedRowIds = getSelectedRowIds();
                       action.action(selectedRowIds);
                     }}
                   >
