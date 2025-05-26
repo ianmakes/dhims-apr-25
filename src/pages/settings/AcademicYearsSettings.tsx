@@ -266,6 +266,103 @@ export default function AcademicYearsSettings() {
     }
   };
   
+  const handleSubmit = async (values: AcademicYearFormValues) => {
+    try {
+      if (editingYear) {
+        // Update existing academic year
+        const { error } = await supabase
+          .from('academic_years')
+          .update({
+            year_name: values.year_name,
+            start_date: values.start_date,
+            end_date: values.end_date,
+            is_current: values.is_current,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingYear.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Updated",
+          description: `Academic year ${values.year_name} has been updated.`
+        });
+      } else {
+        // Create new academic year
+        const { error } = await supabase
+          .from('academic_years')
+          .insert([{
+            year_name: values.year_name,
+            start_date: values.start_date,
+            end_date: values.end_date,
+            is_current: values.is_current
+          }]);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Created",
+          description: `Academic year ${values.year_name} has been created.`
+        });
+      }
+      
+      setIsDialogOpen(false);
+      await fetchAcademicYears();
+      
+      // If this year was set as current, reload the app
+      if (values.is_current) {
+        window.location.reload();
+      }
+    } catch (error: any) {
+      console.error("Error saving academic year:", error);
+      toast({
+        title: "Error",
+        description: `Failed to save academic year: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePromoteGrades = async (values: GradePromotionFormValues) => {
+    setIsPromotingGrades(true);
+    
+    try {
+      const copyFormValues = copyForm.getValues();
+      
+      // Update student grades based on the promotion mapping
+      for (const [currentGrade, newGrade] of Object.entries(values.gradePromotionMap)) {
+        const { error } = await supabase
+          .from('students')
+          .update({ current_grade: newGrade })
+          .eq('current_grade', currentGrade);
+          
+        if (error) throw error;
+      }
+      
+      // Now proceed with the copy operation
+      await handleCopyYear(copyFormValues);
+      
+      setIsCopyDialogOpen(false);
+      setCopyStep(1);
+      copyForm.reset();
+      
+      toast({
+        title: "Success",
+        description: "Student grades have been promoted and data has been copied successfully."
+      });
+      
+    } catch (error: any) {
+      console.error("Error promoting grades:", error);
+      toast({
+        title: "Error",
+        description: `Failed to promote grades: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsPromotingGrades(false);
+    }
+  };
+  
   const handleNextStep = () => {
     // Validate the form before proceeding to next step
     const values = copyForm.getValues();
