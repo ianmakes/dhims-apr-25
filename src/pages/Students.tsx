@@ -608,7 +608,7 @@ export default function Students() {
         <span className="text-muted-foreground">Active filters:</span>
         {academicYear !== "all" && (
           <div className="bg-muted px-2 py-1 rounded-md flex items-center gap-1">
-            <span>Year: {academicYear}</span>
+            <span>Year: {String(academicYear)}</span>
             <Button 
               variant="ghost" 
               size="icon" 
