@@ -25,7 +25,7 @@ export function StudentExamsTab({
   const [showPDFPreview, setShowPDFPreview] = useState(false);
 
   // Fetch current academic year from settings
-  const { data: currentAcademicYear } = useQuery({
+  const { data: currentAcademicYear, isLoading: loadingCurrentYear } = useQuery({
     queryKey: ['current-academic-year'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,28 +43,35 @@ export function StudentExamsTab({
     }
   });
 
-  // Get available academic years
+  // Get available academic years that have exam data for this student
   const {
     data: academicYears = [],
     isLoading: loadingYears
   } = useQuery({
-    queryKey: ['academic-years'],
+    queryKey: ['student-academic-years', studentId],
     queryFn: async () => {
+      console.log('Fetching academic years for student:', studentId);
+      
       // First, get the exams the student has taken
       const { data: examScores, error } = await supabase
         .from('student_exam_scores')
         .select('exam_id')
         .eq('student_id', studentId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching exam scores:', error);
+        throw error;
+      }
+      
       if (!examScores || examScores.length === 0) {
-        return ["2024"];
+        console.log('No exam scores found for student');
+        return [];
       }
 
-      // Then get details about those exams
+      // Then get details about those exams to find their academic years
       const examIds = examScores.map(score => score.exam_id).filter(Boolean);
       if (examIds.length === 0) {
-        return ["2024"];
+        return [];
       }
       
       const { data: exams, error: examsError } = await supabase
@@ -72,14 +79,19 @@ export function StudentExamsTab({
         .select('academic_year')
         .in('id', examIds);
         
-      if (examsError) throw examsError;
+      if (examsError) {
+        console.error('Error fetching exams:', examsError);
+        throw examsError;
+      }
       
       const uniqueYears = Array.from(
         new Set(exams?.map(exam => exam.academic_year).filter(Boolean) || [])
       ).sort().reverse();
       
-      return uniqueYears.length ? uniqueYears : ["2024"];
-    }
+      console.log('Available academic years for student:', uniqueYears);
+      return uniqueYears;
+    },
+    enabled: !!studentId
   });
   
   const [selectedYear, setSelectedYear] = useState<string>("");
@@ -87,13 +99,15 @@ export function StudentExamsTab({
   // Set initial selected year to current academic year once data is loaded
   useEffect(() => {
     if (currentAcademicYear && academicYears.includes(currentAcademicYear)) {
+      console.log('Setting selected year to current academic year:', currentAcademicYear);
       setSelectedYear(currentAcademicYear);
     } else if (academicYears.length > 0 && !selectedYear) {
+      console.log('Setting selected year to first available year:', academicYears[0]);
       setSelectedYear(academicYears[0]);
     }
   }, [academicYears, currentAcademicYear, selectedYear]);
 
-  // Get student exam scores
+  // Get student exam scores filtered by selected academic year
   const {
     data: examScores = [],
     isLoading: loadingScores
@@ -101,46 +115,62 @@ export function StudentExamsTab({
     queryKey: ['student-exams', studentId, selectedYear],
     queryFn: async () => {
       if (!studentId) throw new Error('Student ID is required');
-
-      // First, get exam scores for this student
-      const { data: scores, error: scoresError } = await supabase
-        .from('student_exam_scores')
-        .select('*')
-        .eq('student_id', studentId);
-        
-      if (scoresError) throw scoresError;
-      if (!scores || scores.length === 0) {
+      if (!selectedYear) {
+        console.log('No year selected, returning empty array');
         return [];
       }
 
-      // Get exam details for each score
-      const examIds = scores.map(score => score.exam_id).filter(Boolean);
-      if (examIds.length === 0) {
-        return scores as StudentExamScore[];
-      }
-      
+      console.log('Fetching exam scores for student:', studentId, 'year:', selectedYear);
+
+      // First, get exams for the selected academic year
       const { data: exams, error: examsError } = await supabase
         .from('exams')
         .select('*')
-        .in('id', examIds);
+        .eq('academic_year', selectedYear);
         
-      if (examsError) throw examsError;
+      if (examsError) {
+        console.error('Error fetching exams for year:', examsError);
+        throw examsError;
+      }
+
+      if (!exams || exams.length === 0) {
+        console.log('No exams found for academic year:', selectedYear);
+        return [];
+      }
+
+      const examIds = exams.map(exam => exam.id);
+      console.log('Found exam IDs for year:', examIds);
+
+      // Then get exam scores for this student for those exams
+      const { data: scores, error: scoresError } = await supabase
+        .from('student_exam_scores')
+        .select('*')
+        .eq('student_id', studentId)
+        .in('exam_id', examIds);
+        
+      if (scoresError) {
+        console.error('Error fetching exam scores:', scoresError);
+        throw scoresError;
+      }
+
+      if (!scores || scores.length === 0) {
+        console.log('No exam scores found for student in year:', selectedYear);
+        return [];
+      }
 
       // Join exam details with scores
       const enrichedScores = scores.map(score => {
-        const examDetails = exams?.find(exam => exam.id === score.exam_id);
+        const examDetails = exams.find(exam => exam.id === score.exam_id);
         return {
           ...score,
           exam: examDetails
         } as StudentExamScore;
       });
 
-      // Filter by selected academic year if one is selected
-      return selectedYear 
-        ? enrichedScores.filter(score => score.exam?.academic_year === selectedYear) 
-        : enrichedScores;
+      console.log('Enriched exam scores:', enrichedScores);
+      return enrichedScores;
     },
-    enabled: !!studentId
+    enabled: !!studentId && !!selectedYear
   });
 
   // Process exam data for charts
@@ -207,7 +237,7 @@ export function StudentExamsTab({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {loadingYears ? (
+            {loadingYears || loadingCurrentYear ? (
               <Skeleton className="h-10 w-36" />
             ) : (
               <Select 
@@ -219,11 +249,16 @@ export function StudentExamsTab({
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map(year => (
-                    <SelectItem key={year} value={year || "all"}>
-                      {year || "All"} 
+                    <SelectItem key={year} value={year}>
+                      {year}
                       {year === currentAcademicYear && " (Current)"}
                     </SelectItem>
                   ))}
+                  {academicYears.length === 0 && (
+                    <SelectItem value="none" disabled>
+                      No exam data available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             )}
@@ -238,7 +273,7 @@ export function StudentExamsTab({
           {/* Exam Records Table */}
           <div>
             <h3 className="font-medium mb-4 text-lg">
-              Exam Results - {selectedYear || "All Years"}
+              Exam Results - {selectedYear || "No Year Selected"}
               {selectedYear === currentAcademicYear && " (Current Year)"}
             </h3>
             
