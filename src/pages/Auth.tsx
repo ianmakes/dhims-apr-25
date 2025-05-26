@@ -108,10 +108,8 @@ export default function Auth() {
           
           {/* Organization Name and Description */}
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              {organizationName}
-            </h1>
-            <p className="text-lg text-muted-foreground">DHI Management System</p>
+            
+            <p className="text-lg text-muted-foreground font-medium">DHI Management System</p>
             <p className="text-sm text-muted-foreground/80">
               Sign in to your account to continue
             </p>
