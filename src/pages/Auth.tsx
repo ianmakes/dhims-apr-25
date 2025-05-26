@@ -119,14 +119,7 @@ export default function Auth() {
           {/* Top Section - Logo and Brand */}
           <div className="space-y-6">
             {/* Logo */}
-            <div className="flex items-center space-x-3 bg-white rounded">
-              {logoUrl ? <img src={logoUrl} alt={`${organizationName} Logo`} className="h-12 w-auto object-contain" /> : <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-lg" style={{
-              backgroundColor: 'rgba(255,255,255,0.2)'
-            }}>
-                  {organizationName.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                </div>}
-              
-            </div>
+            
             
             {/* Description */}
             <div className="space-y-4 max-w-md">
@@ -142,7 +135,7 @@ export default function Auth() {
           {/* Bottom Section - Footer */}
           <div className="space-y-4">
             <div className="h-px bg-white/20 w-full"></div>
-            <p className="text-sm opacity-75">
+            <p className="text-sm opacity-75 text-left">
               {settings?.footer_text || `© ${new Date().getFullYear()} ${organizationName}. All rights reserved.`}
             </p>
           </div>
