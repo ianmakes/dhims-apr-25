@@ -18,6 +18,14 @@ interface StudentExamsTabProps {
   studentId: string;
 }
 
+interface AcademicYear {
+  id: string;
+  year_name: string;
+  is_current: boolean;
+  start_date: string;
+  end_date: string;
+}
+
 export function StudentExamsTab({
   studentName,
   studentId
@@ -26,14 +34,38 @@ export function StudentExamsTab({
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const { currentAcademicYear } = useAppSettings();
 
-  // Get available academic years that have exam data for this student
+  // Fetch all academic years from the database
   const {
     data: academicYears = [],
     isLoading: loadingYears
   } = useQuery({
+    queryKey: ['academic-years-all'],
+    queryFn: async () => {
+      console.log('Fetching all academic years from database');
+      
+      const { data, error } = await supabase
+        .from('academic_years')
+        .select('*')
+        .order('start_date', { ascending: false });
+        
+      if (error) {
+        console.error('Error fetching academic years:', error);
+        throw error;
+      }
+      
+      console.log('Fetched academic years:', data);
+      return data as AcademicYear[];
+    }
+  });
+
+  // Get available academic years that have exam data for this student
+  const {
+    data: studentAcademicYears = [],
+    isLoading: loadingStudentYears
+  } = useQuery({
     queryKey: ['student-academic-years', studentId],
     queryFn: async () => {
-      console.log('Fetching academic years for student:', studentId);
+      console.log('Fetching academic years with exam data for student:', studentId);
       
       // Get distinct academic years from student exam scores
       const { data: examScores, error } = await supabase
@@ -65,16 +97,16 @@ export function StudentExamsTab({
   
   const [selectedYear, setSelectedYear] = useState<string>("");
 
-  // Set initial selected year to current academic year once data is loaded
+  // Set initial selected year to current academic year if it has data, otherwise first available
   useEffect(() => {
-    if (currentAcademicYear && academicYears.includes(currentAcademicYear.year_name)) {
+    if (currentAcademicYear && studentAcademicYears.includes(currentAcademicYear.year_name)) {
       console.log('Setting selected year to current academic year:', currentAcademicYear.year_name);
       setSelectedYear(currentAcademicYear.year_name);
-    } else if (academicYears.length > 0 && !selectedYear) {
-      console.log('Setting selected year to first available year:', academicYears[0]);
-      setSelectedYear(academicYears[0]);
+    } else if (studentAcademicYears.length > 0 && !selectedYear) {
+      console.log('Setting selected year to first available year:', studentAcademicYears[0]);
+      setSelectedYear(studentAcademicYears[0]);
     }
-  }, [academicYears, currentAcademicYear, selectedYear]);
+  }, [studentAcademicYears, currentAcademicYear, selectedYear]);
 
   // Get student exam scores filtered by selected academic year
   const {
@@ -181,7 +213,7 @@ export function StudentExamsTab({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {loadingYears ? (
+            {loadingYears || loadingStudentYears ? (
               <Skeleton className="h-10 w-36" />
             ) : (
               <Select 
@@ -192,13 +224,13 @@ export function StudentExamsTab({
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {academicYears.map(year => (
+                  {studentAcademicYears.map(year => (
                     <SelectItem key={year} value={year}>
                       {year}
                       {year === currentAcademicYear?.year_name && " (Current)"}
                     </SelectItem>
                   ))}
-                  {academicYears.length === 0 && (
+                  {studentAcademicYears.length === 0 && (
                     <SelectItem value="none" disabled>
                       No exam data available
                     </SelectItem>
