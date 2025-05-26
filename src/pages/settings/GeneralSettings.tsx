@@ -11,8 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { logUpdate } from "@/utils/auditLog";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, Palette, Building2, FileText, Sparkles } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const generalSettingsSchema = z.object({
   organization_name: z.string().min(2, {
@@ -189,240 +190,322 @@ export default function GeneralSettings() {
   };
   
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-left">General Settings</h3>
-        <p className="text-sm text-muted-foreground text-left">
-          Configure your organization and application settings.
-        </p>
+    <div className="space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Sparkles className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-semibold">General Settings</h3>
+          <p className="text-sm text-muted-foreground">
+            Configure your organization and application settings
+          </p>
+        </div>
       </div>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Organization Card */}
-            <div className="bg-card rounded-lg border p-6 shadow-sm">
-              <h4 className="text-md font-medium mb-4">Organization Information</h4>
-              
-              <FormField
-                control={form.control}
-                name="organization_name"
-                render={({ field }) => (
-                  <FormItem className="mb-4">
-                    <FormLabel>Organization Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      This will be displayed throughout the application.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="app_version"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>App Version</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="1.0.0" />
-                    </FormControl>
-                    <FormDescription>
-                      Version number displayed in the sidebar and login page.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+          <div className="grid gap-8">
             
-            {/* Appearance Card */}
-            <div className="bg-card rounded-lg border p-6 shadow-sm">
-              <h4 className="text-md font-medium mb-4">Appearance</h4>
-              
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="primary_color"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Primary Color</FormLabel>
-                      <div className="flex gap-2">
+            {/* Organization Information */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Organization Information</CardTitle>
+                </div>
+                <CardDescription>
+                  Basic information about your organization
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="organization_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Organization Name</FormLabel>
                         <FormControl>
-                          <Input type="color" {...field} className="w-16 h-10" />
+                          <Input {...field} className="h-10" />
                         </FormControl>
-                        <Input value={field.value} onChange={field.onChange} className="flex-1" />
-                      </div>
-                      <FormDescription className="text-left">
-                        The main color used throughout the application.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="secondary_color"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Secondary Color</FormLabel>
-                      <div className="flex gap-2">
-                        <FormControl>
-                          <Input type="color" {...field} className="w-16 h-10" />
-                        </FormControl>
-                        <Input value={field.value} onChange={field.onChange} className="flex-1" />
-                      </div>
-                      <FormDescription className="text-left">
-                        Used for accents and highlights.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            
-            {/* Branding Card */}
-            <div className="bg-card rounded-lg border p-6 shadow-sm">
-              <h4 className="text-md font-medium mb-4">Branding</h4>
-              
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Application Logo</label>
-                  <div className="flex flex-col gap-4">
-                    {logoPreview && (
-                      <div className="h-16 w-auto border rounded flex items-center justify-center p-2 bg-white">
-                        <img src={logoPreview} alt="Logo preview" className="h-full w-auto object-contain" />
-                      </div>
+                        <FormDescription>
+                          This will be displayed throughout the application
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={logoInputRef}
-                        id="logo-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoChange}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleLogoClick}
-                        className="flex items-center gap-2"
-                      >
-                        <Upload className="h-4 w-4" />
-                        {logoPreview ? "Change Logo" : "Upload Logo"}
-                      </Button>
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="app_version"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Application Version</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="1.0.0" className="h-10" />
+                        </FormControl>
+                        <FormDescription>
+                          Version number displayed in the sidebar
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Appearance & Branding */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Appearance & Branding</CardTitle>
+                </div>
+                <CardDescription>
+                  Customize colors and branding assets
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                
+                {/* Color Settings */}
+                <div className="space-y-6">
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Colors</h4>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="primary_color"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Primary Color</FormLabel>
+                          <div className="flex gap-3">
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  type="color" 
+                                  {...field} 
+                                  className="w-14 h-10 p-1 border rounded cursor-pointer" 
+                                />
+                              </div>
+                            </FormControl>
+                            <Input 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              className="flex-1 h-10 font-mono text-sm"
+                              placeholder="#000000"
+                            />
+                          </div>
+                          <FormDescription>
+                            Main color used for buttons and highlights
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="secondary_color"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Secondary Color</FormLabel>
+                          <div className="flex gap-3">
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  type="color" 
+                                  {...field} 
+                                  className="w-14 h-10 p-1 border rounded cursor-pointer" 
+                                />
+                              </div>
+                            </FormControl>
+                            <Input 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              className="flex-1 h-10 font-mono text-sm"
+                              placeholder="#000000"
+                            />
+                          </div>
+                          <FormDescription>
+                            Used for accents and secondary elements
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+                
+                {/* Logo & Favicon */}
+                <div className="space-y-6">
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Assets</h4>
+                  <div className="grid gap-8 md:grid-cols-2">
+                    
+                    {/* Logo Upload */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Application Logo</label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Recommended: 200x60px, PNG or SVG with transparent background
+                        </p>
+                      </div>
+                      
                       {logoPreview && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setLogoPreview(null);
-                            setLogoFile(null);
-                          }}
-                        >
-                          Remove
-                        </Button>
+                        <div className="p-4 border-2 border-dashed border-muted rounded-lg bg-muted/10">
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo preview" 
+                            className="h-16 w-auto object-contain mx-auto"
+                          />
+                        </div>
                       )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 text-left">
-                      Recommended size: 200x60px. PNG or SVG with transparent background.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Application Favicon</label>
-                  <div className="flex flex-col gap-4">
-                    {faviconPreview && (
-                      <div className="h-16 w-16 border rounded flex items-center justify-center p-1 bg-white">
-                        <img
-                          src={faviconPreview}
-                          alt="Favicon preview"
-                          className="h-full w-full object-contain"
+                      
+                      <div className="flex gap-2">
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="hidden"
                         />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={faviconInputRef}
-                        id="favicon-upload"
-                        type="file"
-                        accept="image/png,image/jpeg,image/x-icon"
-                        onChange={handleFaviconChange}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleFaviconClick}
-                        className="flex items-center gap-2"
-                      >
-                        <Upload className="h-4 w-4" />
-                        {faviconPreview ? "Change Favicon" : "Upload Favicon"}
-                      </Button>
-                      {faviconPreview && (
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => {
-                            setFaviconPreview(null);
-                            setFaviconFile(null);
-                          }}
+                          onClick={handleLogoClick}
+                          className="flex-1"
                         >
-                          Remove
+                          <Upload className="h-4 w-4 mr-2" />
+                          {logoPreview ? "Change Logo" : "Upload Logo"}
                         </Button>
-                      )}
+                        {logoPreview && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setLogoPreview(null);
+                              setLogoFile(null);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1 text-left">
-                      Recommended size: 32x32px or 64x64px. PNG, JPG or ICO format.
-                    </p>
+                    
+                    {/* Favicon Upload */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Favicon</label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Recommended: 32x32px or 64x64px, PNG, JPG or ICO
+                        </p>
+                      </div>
+                      
+                      {faviconPreview && (
+                        <div className="p-4 border-2 border-dashed border-muted rounded-lg bg-muted/10 flex justify-center">
+                          <img
+                            src={faviconPreview}
+                            alt="Favicon preview"
+                            className="h-8 w-8 object-contain"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <input
+                          ref={faviconInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/x-icon"
+                          onChange={handleFaviconChange}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleFaviconClick}
+                          className="flex-1"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {faviconPreview ? "Change Favicon" : "Upload Favicon"}
+                        </Button>
+                        {faviconPreview && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setFaviconPreview(null);
+                              setFaviconFile(null);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
             
-            {/* Footer Card */}
-            <div className="bg-card rounded-lg border p-6 shadow-sm">
-              <h4 className="text-md font-medium mb-4">Footer Information</h4>
-              
-              <FormField
-                control={form.control}
-                name="footer_text"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Footer Text</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="© 2025 Your Organization. All rights reserved."
-                        rows={3}
-                      />
-                    </FormControl>
-                    <FormDescription className="text-left">
-                      Text displayed in the footer of the application.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Footer Information */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Footer Information</CardTitle>
+                </div>
+                <CardDescription>
+                  Text displayed in the footer of the application
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="footer_text"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Footer Text</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="© 2025 Your Organization. All rights reserved."
+                          rows={3}
+                          className="resize-none"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        This text will appear at the bottom of your application
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
           </div>
           
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting}>
+          {/* Save Button */}
+          <div className="flex justify-end pt-6 border-t">
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              size="lg"
+              className="min-w-[140px]"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : (
-                "Save General Settings"
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Save Settings
+                </>
               )}
             </Button>
           </div>

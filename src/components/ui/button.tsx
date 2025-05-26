@@ -10,19 +10,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-wp-primary text-white hover:bg-wp-primary/90 shadow-sm",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
         destructive:
-          "bg-wp-error text-white hover:bg-wp-error/90 shadow-sm",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
         outline:
-          "border border-wp-border bg-transparent hover:bg-wp-gray-50 text-wp-text-primary",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-wp-gray-200 text-wp-text-primary hover:bg-wp-gray-300",
-        ghost: "hover:bg-wp-gray-100 text-wp-text-secondary hover:text-wp-text-primary",
-        link: "text-wp-primary underline-offset-4 hover:underline",
-        success: "bg-wp-success text-white hover:bg-wp-success/90 shadow-sm",
-        warning: "bg-wp-warning text-white hover:bg-wp-warning/90 shadow-sm",
-        "wp-primary": "bg-wp-primary text-white hover:bg-wp-primary/90 shadow-sm",
-        "wp-secondary": "bg-wp-gray-200 text-wp-text-primary hover:bg-wp-gray-300",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        success: "bg-green-600 text-white hover:bg-green-700 shadow-sm",
+        warning: "bg-orange-600 text-white hover:bg-orange-700 shadow-sm",
       },
       size: {
         default: "h-9 px-4 py-2",

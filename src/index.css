@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 214 26% 13%;
 
-    --primary: 209 70% 41%; /* #2271b1 */
+    --primary: 266 85% 58%; /* Updated to match default purple */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 2% 94%; /* lighter version of #f0f0f1 */
@@ -31,18 +31,18 @@
 
     --border: 220 5% 77%; /* #c3c4c7 */
     --input: 220 5% 77%;
-    --ring: 209 70% 41%;
+    --ring: 266 85% 58%; /* Match primary */
 
-    --radius: 0.25rem;
+    --radius: 0.375rem;
 
     --sidebar-background: 214 26% 13%; /* #1d2327 */
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 209 70% 41%;
+    --sidebar-primary: 266 85% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 211 17% 27%; /* #3c434a */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 212 14% 20%; /* #2c3338 */
-    --sidebar-ring: 209 70% 41%;
+    --sidebar-ring: 266 85% 58%;
   }
 
   .dark {
@@ -55,7 +55,7 @@
     --popover: 212 14% 20%;
     --popover-foreground: 220 14% 96%;
 
-    --primary: 209 70% 41%; 
+    --primary: 266 85% 58%; 
     --primary-foreground: 0 0% 100%;
 
     --secondary: 211 17% 27%; /* #3c434a */
@@ -72,16 +72,16 @@
 
     --border: 213 10% 36%; /* #646970 */
     --input: 213 10% 36%;
-    --ring: 209 70% 41%;
+    --ring: 266 85% 58%;
     
     --sidebar-background: 212 14% 20%; /* #2c3338 */
     --sidebar-foreground: 220 14% 96%;
-    --sidebar-primary: 209 70% 41%;
+    --sidebar-primary: 266 85% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 211 17% 27%; /* #3c434a */
     --sidebar-accent-foreground: 220 14% 96%;
     --sidebar-border: 211 17% 27%;
-    --sidebar-ring: 209 70% 41%;
+    --sidebar-ring: 266 85% 58%;
   }
 }
 
@@ -92,6 +92,34 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+  }
+
+  /* Dynamic theming with CSS custom properties */
+  :root {
+    --color-primary: #9b87f5;
+    --color-secondary: #7E69AB;
+  }
+
+  /* Apply dynamic colors to links and interactive elements */
+  a {
+    @apply text-primary hover:text-primary/80 transition-colors;
+  }
+
+  /* Ensure buttons and other components use the dynamic primary color */
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+
+  .border-primary {
+    border-color: hsl(var(--primary));
+  }
+
+  .ring-primary {
+    --tw-ring-color: hsl(var(--primary));
   }
 }
 
