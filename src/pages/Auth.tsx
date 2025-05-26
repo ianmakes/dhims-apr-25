@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,11 +14,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthError } from "@supabase/supabase-js";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Lock } from "lucide-react";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -28,10 +30,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Default fallback values - only used if env vars are not set
-  const DEFAULT_SUPERADMIN_EMAIL = "itest6904@gmail.com";
-  const DEFAULT_SUPERADMIN_PASSWORD = "Kenya123!";
+  const { settings } = useAppSettings();
 
   // Check if user is already logged in
   useEffect(() => {
@@ -93,88 +92,116 @@ export default function Auth() {
     }
   };
 
-  const handleGuestLogin = async () => {
-    try {
-      setIsLoading(true);
-      // Use environment variables with fallbacks
-      const email = import.meta.env.VITE_SUPERADMIN_EMAIL || DEFAULT_SUPERADMIN_EMAIL;
-      const password = import.meta.env.VITE_SUPERADMIN_PASSWORD || DEFAULT_SUPERADMIN_PASSWORD;
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Admin login successful",
-        description: "Welcome! You are now logged in as an administrator.",
-      });
-    } catch (error) {
-      const authError = error as AuthError;
-      toast({
-        title: "Admin login failed",
-        description: authError?.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const organizationName = settings?.organization_name || "David's Hope International";
+  const logoUrl = settings?.logo_url;
+  const primaryColor = settings?.primary_color || "#9b87f5";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <h1 className="text-4xl font-bold">DHIMS</h1>
-          <p className="text-xl text-muted-foreground">
-            David's Hope Information Management System
-          </p>
-          <p className="text-muted-foreground">
-            Sign in to your account to continue
-          </p>
+    <div 
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4"
+      style={{
+        background: `linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--background)) 50%, ${primaryColor}10 100%)`
+      }}
+    >
+      <div className="w-full max-w-md">
+        {/* Header Section */}
+        <div className="text-center mb-8 space-y-6">
+          {/* Logo */}
+          {logoUrl ? (
+            <div className="flex justify-center">
+              <img 
+                src={logoUrl} 
+                alt={`${organizationName} Logo`}
+                className="h-16 w-auto object-contain"
+              />
+            </div>
+          ) : (
+            <div 
+              className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg"
+              style={{ backgroundColor: primaryColor }}
+            >
+              {organizationName.split(' ').map(word => word[0]).join('').slice(0, 2)}
+            </div>
+          )}
+          
+          {/* Organization Name and Description */}
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              {organizationName}
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Information Management System
+            </p>
+            <p className="text-sm text-muted-foreground/80">
+              Sign in to your account to continue
+            </p>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>
+        {/* Login Card */}
+        <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+          <CardHeader className="space-y-1 pb-6">
+            <CardTitle className="text-2xl font-semibold text-center">Welcome Back</CardTitle>
+            <CardDescription className="text-center text-muted-foreground">
               Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
                 <FormField
                   control={loginForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className="text-sm font-medium">Email Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="you@example.com" type="email" {...field} />
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                          <Input 
+                            placeholder="you@example.com" 
+                            type="email" 
+                            className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                            {...field} 
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={loginForm.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel className="text-sm font-medium">Password</FormLabel>
                       <FormControl>
-                        <Input placeholder="••••••••" type="password" {...field} />
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                          <Input 
+                            placeholder="Enter your password" 
+                            type="password" 
+                            className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                            {...field} 
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                  style={{ 
+                    backgroundColor: primaryColor,
+                    borderColor: primaryColor 
+                  }}
+                  disabled={isLoading}
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -187,24 +214,14 @@ export default function Auth() {
               </form>
             </Form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-2">
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={handleGuestLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                "Login as Guest"
-              )}
-            </Button>
-          </CardFooter>
         </Card>
+
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-muted-foreground/60">
+            {settings?.footer_text || `© ${new Date().getFullYear()} ${organizationName}. All rights reserved.`}
+          </p>
+        </div>
       </div>
     </div>
   );
