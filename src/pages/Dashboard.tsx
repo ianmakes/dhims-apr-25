@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
+import { StudentPerformanceChart } from "@/components/dashboard/StudentPerformanceChart";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -141,15 +141,10 @@ export default function Dashboard() {
         <Card className="wp-card">
           <CardHeader className="border-b border-wp-gray-200">
             <CardTitle className="text-wp-text-primary">Student Performance</CardTitle>
-            <CardDescription>Average exam scores by subject</CardDescription>
+            <CardDescription>Average performance distribution by grade categories</CardDescription>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[300px] flex items-center justify-center border border-dashed border-wp-gray-300 rounded p-4 bg-wp-gray-50">
-              <div className="text-center">
-                <BarChart2 className="h-10 w-10 text-wp-gray-400 mx-auto mb-2" />
-                <p className="text-wp-text-secondary text-sm">Chart data will appear here</p>
-              </div>
-            </div>
+            <StudentPerformanceChart />
           </CardContent>
         </Card>
       </div>
