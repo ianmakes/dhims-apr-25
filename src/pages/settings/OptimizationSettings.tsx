@@ -42,7 +42,7 @@ interface DataWipeOption {
   id: string;
   label: string;
   description: string;
-  table: keyof typeof supabase.from;
+  table: string;
   dangerous: boolean;
 }
 
@@ -317,7 +317,7 @@ export default function OptimizationSettings() {
       for (const optionId of selectedDataOptions) {
         const option = dataWipeOptions.find(opt => opt.id === optionId);
         if (option) {
-          const { error } = await supabase.from(option.table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          const { error } = await supabase.from(option.table as any).delete().neq('id', '00000000-0000-0000-0000-000000000000');
           if (error) {
             console.warn(`Error deleting from ${option.table}:`, error);
           }
