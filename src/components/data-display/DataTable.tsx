@@ -57,6 +57,7 @@ interface DataTableProps<TData, TValue> {
     action: (selectedRowIds: string[]) => void;
   }[];
   onRowClick?: (row: TData) => void;
+  customToolbar?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -68,6 +69,7 @@ export function DataTable<TData, TValue>({
   onRowSelectionChange,
   bulkActions,
   onRowClick,
+  customToolbar,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -145,8 +147,8 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       {/* Table actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center space-x-4 flex-wrap">
           {searchColumn && (
             <div className="relative w-64">
               <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -161,6 +163,7 @@ export function DataTable<TData, TValue>({
               />
             </div>
           )}
+          {customToolbar}
         </div>
         <div className="flex items-center space-x-2">
           {bulkActions && bulkActions.length > 0 && table.getFilteredSelectedRowModel().rows.length > 0 && (

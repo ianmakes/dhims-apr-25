@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -221,6 +220,44 @@ export default function Sponsors() {
       }
     }
   ];
+
+  // Custom toolbar with filters
+  const customToolbar = (
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <label htmlFor="status" className="text-sm font-medium whitespace-nowrap">
+          Status:
+        </label>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger id="status" className="w-32">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label htmlFor="country" className="text-sm font-medium whitespace-nowrap">
+          Country:
+        </label>
+        <Select value={country} onValueChange={setCountry}>
+          <SelectTrigger id="country" className="w-40">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Countries</SelectItem>
+            {uniqueCountries.map(country => <SelectItem key={country} value={country || ""}>
+                {country}
+              </SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
   
   return <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
@@ -236,43 +273,7 @@ export default function Sponsors() {
         </Button>
       </div>
 
-      {/* Filter section */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="status" className="text-sm font-medium">
-            Status:
-          </label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger id="status" className="w-32">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label htmlFor="country" className="text-sm font-medium">
-            Country:
-          </label>
-          <Select value={country} onValueChange={setCountry}>
-            <SelectTrigger id="country" className="w-40">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Countries</SelectItem>
-              {uniqueCountries.map(country => <SelectItem key={country} value={country || ""}>
-                  {country}
-                </SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Sponsors table with bulk actions */}
+      {/* Sponsors table with inline filters */}
       <DataTable 
         columns={columnsWithActions} 
         data={filteredSponsors} 
@@ -281,6 +282,7 @@ export default function Sponsors() {
         isLoading={isLoading} 
         onRowSelectionChange={handleRowSelectionChange}
         bulkActions={bulkActions}
+        customToolbar={customToolbar}
       />
 
       {/* Add Sponsor Modal */}
