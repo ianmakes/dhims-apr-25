@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthError } from "@supabase/supabase-js";
-import { Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 import { logLogin } from "@/utils/auditLog";
+
 const loginSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address"
@@ -21,15 +22,13 @@ const loginSchema = z.object({
     message: "Password must be at least 6 characters"
   })
 });
+
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    settings
-  } = useAppSettings();
+  const { toast } = useToast();
+  const { settings } = useAppSettings();
 
   // Check if user is already logged in
   useEffect(() => {
@@ -55,6 +54,7 @@ export default function Auth() {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -62,6 +62,7 @@ export default function Auth() {
       password: ""
     }
   });
+
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
       setIsLoading(true);
@@ -98,10 +99,13 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
+
   const organizationName = settings?.organization_name || "David's Hope International";
   const logoUrl = settings?.logo_url;
   const primaryColor = settings?.primary_color || "#9b87f5";
-  return <div className="min-h-screen flex">
+
+  return (
+    <div className="min-h-screen flex">
       {/* Left Side - Branding and Illustration */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{
       background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
@@ -167,40 +171,75 @@ export default function Auth() {
             <div className="bg-background/50 backdrop-blur-sm rounded-2xl p-8 space-y-6 border-0 shadow-none px-0">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
-                  <FormField control={loginForm.control} name="email" render={({
-                  field
-                }) => <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground/80">Email address</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                              <Input placeholder="you@example.com" type="email" className="pl-12 h-12 bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
+                  <FormField 
+                    control={loginForm.control} 
+                    name="email" 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-foreground/80">Email address</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Input 
+                              placeholder="you@example.com" 
+                              type="email" 
+                              className="pl-12 h-12 bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200" 
+                              {...field} 
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
                   
-                  <FormField control={loginForm.control} name="password" render={({
-                  field
-                }) => <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                              <Input placeholder="Enter your password" type="password" className="pl-12 h-12 bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
+                  <FormField 
+                    control={loginForm.control} 
+                    name="password" 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Input 
+                              placeholder="Enter your password" 
+                              type={showPassword ? "text" : "password"}
+                              className="pl-12 pr-12 h-12 bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200" 
+                              {...field} 
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
                   
-                  <Button type="submit" className="w-full h-12 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border-0" style={{
-                  backgroundColor: primaryColor,
-                  borderColor: primaryColor
-                }} disabled={isLoading}>
-                    {isLoading ? <>
+                  <Button 
+                    type="submit" 
+                    className="w-full h-12 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border-0" 
+                    style={{ backgroundColor: primaryColor, borderColor: primaryColor }} 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Signing in...
-                      </> : "Sign in"}
+                      </>
+                    ) : (
+                      "Sign in"
+                    )}
                   </Button>
                 </form>
               </Form>
@@ -215,5 +254,6 @@ export default function Auth() {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }
