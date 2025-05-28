@@ -42,7 +42,7 @@ interface DataWipeOption {
   id: string;
   label: string;
   description: string;
-  table: string;
+  table: keyof typeof supabase.from;
   dangerous: boolean;
 }
 
@@ -192,13 +192,21 @@ export default function OptimizationSettings() {
 
     setIsLoading("academic");
     try {
-      // Delete academic year related data
-      const tables = ['student_exam_scores', 'exams', 'timeline_events', 'student_photos', 'student_letters'];
-      
-      for (const table of tables) {
-        const { error } = await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        if (error) throw error;
-      }
+      // Delete academic year related data in specific order
+      const { error: scoresError } = await supabase.from('student_exam_scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (scoresError) console.warn('Error deleting exam scores:', scoresError);
+
+      const { error: examsError } = await supabase.from('exams').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (examsError) console.warn('Error deleting exams:', examsError);
+
+      const { error: timelineError } = await supabase.from('timeline_events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (timelineError) console.warn('Error deleting timeline events:', timelineError);
+
+      const { error: photosError } = await supabase.from('student_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (photosError) console.warn('Error deleting photos:', photosError);
+
+      const { error: lettersError } = await supabase.from('student_letters').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (lettersError) console.warn('Error deleting letters:', lettersError);
 
       await logSystem('system', 'academic_data_wipe', 'All academic year data wiped');
 
@@ -232,27 +240,39 @@ export default function OptimizationSettings() {
 
     setIsLoading("factory");
     try {
-      // List of all tables to clear (in order to avoid foreign key constraints)
-      const tables = [
-        'audit_logs',
-        'student_exam_scores',
-        'student_photos',
-        'student_letters',
-        'timeline_events',
-        'student_relatives',
-        'students',
-        'sponsors',
-        'exams',
-        'academic_years',
-        'user_roles',
-      ];
+      // Delete from all tables in order to avoid foreign key constraints
+      const { error: auditError } = await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (auditError) console.warn('Error deleting audit logs:', auditError);
 
-      for (const table of tables) {
-        const { error } = await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
-          console.warn(`Error deleting from ${table}:`, error);
-        }
-      }
+      const { error: scoresError } = await supabase.from('student_exam_scores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (scoresError) console.warn('Error deleting exam scores:', scoresError);
+
+      const { error: photosError } = await supabase.from('student_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (photosError) console.warn('Error deleting photos:', photosError);
+
+      const { error: lettersError } = await supabase.from('student_letters').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (lettersError) console.warn('Error deleting letters:', lettersError);
+
+      const { error: timelineError } = await supabase.from('timeline_events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (timelineError) console.warn('Error deleting timeline events:', timelineError);
+
+      const { error: relativesError } = await supabase.from('student_relatives').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (relativesError) console.warn('Error deleting student relatives:', relativesError);
+
+      const { error: studentsError } = await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (studentsError) console.warn('Error deleting students:', studentsError);
+
+      const { error: sponsorsError } = await supabase.from('sponsors').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (sponsorsError) console.warn('Error deleting sponsors:', sponsorsError);
+
+      const { error: examsError } = await supabase.from('exams').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (examsError) console.warn('Error deleting exams:', examsError);
+
+      const { error: academicError } = await supabase.from('academic_years').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (academicError) console.warn('Error deleting academic years:', academicError);
+
+      const { error: rolesError } = await supabase.from('user_roles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (rolesError) console.warn('Error deleting user roles:', rolesError);
 
       // Clear local storage and cache
       localStorage.clear();
@@ -298,7 +318,7 @@ export default function OptimizationSettings() {
         const option = dataWipeOptions.find(opt => opt.id === optionId);
         if (option) {
           const { error } = await supabase.from(option.table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
-          if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
+          if (error) {
             console.warn(`Error deleting from ${option.table}:`, error);
           }
         }
