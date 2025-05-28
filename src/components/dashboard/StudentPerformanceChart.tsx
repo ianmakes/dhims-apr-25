@@ -160,43 +160,45 @@ export function StudentPerformanceChart() {
   }
 
   return (
-    <ChartContainer config={chartConfig} className="h-[280px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={performanceData}
-            cx="50%"
-            cy="45%"
-            innerRadius={50}
-            outerRadius={90}
-            paddingAngle={2}
-            dataKey="value"
-          >
-            {performanceData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                formatter={(value, name, props) => [
-                  `${value} student${value !== 1 ? 's' : ''} (${props.payload?.label})`,
-                  name
-                ]}
-              />
-            }
-          />
-          <Legend 
-            verticalAlign="bottom" 
-            height={36}
-            formatter={(value, entry: any) => (
-              <span style={{ color: entry.color, fontSize: '12px' }}>
-                {value} ({entry.payload?.label})
-              </span>
-            )}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </ChartContainer>
+    <div className="flex items-center justify-center">
+      <ChartContainer config={chartConfig} className="h-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={performanceData}
+              cx="50%"
+              cy="45%"
+              innerRadius={50}
+              outerRadius={90}
+              paddingAngle={2}
+              dataKey="value"
+            >
+              {performanceData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  formatter={(value, name, props) => [
+                    `${value} student${value !== 1 ? 's' : ''} (${props.payload?.label})`,
+                    name
+                  ]}
+                />
+              }
+            />
+            <Legend 
+              verticalAlign="bottom" 
+              height={36}
+              formatter={(value, entry: any) => (
+                <span style={{ color: entry.color, fontSize: '12px' }}>
+                  {value} ({entry.payload?.label})
+                </span>
+              )}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    </div>
   );
 }
