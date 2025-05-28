@@ -7,10 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const COLORS = {
   excellent: "#10b981", // green
-  good: "#3b82f6", // blue
-  average: "#f59e0b", // yellow
-  poor: "#ef4444", // red
-  noData: "#9ca3af" // gray
+  good: "#2271b1", // wp-primary blue
+  average: "#dba617", // wp-warning
+  poor: "#d63638", // wp-error
+  noData: "#8c8f94" // wp-gray-500
 };
 
 const chartConfig = {
@@ -45,7 +45,7 @@ export function StudentPerformanceChart() {
     queryFn: async () => {
       console.log("Fetching student performance analytics...");
       
-      // Get all students
+      // Get all active students
       const { data: students, error: studentsError } = await supabase
         .from("students")
         .select("id")
@@ -121,46 +121,54 @@ export function StudentPerformanceChart() {
       });
 
       const result = [
-        { name: "Excellent (80-100%)", value: excellent, color: COLORS.excellent },
-        { name: "Good (60-79%)", value: good, color: COLORS.good },
-        { name: "Average (40-59%)", value: average, color: COLORS.average },
-        { name: "Poor (0-39%)", value: poor, color: COLORS.poor },
-        { name: "No Exam Data", value: noData, color: COLORS.noData },
-      ].filter(item => item.value > 0); // Only show categories with data
+        { name: "Excellent", value: excellent, color: COLORS.excellent, label: "80-100%" },
+        { name: "Good", value: good, color: COLORS.good, label: "60-79%" },
+        { name: "Average", value: average, color: COLORS.average, label: "40-59%" },
+        { name: "Poor", value: poor, color: COLORS.poor, label: "0-39%" },
+      ];
 
-      console.log("Performance data:", result);
-      return result;
+      // Only include categories with data
+      const filteredResult = result.filter(item => item.value > 0);
+      
+      // Add no data category if there are students without exam data
+      if (noData > 0) {
+        filteredResult.push({ name: "No Data", value: noData, color: COLORS.noData, label: "No exams" });
+      }
+
+      console.log("Performance data:", filteredResult);
+      return filteredResult;
     },
   });
 
   if (isLoading) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
-        <Skeleton className="h-48 w-48 rounded-full" />
+      <div className="h-[280px] flex items-center justify-center">
+        <Skeleton className="h-40 w-40 rounded-full" />
       </div>
     );
   }
 
   if (!performanceData || performanceData.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
+      <div className="h-[280px] flex items-center justify-center">
         <div className="text-center">
           <p className="text-wp-text-secondary text-sm">No performance data available</p>
+          <p className="text-xs text-wp-text-secondary mt-1">Add exam scores to view analytics</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ChartContainer config={chartConfig} className="h-[300px]">
+    <ChartContainer config={chartConfig} className="h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={performanceData}
             cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={100}
+            cy="45%"
+            innerRadius={50}
+            outerRadius={90}
             paddingAngle={2}
             dataKey="value"
           >
@@ -171,8 +179,8 @@ export function StudentPerformanceChart() {
           <ChartTooltip
             content={
               <ChartTooltipContent
-                formatter={(value, name) => [
-                  `${value} student${value !== 1 ? 's' : ''}`,
+                formatter={(value, name, props) => [
+                  `${value} student${value !== 1 ? 's' : ''} (${props.payload?.label})`,
                   name
                 ]}
               />
@@ -182,7 +190,9 @@ export function StudentPerformanceChart() {
             verticalAlign="bottom" 
             height={36}
             formatter={(value, entry) => (
-              <span style={{ color: entry.color }}>{value}</span>
+              <span style={{ color: entry.color, fontSize: '12px' }}>
+                {value} ({entry.payload?.label})
+              </span>
             )}
           />
         </PieChart>

@@ -162,7 +162,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader 
         title="Dashboard" 
         description="Welcome to David's Hope International Management System"
@@ -171,97 +171,118 @@ export default function Dashboard() {
             onClick={refreshAll} 
             disabled={isRefreshing}
             variant="outline"
-            className="text-wp-primary"
+            className="text-wp-primary border-wp-primary hover:bg-wp-primary hover:text-white"
           >
             <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
+            Refresh Data
           </Button>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Key Metrics Row */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Students"
           value={studentCount}
-          description="Students in the system"
-          icon={<Users className="h-5 w-5 text-wp-primary" />}
+          description="Active students in system"
+          icon={<Users className="h-5 w-5" />}
           trend={{ value: 12, isPositive: true, label: "from last month" }}
         />
         <StatsCard
           title="Active Sponsors"
           value={activeSponsors}
-          description="Currently active sponsors"
-          icon={<Heart className="h-5 w-5 text-wp-primary" />}
+          description="Currently sponsoring students"
+          icon={<Heart className="h-5 w-5" />}
           trend={{ value: 8, isPositive: true, label: "from last month" }}
         />
         <StatsCard
           title="Unassigned Students"
           value={unassignedStudents}
           description="Students needing sponsors"
-          icon={<Calendar className="h-5 w-5 text-wp-warning" />}
+          icon={<UserCircle className="h-5 w-5" />}
           color="warning"
         />
         <StatsCard
-          title="Average Exam Score"
+          title="Average Performance"
           value={`${averageExamScore}%`}
-          description="Overall student performance"
-          icon={<Award className="h-5 w-5 text-wp-success" />}
+          description="Overall exam performance"
+          icon={<Award className="h-5 w-5" />}
           color="success"
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Secondary Metrics Row */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Exams"
           value={examCount}
-          description="Exams in the system"
-          icon={<BookOpen className="h-5 w-5 text-wp-primary" />}
+          description="Exams conducted"
+          icon={<BookOpen className="h-5 w-5" />}
         />
         <StatsCard
           title="Recent Exams"
           value={recentExams}
-          description="Exams in last 30 days"
-          icon={<TrendingUp className="h-5 w-5 text-wp-primary" />}
+          description="Last 30 days"
+          icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatsCard
-          title="Students with Grades"
+          title="Graded Students"
           value={gradeDistribution}
-          description="Students assigned to grades"
-          icon={<GraduationCap className="h-5 w-5 text-wp-primary" />}
+          description="Students with grade levels"
+          icon={<GraduationCap className="h-5 w-5" />}
         />
         <StatsCard
           title="Total Sponsors"
           value={sponsorCount}
-          description="All sponsors in system"
-          icon={<UserCircle className="h-5 w-5 text-wp-primary" />}
+          description="All registered sponsors"
+          icon={<UserCircle className="h-5 w-5" />}
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="wp-card">
-          <CardHeader className="border-b border-wp-gray-200">
-            <CardTitle className="text-wp-text-primary">Recent Activity</CardTitle>
-            <CardDescription>Recent events and changes in the system</CardDescription>
+      {/* Analytics Section */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Recent Activity */}
+        <Card className="border-wp-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="border-b border-wp-gray-200 bg-wp-gray-50/50">
+            <CardTitle className="text-wp-text-primary flex items-center gap-2">
+              <BarChart2 className="h-5 w-5 text-wp-primary" />
+              Recent Activity
+            </CardTitle>
+            <CardDescription className="text-wp-text-secondary">
+              Recent events and system changes
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <RecentActivityCard />
           </CardContent>
         </Card>
 
-        <Card className="wp-card">
-          <CardHeader className="border-b border-wp-gray-200">
-            <CardTitle className="text-wp-text-primary">Student Performance</CardTitle>
-            <CardDescription>Performance distribution by grade categories</CardDescription>
+        {/* Student Performance */}
+        <Card className="border-wp-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="border-b border-wp-gray-200 bg-wp-gray-50/50">
+            <CardTitle className="text-wp-text-primary flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-wp-primary" />
+              Student Performance
+            </CardTitle>
+            <CardDescription className="text-wp-text-secondary">
+              Performance distribution by grade categories
+            </CardDescription>
           </CardHeader>
-          <CardContent className="p-5">
+          <CardContent className="p-6">
             <StudentPerformanceChart />
           </CardContent>
         </Card>
 
-        <Card className="wp-card">
-          <CardHeader className="border-b border-wp-gray-200">
-            <CardTitle className="text-wp-text-primary">Recent Sponsorships</CardTitle>
-            <CardDescription>Latest students who received sponsors</CardDescription>
+        {/* Recent Sponsorships */}
+        <Card className="border-wp-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="border-b border-wp-gray-200 bg-wp-gray-50/50">
+            <CardTitle className="text-wp-text-primary flex items-center gap-2">
+              <Heart className="h-5 w-5 text-wp-primary" />
+              Recent Sponsorships
+            </CardTitle>
+            <CardDescription className="text-wp-text-secondary">
+              Latest students who received sponsors
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             <RecentSponsorshipsCard />
@@ -269,17 +290,21 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1">
-        <Card className="wp-card">
-          <CardHeader className="border-b border-wp-gray-200">
-            <CardTitle className="text-wp-text-primary">Exam Performance Overview</CardTitle>
-            <CardDescription>Average performance across recent exams</CardDescription>
-          </CardHeader>
-          <CardContent className="p-5">
-            <ExamPerformanceCard />
-          </CardContent>
-        </Card>
-      </div>
+      {/* Exam Performance Overview */}
+      <Card className="border-wp-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="border-b border-wp-gray-200 bg-wp-gray-50/50">
+          <CardTitle className="text-wp-text-primary flex items-center gap-2">
+            <Award className="h-5 w-5 text-wp-primary" />
+            Exam Performance Overview
+          </CardTitle>
+          <CardDescription className="text-wp-text-secondary">
+            Average performance across recent exams
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <ExamPerformanceCard />
+        </CardContent>
+      </Card>
     </div>
   );
 }
