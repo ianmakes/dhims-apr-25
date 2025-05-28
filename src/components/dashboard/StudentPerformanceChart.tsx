@@ -189,7 +189,7 @@ export function StudentPerformanceChart() {
           <Legend 
             verticalAlign="bottom" 
             height={36}
-            formatter={(value, entry) => (
+            formatter={(value, entry: any) => (
               <span style={{ color: entry.color, fontSize: '12px' }}>
                 {value} ({entry.payload?.label})
               </span>
