@@ -481,8 +481,9 @@ export function AddEditSponsorModal({
                   )}
                 />
 
+                {/* Start Date and Status - Aligned horizontally */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {/* Start Date - Improved with full year range */}
+                  {/* Start Date - Simple calendar picker */}
                   <FormField
                     control={form.control}
                     name="startDate"
@@ -520,9 +521,6 @@ export function AddEditSponsorModal({
                                 date > new Date()
                               }
                               initialFocus
-                              captionLayout="dropdown-buttons"
-                              fromYear={1980}
-                              toYear={new Date().getFullYear()}
                               className={cn("p-3 pointer-events-auto")}
                             />
                           </PopoverContent>
