@@ -1,9 +1,9 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 const chartConfig = {
   averageScore: {
@@ -13,12 +13,14 @@ const chartConfig = {
 };
 
 export function ExamPerformanceCard() {
+  const { selectedAcademicYear } = useAppSettings();
+
   const { data: examPerformance, isLoading } = useQuery({
-    queryKey: ["exam-performance"],
+    queryKey: ["exam-performance", selectedAcademicYear],
     queryFn: async () => {
-      console.log("Fetching exam performance data...");
+      console.log("Fetching exam performance data for academic year:", selectedAcademicYear);
       
-      const { data: examScores, error } = await supabase
+      let examScoresQuery = supabase
         .from("student_exam_scores")
         .select(`
           score,
@@ -30,6 +32,13 @@ export function ExamPerformanceCard() {
           )
         `)
         .order('exam(exam_date)', { ascending: false });
+
+      // Filter by academic year if one is selected
+      if (selectedAcademicYear) {
+        examScoresQuery = examScoresQuery.eq('exam.academic_year', selectedAcademicYear);
+      }
+
+      const { data: examScores, error } = await examScoresQuery;
         
       if (error) {
         console.error("Error fetching exam scores:", error);
@@ -75,7 +84,7 @@ export function ExamPerformanceCard() {
         .sort((a, b) => b.averageScore - a.averageScore)
         .slice(0, 6); // Show top 6 performing exams
 
-      console.log("Exam performance data:", result);
+      console.log("Exam performance data for", selectedAcademicYear, ":", result);
       return result;
     },
   });

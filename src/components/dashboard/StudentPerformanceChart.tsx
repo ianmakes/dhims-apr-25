@@ -1,9 +1,9 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 const COLORS = {
   excellent: "#10b981", // green
@@ -40,10 +40,12 @@ const chartConfig = {
 };
 
 export function StudentPerformanceChart() {
+  const { selectedAcademicYear } = useAppSettings();
+
   const { data: performanceData, isLoading } = useQuery({
-    queryKey: ["student-performance-analytics"],
+    queryKey: ["student-performance-analytics", selectedAcademicYear],
     queryFn: async () => {
-      console.log("Fetching student performance analytics...");
+      console.log("Fetching student performance analytics for academic year:", selectedAcademicYear);
       
       // Get all active students
       const { data: students, error: studentsError } = await supabase
@@ -60,14 +62,21 @@ export function StudentPerformanceChart() {
         return [];
       }
 
-      // Get exam scores for all students
-      const { data: examScores, error: scoresError } = await supabase
+      // Get exam scores for all students, filtered by academic year if selected
+      let examScoresQuery = supabase
         .from("student_exam_scores")
         .select(`
           student_id,
           score,
-          exam:exams(max_score)
+          exam:exams(max_score, academic_year)
         `);
+
+      // Filter by academic year if one is selected
+      if (selectedAcademicYear) {
+        examScoresQuery = examScoresQuery.eq('exam.academic_year', selectedAcademicYear);
+      }
+
+      const { data: examScores, error: scoresError } = await examScoresQuery;
         
       if (scoresError) {
         console.error("Error fetching exam scores:", scoresError);
@@ -135,7 +144,7 @@ export function StudentPerformanceChart() {
         filteredResult.push({ name: "No Data", value: noData, color: COLORS.noData, label: "No exams" });
       }
 
-      console.log("Performance data:", filteredResult);
+      console.log("Performance data for", selectedAcademicYear, ":", filteredResult);
       return filteredResult;
     },
   });

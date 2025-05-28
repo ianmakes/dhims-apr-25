@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -22,9 +21,11 @@ import { RecentSponsorshipsCard } from "@/components/dashboard/RecentSponsorship
 import { ExamPerformanceCard } from "@/components/dashboard/ExamPerformanceCard";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { selectedAcademicYear } = useAppSettings();
 
   // Stats queries
   const { data: studentCount = 0, refetch: refetchStudents } = useQuery({
@@ -52,11 +53,17 @@ export default function Dashboard() {
   });
 
   const { data: examCount = 0, refetch: refetchExams } = useQuery({
-    queryKey: ["exam-count"],
+    queryKey: ["exam-count", selectedAcademicYear],
     queryFn: async () => {
-      const { count, error } = await supabase
+      let query = supabase
         .from("exams")
         .select("*", { count: "exact", head: true });
+      
+      if (selectedAcademicYear) {
+        query = query.eq("academic_year", selectedAcademicYear);
+      }
+      
+      const { count, error } = await query;
       
       if (error) throw error;
       return count || 0;
@@ -90,14 +97,20 @@ export default function Dashboard() {
   });
 
   const { data: averageExamScore = 0, refetch: refetchAvgScore } = useQuery({
-    queryKey: ["average-exam-score"],
+    queryKey: ["average-exam-score", selectedAcademicYear],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("student_exam_scores")
         .select(`
           score,
-          exam:exams(max_score)
+          exam:exams(max_score, academic_year)
         `);
+      
+      if (selectedAcademicYear) {
+        query = query.eq('exam.academic_year', selectedAcademicYear);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -131,15 +144,21 @@ export default function Dashboard() {
   });
 
   const { data: recentExams = 0, refetch: refetchRecentExams } = useQuery({
-    queryKey: ["recent-exams"],
+    queryKey: ["recent-exams", selectedAcademicYear],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const { count, error } = await supabase
+      let query = supabase
         .from("exams")
         .select("*", { count: "exact", head: true })
         .gte("exam_date", thirtyDaysAgo.toISOString());
+      
+      if (selectedAcademicYear) {
+        query = query.eq("academic_year", selectedAcademicYear);
+      }
+      
+      const { count, error } = await query;
       
       if (error) throw error;
       return count || 0;
@@ -165,7 +184,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <PageHeader 
         title="Dashboard" 
-        description="Welcome to David's Hope International Management System"
+        description={`Welcome to David's Hope International Management System${selectedAcademicYear ? ` - ${selectedAcademicYear}` : ''}`}
         actions={
           <Button 
             onClick={refreshAll} 
