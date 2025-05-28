@@ -19,13 +19,21 @@ import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { StudentPerformanceChart } from "@/components/dashboard/StudentPerformanceChart";
 import { RecentSponsorshipsCard } from "@/components/dashboard/RecentSponsorshipsCard";
 import { ExamPerformanceCard } from "@/components/dashboard/ExamPerformanceCard";
-import { useState } from "react";
+import { AcademicYearSelector } from "@/components/ui/academic-year-selector";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { selectedAcademicYear } = useAppSettings();
+  const { selectedAcademicYear, setSelectedAcademicYear, currentAcademicYear } = useAppSettings();
+
+  // Initialize selected academic year to current academic year if not set
+  useEffect(() => {
+    if (!selectedAcademicYear && currentAcademicYear) {
+      setSelectedAcademicYear(currentAcademicYear.year_name);
+    }
+  }, [currentAcademicYear, selectedAcademicYear, setSelectedAcademicYear]);
 
   // Stats queries
   const { data: studentCount = 0, refetch: refetchStudents } = useQuery({
@@ -186,15 +194,23 @@ export default function Dashboard() {
         title="Dashboard" 
         description={`Welcome to David's Hope International Management System${selectedAcademicYear ? ` - ${selectedAcademicYear}` : ''}`}
         actions={
-          <Button 
-            onClick={refreshAll} 
-            disabled={isRefreshing}
-            variant="outline"
-            className="text-wp-primary border-wp-primary hover:bg-wp-primary hover:text-white"
-          >
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh Data
-          </Button>
+          <div className="flex items-center gap-2">
+            <AcademicYearSelector
+              value={selectedAcademicYear}
+              onValueChange={setSelectedAcademicYear}
+              placeholder="Filter by year"
+              className="w-40"
+            />
+            <Button 
+              onClick={refreshAll} 
+              disabled={isRefreshing}
+              variant="outline"
+              className="text-wp-primary border-wp-primary hover:bg-wp-primary hover:text-white"
+            >
+              <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh Data
+            </Button>
+          </div>
         }
       />
 
