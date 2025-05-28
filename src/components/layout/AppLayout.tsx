@@ -14,7 +14,7 @@ export function AppLayout() {
         <AppHeader />
         <main className="flex flex-col flex-1 overflow-hidden bg-wp-gray-50">
           <div className="flex-1 overflow-auto">
-            <div className="page-content-container px-4 py-4 md:px-6 md:py-6 min-h-full">
+            <div className="page-content-container px-3 py-3 md:px-4 md:py-4 min-h-full">
               <Outlet />
             </div>
           </div>
