@@ -26,29 +26,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
+        if (!mounted) return;
+        
+        console.log('Auth state change:', event, newSession?.user?.email);
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
         // Fetch profile data if user is signed in
         if (newSession?.user) {
-          setTimeout(() => {
-            fetchUserProfile(newSession.user.id);
-          }, 0);
+          // Use a small delay to prevent auth conflicts during hot reload
+          setTimeout(async () => {
+            if (mounted) {
+              await fetchUserProfile(newSession.user.id);
+            }
+          }, 100);
         } else {
           setProfile(null);
+        }
+        
+        if (!initialized) {
+          setIsLoading(false);
+          setInitialized(true);
         }
       }
     );
 
     // THEN check for existing session
     const initSession = async () => {
+      if (!mounted) return;
+      
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        console.log('Initial session check:', currentSession?.user?.email);
+        
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
@@ -58,13 +80,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error initializing session:", error);
       } finally {
-        setIsLoading(false);
+        if (mounted && !initialized) {
+          setIsLoading(false);
+          setInitialized(true);
+        }
       }
     };
 
     initSession();
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
