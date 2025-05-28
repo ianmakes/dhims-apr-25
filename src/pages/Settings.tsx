@@ -30,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileText, Filter, Search } from "lucide-react";
 import { logUpdate, logSystem } from "@/utils/auditLog";
 import AuditLogSettings from "./settings/AuditLogSettings";
+import OptimizationSettings from "./settings/OptimizationSettings";
 
 // Form schema for general settings
 const generalSettingsSchema = z.object({
@@ -241,12 +242,13 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="smtp">Email & SMTP</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          <TabsTrigger value="optimization">Optimization</TabsTrigger>
         </TabsList>
         
         {/* General Settings Tab */}
@@ -799,6 +801,11 @@ export default function Settings() {
         {/* Audit Logs Tab */}
         <TabsContent value="audit" className="space-y-6">
           <AuditLogSettings />
+        </TabsContent>
+
+        {/* Optimization Tab */}
+        <TabsContent value="optimization" className="space-y-6">
+          <OptimizationSettings />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -12,9 +11,7 @@ export function SettingsLayout() {
   const location = useLocation();
   const currentTab = location.pathname.split('/').pop() || 'general';
   const [currentAcademicYear, setCurrentAcademicYear] = useState<AcademicYear | null>(null);
-  const {
-    settings
-  } = useAppSettings();
+  const { settings } = useAppSettings();
 
   useEffect(() => {
     // Fetch current academic year
@@ -38,7 +35,8 @@ export function SettingsLayout() {
     fetchCurrentYear();
   }, []);
 
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-left">Settings</h2>
@@ -46,11 +44,13 @@ export function SettingsLayout() {
             Manage your account settings and preferences.
           </p>
         </div>
-        {currentAcademicYear && <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 flex items-center">
+        {currentAcademicYear && (
+          <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 flex items-center">
             <span className="text-sm text-green-800 font-medium">
               Current Academic Year: {currentAcademicYear.year_name}
             </span>
-          </div>}
+          </div>
+        )}
       </div>
       <Tabs value={currentTab} onValueChange={value => navigate(`/settings/${value}`)}>
         <TabsList className="w-full border-b overflow-auto flex justify-start">
@@ -60,10 +60,12 @@ export function SettingsLayout() {
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           <TabsTrigger value="roles">User Roles</TabsTrigger>
+          <TabsTrigger value="optimization">Optimization</TabsTrigger>
         </TabsList>
       </Tabs>
       <Card className="p-6">
         <Outlet />
       </Card>
-    </div>;
+    </div>
+  );
 }
