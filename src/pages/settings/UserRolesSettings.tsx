@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,7 +16,7 @@ import { Trash2, Plus, PenLine, Loader2, Shield, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logCreate, logUpdate, logDelete } from "@/utils/auditLog";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const roleSchema = z.object({
   name: z.string().min(2, {
