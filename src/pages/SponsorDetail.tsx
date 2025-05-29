@@ -221,6 +221,15 @@ export default function SponsorDetail() {
     profileImageUrl: sponsor.profile_image_url || "",
     primaryEmailForUpdates: sponsor.primary_email_for_updates || ""
   } : {} as SponsorFormValues;
+
+  const handleNavigateToAssignTab = () => {
+    // Find and click the assign tab trigger
+    const assignTabTrigger = document.querySelector('[value="assign"]') as HTMLElement;
+    if (assignTabTrigger) {
+      assignTabTrigger.click();
+    }
+  };
+
   return <div className="space-y-6 fade-in">
       {isGeneratingPDF && <SponsorProfilePDF sponsor={sponsor} onGenerated={() => {
       setIsGeneratingPDF(false);
@@ -421,10 +430,7 @@ export default function SponsorDetail() {
                 <CardContent>
                   {sponsor.students?.length === 0 ? <div className="text-center py-8">
                       <p className="text-muted-foreground">This sponsor is not currently sponsoring any students.</p>
-                      <Button variant="outline" className="mt-4" onClick={() => {
-                    const assignTab = document.querySelector('[data-value="assign"]') as HTMLElement;
-                    if (assignTab) assignTab.click();
-                  }}>
+                      <Button variant="outline" className="mt-4" onClick={handleNavigateToAssignTab}>
                         <Plus className="mr-2 h-4 w-4" />
                         Assign Students
                       </Button>
