@@ -5,12 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User, Calendar, BackpackIcon, MapPin } from "lucide-react";
 import { StudentFormInput } from "@/types/database";
+
 interface StudentProfileSidebarProps {
   student: StudentFormInput & {
     [key: string]: any;
   };
   formatDate: (date: string | Date | null | undefined) => string;
 }
+
 export function StudentProfileSidebar({
   student,
   formatDate
@@ -24,9 +26,18 @@ export function StudentProfileSidebar({
           </AvatarFallback>
         </Avatar>
         <CardTitle className="mt-2">{student.name}</CardTitle>
-        <div className="flex justify-center">
-          <Badge variant={student.status === "Active" ? "default" : student.status === "Inactive" ? "secondary" : student.status === "Graduated" ? "outline" : "destructive"} className={student.status === "Inactive" ? "opacity-60" : ""}>
+        <div className="flex justify-center gap-2">
+          <Badge 
+            variant={student.status === "Active" ? "default" : student.status === "Inactive" ? "secondary" : student.status === "Graduated" ? "outline" : "destructive"} 
+            className={`rounded-none ${student.status === "Inactive" ? "opacity-60" : ""}`}
+          >
             {student.status}
+          </Badge>
+          <Badge 
+            variant={student.sponsor_id ? "default" : "outline"} 
+            className="rounded-none"
+          >
+            {student.sponsor_id ? "Sponsored" : "Not Sponsored"}
           </Badge>
         </div>
       </CardHeader>
