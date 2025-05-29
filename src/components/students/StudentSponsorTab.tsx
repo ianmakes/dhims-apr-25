@@ -5,12 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AlertTriangle, Calendar, User, Users } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { SUPABASE_URL, getAuthHeaders } from "@/utils/supabaseHelpers";
 
 interface StudentSponsorTabProps {
   student: {
     [key: string]: any;
+    sponsor_id?: string;
+    sponsored_since?: string;
     sponsor?: {
       id?: string;
       first_name?: string;
@@ -31,6 +33,27 @@ export function StudentSponsorTab({
 }: StudentSponsorTabProps) {
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
+  
+  // Fetch sponsor details if student has sponsor_id but no sponsor data
+  const { data: sponsorData } = useQuery({
+    queryKey: ['sponsor-details', student.sponsor_id],
+    queryFn: async () => {
+      if (!student.sponsor_id) return null;
+      
+      const { data, error } = await supabase
+        .from('sponsors')
+        .select('id, first_name, last_name, profile_image_url, slug')
+        .eq('id', student.sponsor_id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!student.sponsor_id && !student.sponsor
+  });
+
+  // Use sponsor data from student object or fetched data
+  const sponsor = student.sponsor || sponsorData;
   
   const handleRemoveSponsor = async () => {
     if (!student.id) return;
@@ -93,19 +116,24 @@ export function StudentSponsorTab({
   // Get sponsor full name or display a meaningful placeholder
   const getSponsorDisplayName = () => {
     // Check if sponsor object exists
-    if (student.sponsor) {
+    if (sponsor) {
       // Check if both first and last name exist
-      if (student.sponsor.first_name && student.sponsor.last_name) {
-        return `${student.sponsor.first_name} ${student.sponsor.last_name}`;
+      if (sponsor.first_name && sponsor.last_name) {
+        return `${sponsor.first_name} ${sponsor.last_name}`;
       } 
       // Check if either first or last name exists
-      else if (student.sponsor.first_name || student.sponsor.last_name) {
-        return student.sponsor.first_name || student.sponsor.last_name;
+      else if (sponsor.first_name || sponsor.last_name) {
+        return sponsor.first_name || sponsor.last_name;
       }
     }
     
     // If no data available, return a default message
     return "Unknown Sponsor";
+  };
+
+  const getSponsorNavigationId = () => {
+    // Use slug if available, otherwise use ID
+    return sponsor?.slug || student.sponsor_id;
   };
   
   if (student.sponsor_id) {
@@ -120,10 +148,13 @@ export function StudentSponsorTab({
           <CardContent className="space-y-6 p-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Avatar className="h-16 w-16 border-2 border-wp-gray-100">
-                {student.sponsor?.profile_image_url ? 
-                  <AvatarImage src={student.sponsor.profile_image_url} alt="Sponsor" /> : 
+                {sponsor?.profile_image_url ? 
+                  <AvatarImage src={sponsor.profile_image_url} alt="Sponsor" /> : 
                   <AvatarFallback className="bg-wp-gray-200 text-wp-gray-600 text-xl">
-                    <User className="h-8 w-8" />
+                    {sponsor?.first_name && sponsor?.last_name ? 
+                      `${sponsor.first_name[0]}${sponsor.last_name[0]}` : 
+                      <User className="h-8 w-8" />
+                    }
                   </AvatarFallback>
                 }
               </Avatar>
@@ -141,7 +172,7 @@ export function StudentSponsorTab({
               <Button variant="outline" className="text-wp-error border-wp-gray-300 hover:border-wp-error hover:bg-wp-error/5" onClick={handleRemoveSponsor} disabled={isLoading}>
                 Remove Sponsorship
               </Button>
-              <Button variant="secondary" onClick={() => navigate(`/sponsors/${student.sponsor_id}`)} className="bg-wp-gray-100 hover:bg-wp-gray-200 text-wp-text-primary">
+              <Button variant="secondary" onClick={() => navigate(`/sponsors/${getSponsorNavigationId()}`)} className="bg-wp-gray-100 hover:bg-wp-gray-200 text-wp-text-primary">
                 <Users className="mr-2 h-4 w-4" />
                 View Sponsor Profile
               </Button>
