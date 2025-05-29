@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +17,7 @@ interface StudentSponsorTabProps {
       first_name?: string;
       last_name?: string;
       profile_image_url?: string;
+      slug?: string;
     };
   };
   formatDate: (date: string | Date | null | undefined) => string;
