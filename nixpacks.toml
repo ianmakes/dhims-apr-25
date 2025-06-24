@@ -1,2 +1,1 @@
-[providers]
-node = true
+providers = ["node"]
