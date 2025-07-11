@@ -14,11 +14,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { logLogout } from "@/utils/auditLog";
+import { AcademicYearSelector } from "@/components/ui/academic-year-selector";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
+import { Badge } from "@/components/ui/badge";
 
 export function AppHeader() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { selectedAcademicYear, setSelectedAcademicYear, currentAcademicYear, isCurrentYear } = useAppSettings();
 
   const handleLogout = async () => {
     try {
@@ -50,6 +54,26 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Academic Year Selector */}
+        <div className="flex items-center gap-2">
+          <AcademicYearSelector
+            value={selectedAcademicYear}
+            onValueChange={setSelectedAcademicYear}
+            placeholder="Select year"
+            className="min-w-[140px]"
+          />
+          {selectedAcademicYear && isCurrentYear(selectedAcademicYear) && (
+            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+              Current
+            </Badge>
+          )}
+          {selectedAcademicYear && !isCurrentYear(selectedAcademicYear) && (
+            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+              Historical
+            </Badge>
+          )}
+        </div>
+        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

@@ -32,6 +32,8 @@ interface GlobalSettingsContextType {
   loading: boolean;
   error: Error | null;
   refreshSettings: () => Promise<void>;
+  isCurrentYear: (year?: string) => boolean;
+  canModifyData: (recordYear?: string) => boolean;
 }
 
 const defaultSettings: AppSettings = {
@@ -49,7 +51,9 @@ const GlobalSettingsContext = createContext<GlobalSettingsContextType>({
   setSelectedAcademicYear: () => {},
   loading: false,
   error: null,
-  refreshSettings: async () => {}
+  refreshSettings: async () => {},
+  isCurrentYear: () => false,
+  canModifyData: () => false
 });
 
 // Helper function to convert hex to HSL
@@ -82,6 +86,26 @@ export function GlobalSettingsProvider({ children }: { children: ReactNode }) {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Initialize with current calendar year if no academic year is found
+  useEffect(() => {
+    if (!currentAcademicYear && !selectedAcademicYear) {
+      const currentYear = new Date().getFullYear();
+      setSelectedAcademicYear(currentYear.toString());
+    }
+  }, [currentAcademicYear, selectedAcademicYear]);
+  
+  // Helper functions
+  const isCurrentYear = (year?: string) => {
+    if (!year) return false;
+    return year === currentAcademicYear?.year_name;
+  };
+  
+  const canModifyData = (recordYear?: string) => {
+    // Can modify data if viewing current year or if no record year specified
+    if (!recordYear) return true;
+    return selectedAcademicYear === recordYear;
+  };
   
   const fetchSettings = async () => {
     try {
@@ -170,7 +194,9 @@ export function GlobalSettingsProvider({ children }: { children: ReactNode }) {
       setSelectedAcademicYear,
       loading, 
       error, 
-      refreshSettings 
+      refreshSettings,
+      isCurrentYear,
+      canModifyData
     }}>
       {children}
     </GlobalSettingsContext.Provider>

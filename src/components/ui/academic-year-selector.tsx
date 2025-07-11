@@ -15,13 +15,15 @@ interface AcademicYearSelectorProps {
   onValueChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  showAllOption?: boolean;
 }
 
 export function AcademicYearSelector({ 
   value, 
   onValueChange, 
   placeholder = "Select academic year",
-  className 
+  className,
+  showAllOption = false
 }: AcademicYearSelectorProps) {
   const { currentAcademicYear } = useAppSettings();
 
@@ -51,12 +53,12 @@ export function AcademicYearSelector({
   };
 
   return (
-    <Select value={value || "all"} onValueChange={handleValueChange}>
+    <Select value={value || (showAllOption ? "all" : "")} onValueChange={handleValueChange}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All Years</SelectItem>
+        {showAllOption && <SelectItem value="all">All Years</SelectItem>}
         {academicYears.map((year) => (
           <SelectItem key={year.id} value={year.year_name}>
             {year.year_name}

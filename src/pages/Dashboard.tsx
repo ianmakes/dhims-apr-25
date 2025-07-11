@@ -200,6 +200,7 @@ export default function Dashboard() {
               onValueChange={setSelectedAcademicYear}
               placeholder="Filter by year"
               className="w-40"
+              showAllOption={true}
             />
             <Button 
               onClick={refreshAll} 
