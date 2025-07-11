@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -14,6 +13,7 @@ import { logUpdate } from "@/utils/auditLog";
 import { Loader2, Upload, Palette, Building2, FileText, Sparkles } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DangerousOperations } from "@/components/settings/DangerousOperations";
 
 const generalSettingsSchema = z.object({
   organization_name: z.string().min(2, {
@@ -486,6 +486,9 @@ export default function GeneralSettings() {
                 />
               </CardContent>
             </Card>
+
+            {/* Add Dangerous Operations */}
+            <DangerousOperations />
           </div>
           
           {/* Save Button */}
