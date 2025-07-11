@@ -42,7 +42,7 @@ export function DangerousOperations() {
       // Get current user to preserve superadmin
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await supabase.rpc('factory_reset_all_data', {
+      const { error } = await supabase.rpc('factory_reset_all_data' as any, {
         preserve_user_id: user?.id
       });
 
@@ -70,7 +70,7 @@ export function DangerousOperations() {
   const handleBackupData = async () => {
     setIsBackingUp(true);
     try {
-      const { data, error } = await supabase.rpc('backup_all_data');
+      const { data, error } = await supabase.rpc('backup_all_data' as any);
       
       if (error) throw error;
 
@@ -128,7 +128,7 @@ export function DangerousOperations() {
         throw new Error("Invalid backup file format");
       }
 
-      const { error } = await supabase.rpc('restore_all_data', {
+      const { error } = await supabase.rpc('restore_all_data' as any, {
         backup_data: backupData.data
       });
 
