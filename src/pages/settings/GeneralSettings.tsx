@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -10,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { logUpdate } from "@/utils/auditLog";
-import { Loader2, Upload, Palette, Building2, FileText, Sparkles } from "lucide-react";
+import { Loader2, Upload, Palette, Building2, FileText, Sparkles, Save } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DangerousOperations } from "@/components/settings/DangerousOperations";
@@ -149,7 +150,7 @@ export default function GeneralSettings() {
         organization_name: data.organization_name,
         primary_color: data.primary_color,
         secondary_color: data.secondary_color,
-        theme_mode: 'light', // Default to light mode
+        theme_mode: 'light',
         footer_text: data.footer_text,
         app_version: data.app_version,
         logo_url: logoUrl,
@@ -167,8 +168,8 @@ export default function GeneralSettings() {
       await refreshSettings();
       
       toast({
-        title: "Settings updated",
-        description: "General settings have been updated successfully."
+        title: "Settings saved successfully",
+        description: "Your changes have been applied successfully."
       });
 
       // Apply theme changes to document
@@ -180,7 +181,7 @@ export default function GeneralSettings() {
     } catch (error: any) {
       console.error("Error saving settings:", error);
       toast({
-        title: "Error",
+        title: "Error saving settings",
         description: error.message || "Failed to update settings",
         variant: "destructive"
       });
@@ -190,16 +191,18 @@ export default function GeneralSettings() {
   };
   
   return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <Sparkles className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-2xl font-semibold">General Settings</h3>
-          <p className="text-sm text-muted-foreground">
-            Configure your organization and application settings
-          </p>
+    <div className="space-y-8 max-w-4xl">
+      <div className="text-left">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-3 bg-primary/10 rounded-xl">
+            <Sparkles className="h-7 w-7 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">General Settings</h1>
+            <p className="text-muted-foreground">
+              Configure your organization details and application preferences
+            </p>
+          </div>
         </div>
       </div>
       
@@ -208,15 +211,19 @@ export default function GeneralSettings() {
           <div className="grid gap-8">
             
             {/* Organization Information */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Organization Information</CardTitle>
+            <Card className="shadow-sm border-0 bg-gradient-to-br from-white to-gray-50/50">
+              <CardHeader className="pb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    <CardTitle className="text-xl text-gray-900">Organization Information</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Basic details about your organization
+                    </CardDescription>
+                  </div>
                 </div>
-                <CardDescription>
-                  Basic information about your organization
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
@@ -225,11 +232,11 @@ export default function GeneralSettings() {
                     name="organization_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Organization Name</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-gray-700">Organization Name</FormLabel>
                         <FormControl>
-                          <Input {...field} className="h-10" />
+                          <Input {...field} className="h-11 focus:ring-2 focus:ring-primary/20" />
                         </FormControl>
-                        <FormDescription>
+                        <FormDescription className="text-left">
                           This will be displayed throughout the application
                         </FormDescription>
                         <FormMessage />
@@ -242,11 +249,11 @@ export default function GeneralSettings() {
                     name="app_version"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Application Version</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-gray-700">Application Version</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="1.0.0" className="h-10" />
+                          <Input {...field} placeholder="1.0.0" className="h-11 focus:ring-2 focus:ring-primary/20" />
                         </FormControl>
-                        <FormDescription>
+                        <FormDescription className="text-left">
                           Version number displayed in the sidebar
                         </FormDescription>
                         <FormMessage />
@@ -258,46 +265,50 @@ export default function GeneralSettings() {
             </Card>
             
             {/* Appearance & Branding */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Appearance & Branding</CardTitle>
+            <Card className="shadow-sm border-0 bg-gradient-to-br from-white to-purple-50/30">
+              <CardHeader className="pb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Palette className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div className="text-left">
+                    <CardTitle className="text-xl text-gray-900">Appearance & Branding</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Customize colors and branding assets
+                    </CardDescription>
+                  </div>
                 </div>
-                <CardDescription>
-                  Customize colors and branding assets
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
                 
                 {/* Color Settings */}
                 <div className="space-y-6">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Colors</h4>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Color Scheme</h4>
                   <div className="grid gap-6 md:grid-cols-2">
                     <FormField
                       control={form.control}
                       name="primary_color"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium">Primary Color</FormLabel>
+                          <FormLabel className="text-sm font-semibold text-gray-700">Primary Color</FormLabel>
                           <div className="flex gap-3">
                             <FormControl>
                               <div className="relative">
                                 <Input 
                                   type="color" 
                                   {...field} 
-                                  className="w-14 h-10 p-1 border rounded cursor-pointer" 
+                                  className="w-16 h-11 p-1 border-2 rounded-lg cursor-pointer" 
                                 />
                               </div>
                             </FormControl>
                             <Input 
                               value={field.value} 
                               onChange={field.onChange} 
-                              className="flex-1 h-10 font-mono text-sm"
+                              className="flex-1 h-11 font-mono text-sm focus:ring-2 focus:ring-primary/20"
                               placeholder="#000000"
                             />
                           </div>
-                          <FormDescription>
+                          <FormDescription className="text-left">
                             Main color used for buttons and highlights
                           </FormDescription>
                           <FormMessage />
@@ -310,25 +321,25 @@ export default function GeneralSettings() {
                       name="secondary_color"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium">Secondary Color</FormLabel>
+                          <FormLabel className="text-sm font-semibold text-gray-700">Secondary Color</FormLabel>
                           <div className="flex gap-3">
                             <FormControl>
                               <div className="relative">
                                 <Input 
                                   type="color" 
                                   {...field} 
-                                  className="w-14 h-10 p-1 border rounded cursor-pointer" 
+                                  className="w-16 h-11 p-1 border-2 rounded-lg cursor-pointer" 
                                 />
                               </div>
                             </FormControl>
                             <Input 
                               value={field.value} 
                               onChange={field.onChange} 
-                              className="flex-1 h-10 font-mono text-sm"
+                              className="flex-1 h-11 font-mono text-sm focus:ring-2 focus:ring-primary/20"
                               placeholder="#000000"
                             />
                           </div>
-                          <FormDescription>
+                          <FormDescription className="text-left">
                             Used for accents and secondary elements
                           </FormDescription>
                           <FormMessage />
@@ -342,20 +353,20 @@ export default function GeneralSettings() {
                 
                 {/* Logo & Favicon */}
                 <div className="space-y-6">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Assets</h4>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Brand Assets</h4>
                   <div className="grid gap-8 md:grid-cols-2">
                     
                     {/* Logo Upload */}
                     <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium">Application Logo</label>
-                        <p className="text-xs text-muted-foreground mt-1">
+                      <div className="text-left">
+                        <label className="text-sm font-semibold text-gray-700">Application Logo</label>
+                        <p className="text-xs text-gray-500 mt-1">
                           Recommended: 200x60px, PNG or SVG with transparent background
                         </p>
                       </div>
                       
                       {logoPreview && (
-                        <div className="p-4 border-2 border-dashed border-muted rounded-lg bg-muted/10">
+                        <div className="p-6 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 hover:bg-gray-100/50 transition-colors">
                           <img 
                             src={logoPreview} 
                             alt="Logo preview" 
@@ -376,7 +387,7 @@ export default function GeneralSettings() {
                           type="button"
                           variant="outline"
                           onClick={handleLogoClick}
-                          className="flex-1"
+                          className="flex-1 h-11 border-2 hover:border-primary/50"
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           {logoPreview ? "Change Logo" : "Upload Logo"}
@@ -389,6 +400,7 @@ export default function GeneralSettings() {
                               setLogoPreview(null);
                               setLogoFile(null);
                             }}
+                            className="h-11 px-4"
                           >
                             Remove
                           </Button>
@@ -398,15 +410,15 @@ export default function GeneralSettings() {
                     
                     {/* Favicon Upload */}
                     <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium">Favicon</label>
-                        <p className="text-xs text-muted-foreground mt-1">
+                      <div className="text-left">
+                        <label className="text-sm font-semibold text-gray-700">Favicon</label>
+                        <p className="text-xs text-gray-500 mt-1">
                           Recommended: 32x32px or 64x64px, PNG, JPG or ICO
                         </p>
                       </div>
                       
                       {faviconPreview && (
-                        <div className="p-4 border-2 border-dashed border-muted rounded-lg bg-muted/10 flex justify-center">
+                        <div className="p-6 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 hover:bg-gray-100/50 transition-colors flex justify-center">
                           <img
                             src={faviconPreview}
                             alt="Favicon preview"
@@ -427,7 +439,7 @@ export default function GeneralSettings() {
                           type="button"
                           variant="outline"
                           onClick={handleFaviconClick}
-                          className="flex-1"
+                          className="flex-1 h-11 border-2 hover:border-primary/50"
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           {faviconPreview ? "Change Favicon" : "Upload Favicon"}
@@ -440,6 +452,7 @@ export default function GeneralSettings() {
                               setFaviconPreview(null);
                               setFaviconFile(null);
                             }}
+                            className="h-11 px-4"
                           >
                             Remove
                           </Button>
@@ -452,15 +465,19 @@ export default function GeneralSettings() {
             </Card>
             
             {/* Footer Information */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Footer Information</CardTitle>
+            <Card className="shadow-sm border-0 bg-gradient-to-br from-white to-green-50/30">
+              <CardHeader className="pb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <FileText className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div className="text-left">
+                    <CardTitle className="text-xl text-gray-900">Footer Information</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Text displayed in the footer of the application
+                    </CardDescription>
+                  </div>
                 </div>
-                <CardDescription>
-                  Text displayed in the footer of the application
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <FormField
@@ -468,16 +485,16 @@ export default function GeneralSettings() {
                   name="footer_text"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Footer Text</FormLabel>
+                      <FormLabel className="text-sm font-semibold text-gray-700">Footer Text</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
                           placeholder="© 2025 Your Organization. All rights reserved."
-                          rows={3}
-                          className="resize-none"
+                          rows={4}
+                          className="resize-none focus:ring-2 focus:ring-primary/20"
                         />
                       </FormControl>
-                      <FormDescription>
+                      <FormDescription className="text-left">
                         This text will appear at the bottom of your application
                       </FormDescription>
                       <FormMessage />
@@ -486,27 +503,24 @@ export default function GeneralSettings() {
                 />
               </CardContent>
             </Card>
-
-            {/* Add Dangerous Operations */}
-            <DangerousOperations />
           </div>
           
           {/* Save Button */}
-          <div className="flex justify-end pt-6 border-t">
+          <div className="flex justify-end pt-6 border-t border-gray-200">
             <Button 
               type="submit" 
               disabled={isSubmitting}
               size="lg"
-              className="min-w-[140px]"
+              className="min-w-[160px] h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Save className="mr-2 h-5 w-5" />
                   Save Settings
                 </>
               )}
@@ -514,6 +528,10 @@ export default function GeneralSettings() {
           </div>
         </form>
       </Form>
+
+      {/* Dangerous Operations Section */}
+      <Separator className="my-12" />
+      <DangerousOperations />
     </div>
   );
 }

@@ -3,7 +3,7 @@
   max-width: 100%;
   margin: 0;
   padding: 0;
-  text-align: center;
+  text-align: left;
   width: 100%;
 }
 
@@ -49,4 +49,24 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+/* Global text alignment */
+* {
+  text-align: left;
+}
+
+/* Override any centered text globally */
+.text-center {
+  text-align: left !important;
+}
+
+/* Specific overrides for components that should remain centered */
+.toast, .dialog-content, .alert-dialog-content {
+  text-align: center;
+}
+
+/* Keep form labels and descriptions left-aligned */
+label, .form-description, .form-message, p, span, div {
+  text-align: left;
 }
