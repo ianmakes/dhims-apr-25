@@ -49,18 +49,6 @@ export function DangerousOperations() {
 
       if (error) throw error;
 
-      // Create default academic year for current calendar year
-      const currentYear = new Date().getFullYear();
-      const academicYearName = `${currentYear}-${currentYear + 1}`;
-      
-      await supabase.from('academic_years').insert({
-        year_name: academicYearName,
-        start_date: `${currentYear}-01-01`,
-        end_date: `${currentYear}-12-31`,
-        is_current: true,
-        created_by: user?.id
-      });
-
       toast({
         title: "Factory reset completed",
         description: "All data has been cleared and default academic year created",
@@ -83,24 +71,84 @@ export function DangerousOperations() {
   const handleBackupData = async () => {
     setIsBackingUp(true);
     try {
-      // Get all data from tables
-      const tables = [
-        'students', 'sponsors', 'exams', 'student_exam_scores',
-        'student_photos', 'student_letters', 'timeline_events',
-        'student_relatives', 'academic_years', 'profiles',
-        'app_settings', 'email_settings', 'user_roles'
-      ];
-
+      // Get all data from tables using explicit queries
       const backupData: any = {};
       
-      for (const table of tables) {
-        const { data, error } = await supabase.from(table).select('*');
-        if (error) {
-          console.error(`Error backing up ${table}:`, error);
-          // Continue with other tables
-        } else {
-          backupData[table] = data;
-        }
+      // Query each table explicitly to avoid TypeScript issues
+      const [
+        studentsData,
+        sponsorsData,
+        examsData,
+        studentExamScoresData,
+        studentPhotosData,
+        studentLettersData,
+        timelineEventsData,
+        studentRelativesData,
+        academicYearsData,
+        profilesData,
+        appSettingsData,
+        emailSettingsData,
+        userRolesData,
+        auditLogsData
+      ] = await Promise.allSettled([
+        supabase.from('students').select('*'),
+        supabase.from('sponsors').select('*'),
+        supabase.from('exams').select('*'),
+        supabase.from('student_exam_scores').select('*'),
+        supabase.from('student_photos').select('*'),
+        supabase.from('student_letters').select('*'),
+        supabase.from('timeline_events').select('*'),
+        supabase.from('student_relatives').select('*'),
+        supabase.from('academic_years').select('*'),
+        supabase.from('profiles').select('*'),
+        supabase.from('app_settings').select('*'),
+        supabase.from('email_settings').select('*'),
+        supabase.from('user_roles').select('*'),
+        supabase.from('audit_logs').select('*')
+      ]);
+
+      // Process results
+      if (studentsData.status === 'fulfilled' && !studentsData.value.error) {
+        backupData.students = studentsData.value.data;
+      }
+      if (sponsorsData.status === 'fulfilled' && !sponsorsData.value.error) {
+        backupData.sponsors = sponsorsData.value.data;
+      }
+      if (examsData.status === 'fulfilled' && !examsData.value.error) {
+        backupData.exams = examsData.value.data;
+      }
+      if (studentExamScoresData.status === 'fulfilled' && !studentExamScoresData.value.error) {
+        backupData.student_exam_scores = studentExamScoresData.value.data;
+      }
+      if (studentPhotosData.status === 'fulfilled' && !studentPhotosData.value.error) {
+        backupData.student_photos = studentPhotosData.value.data;
+      }
+      if (studentLettersData.status === 'fulfilled' && !studentLettersData.value.error) {
+        backupData.student_letters = studentLettersData.value.data;
+      }
+      if (timelineEventsData.status === 'fulfilled' && !timelineEventsData.value.error) {
+        backupData.timeline_events = timelineEventsData.value.data;
+      }
+      if (studentRelativesData.status === 'fulfilled' && !studentRelativesData.value.error) {
+        backupData.student_relatives = studentRelativesData.value.data;
+      }
+      if (academicYearsData.status === 'fulfilled' && !academicYearsData.value.error) {
+        backupData.academic_years = academicYearsData.value.data;
+      }
+      if (profilesData.status === 'fulfilled' && !profilesData.value.error) {
+        backupData.profiles = profilesData.value.data;
+      }
+      if (appSettingsData.status === 'fulfilled' && !appSettingsData.value.error) {
+        backupData.app_settings = appSettingsData.value.data;
+      }
+      if (emailSettingsData.status === 'fulfilled' && !emailSettingsData.value.error) {
+        backupData.email_settings = emailSettingsData.value.data;
+      }
+      if (userRolesData.status === 'fulfilled' && !userRolesData.value.error) {
+        backupData.user_roles = userRolesData.value.data;
+      }
+      if (auditLogsData.status === 'fulfilled' && !auditLogsData.value.error) {
+        backupData.audit_logs = auditLogsData.value.data;
       }
 
       // Create and download backup file
