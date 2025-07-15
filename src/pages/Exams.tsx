@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 const terms = ["Term 1", "Term 2", "Term 3"];
 
@@ -37,8 +38,9 @@ export default function Exams() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { selectedAcademicYear, currentAcademicYear } = useAppSettings();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedYear, setSelectedYear] = useState(selectedAcademicYear || "all");
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [isAddExamOpen, setIsAddExamOpen] = useState(false);
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
@@ -54,6 +56,13 @@ export default function Exams() {
     isActive: true
   });
 
+  // Update selectedYear when global academic year changes
+  useEffect(() => {
+    if (selectedAcademicYear) {
+      setSelectedYear(selectedAcademicYear);
+    }
+  }, [selectedAcademicYear]);
+
   // Fetch academic years from settings
   const { data: academicYearsData = [] } = useQuery({
     queryKey: ['academicYears'],
@@ -68,17 +77,17 @@ export default function Exams() {
   });
 
   // Get the current academic year
-  const currentAcademicYear = academicYearsData.find(year => year.is_current);
+  const currentAcademicYearData = academicYearsData.find(year => year.is_current);
 
   // Set default academic year when data is loaded
   useEffect(() => {
-    if (currentAcademicYear) {
+    if (currentAcademicYearData) {
       setFormData(prev => ({
         ...prev,
-        academicYear: currentAcademicYear.year_name
+        academicYear: currentAcademicYearData.year_name
       }));
     }
-  }, [currentAcademicYear]);
+  }, [currentAcademicYearData]);
 
   // Get selected academic year dates for calendar constraints
   const selectedAcademicYearDates = academicYearsData.find(year => year.year_name === formData.academicYear);
@@ -279,7 +288,7 @@ export default function Exams() {
   const resetForm = () => {
     setFormData({
       name: "",
-      academicYear: currentAcademicYear ? currentAcademicYear.year_name : "",
+      academicYear: currentAcademicYearData ? currentAcademicYearData.year_name : "",
       term: "Term 1",
       examDate: "",
       maxScore: "100",
@@ -417,7 +426,7 @@ export default function Exams() {
     navigate(`/exams/${exam.id}`);
   };
 
-  // Filter exams based on search term and filters - FIXED FILTERING LOGIC
+  // Filter exams based on search term and filters
   const filteredExams = exams.filter(exam => {
     // Academic year filter
     const yearMatch = selectedYear === "all" || exam.academic_year === selectedYear;
