@@ -125,7 +125,7 @@ export default function Auth() {
             {/* Description */}
             <div className="space-y-4 max-w-md">
               <h2 className="text-3xl font-bold leading-tight text-left">{organizationName}</h2>
-              <p className="opacity-90 leading-relaxed text-left text-sm">DHI Management System</p>
+              
             </div>
           </div>
 
@@ -161,7 +161,7 @@ export default function Auth() {
           <div className="space-y-6">
             <div className="space-y-2 text-center lg:text-left">
               <h2 className="text-3xl font-bold text-foreground">Login</h2>
-              <p className="text-muted-foreground">Sign in to accessDHIMS</p>
+              <p className="text-muted-foreground">Sign in to access DHIMS</p>
             </div>
 
             {/* Minimalist Form Card */}
