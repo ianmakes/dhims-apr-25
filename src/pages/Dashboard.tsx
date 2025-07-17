@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -35,13 +36,20 @@ export default function Dashboard() {
     }
   }, [currentAcademicYear, selectedAcademicYear, setSelectedAcademicYear]);
 
-  // Stats queries
+  // Stats queries - all reactive to selectedAcademicYear
   const { data: studentCount = 0, refetch: refetchStudents } = useQuery({
-    queryKey: ["student-count"],
+    queryKey: ["student-count", selectedAcademicYear],
     queryFn: async () => {
-      const { count, error } = await supabase
+      let query = supabase
         .from("students")
         .select("*", { count: "exact", head: true });
+      
+      // Apply academic year filter if specific year is selected
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
+        query = query.eq("academic_year_recorded", selectedAcademicYear);
+      }
+      
+      const { count, error } = await query;
       
       if (error) throw error;
       return count || 0;
@@ -67,7 +75,7 @@ export default function Dashboard() {
         .from("exams")
         .select("*", { count: "exact", head: true });
       
-      if (selectedAcademicYear) {
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
         query = query.eq("academic_year", selectedAcademicYear);
       }
       
@@ -79,12 +87,19 @@ export default function Dashboard() {
   });
 
   const { data: unassignedStudents = 0, refetch: refetchUnassigned } = useQuery({
-    queryKey: ["unassigned-students"],
+    queryKey: ["unassigned-students", selectedAcademicYear],
     queryFn: async () => {
-      const { count, error } = await supabase
+      let query = supabase
         .from("students")
         .select("*", { count: "exact", head: true })
         .is("sponsor_id", null);
+      
+      // Apply academic year filter if specific year is selected
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
+        query = query.eq("academic_year_recorded", selectedAcademicYear);
+      }
+      
+      const { count, error } = await query;
       
       if (error) throw error;
       return count || 0;
@@ -114,7 +129,7 @@ export default function Dashboard() {
           exam:exams(max_score, academic_year)
         `);
       
-      if (selectedAcademicYear) {
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
         query = query.eq('exam.academic_year', selectedAcademicYear);
       }
 
@@ -137,12 +152,19 @@ export default function Dashboard() {
   });
 
   const { data: gradeDistribution = 0, refetch: refetchGradeDistribution } = useQuery({
-    queryKey: ["grade-distribution"],
+    queryKey: ["grade-distribution", selectedAcademicYear],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("students")
         .select("current_grade")
         .eq("status", "Active");
+      
+      // Apply academic year filter if specific year is selected
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
+        query = query.eq("academic_year_recorded", selectedAcademicYear);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -162,7 +184,7 @@ export default function Dashboard() {
         .select("*", { count: "exact", head: true })
         .gte("exam_date", thirtyDaysAgo.toISOString());
       
-      if (selectedAcademicYear) {
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
         query = query.eq("academic_year", selectedAcademicYear);
       }
       

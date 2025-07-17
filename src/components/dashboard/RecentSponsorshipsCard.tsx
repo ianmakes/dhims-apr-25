@@ -4,17 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserCircle, Calendar, Heart } from "lucide-react";
 import { format } from "date-fns";
+import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 
 export function RecentSponsorshipsCard() {
+  const { selectedAcademicYear } = useAppSettings();
+
   const { data: recentSponsorships, isLoading } = useQuery({
-    queryKey: ["recent-sponsorships"],
+    queryKey: ["recent-sponsorships", selectedAcademicYear],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("students")
         .select(`
           id,
           name,
           sponsored_since,
+          academic_year_recorded,
           sponsor:sponsors(
             first_name,
             last_name
@@ -23,6 +27,13 @@ export function RecentSponsorshipsCard() {
         .not("sponsor_id", "is", null)
         .order("sponsored_since", { ascending: false })
         .limit(5);
+
+      // Apply academic year filter if specific year is selected
+      if (selectedAcademicYear && selectedAcademicYear !== "") {
+        query = query.eq("academic_year_recorded", selectedAcademicYear);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data || [];
@@ -50,7 +61,12 @@ export function RecentSponsorshipsCard() {
       <div className="text-center py-12">
         <Heart className="h-8 w-8 text-wp-gray-300 mx-auto mb-3" />
         <p className="text-wp-text-secondary text-sm">No recent sponsorships found</p>
-        <p className="text-xs text-wp-text-secondary mt-1">New sponsorships will appear here</p>
+        <p className="text-xs text-wp-text-secondary mt-1">
+          {selectedAcademicYear && selectedAcademicYear !== "" 
+            ? `No sponsorships found for ${selectedAcademicYear}`
+            : "New sponsorships will appear here"
+          }
+        </p>
       </div>
     );
   }
@@ -74,6 +90,11 @@ export function RecentSponsorshipsCard() {
                 <Calendar className="h-3 w-3 mr-1" />
                 {format(new Date(student.sponsored_since), "MMM dd, yyyy")}
               </div>
+            )}
+            {student.academic_year_recorded && (
+              <p className="text-xs text-wp-text-secondary">
+                {student.academic_year_recorded}
+              </p>
             )}
           </div>
         </div>
