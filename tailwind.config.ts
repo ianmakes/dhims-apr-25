@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -24,6 +23,7 @@ export default {
 			},
 			transitionDuration: {
 				'2000': '2000ms',
+				'3000': '3000ms',
 			},
 			colors: {
 				border: 'hsl(var(--border))',

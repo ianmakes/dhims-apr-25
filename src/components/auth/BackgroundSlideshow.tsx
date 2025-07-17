@@ -12,44 +12,28 @@ const natureImages = [
 
 export function BackgroundSlideshow() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [nextImageIndex, setNextImageIndex] = useState(1);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsTransitioning(true);
-      
-      setTimeout(() => {
-        setCurrentImageIndex(nextImageIndex);
-        setNextImageIndex((nextImageIndex + 1) % natureImages.length);
-        setIsTransitioning(false);
-      }, 1000); // Half of transition time
-    }, 6000); // Change image every 6 seconds
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % natureImages.length);
+    }, 10000); // Change image every 10 seconds
 
     return () => clearInterval(interval);
-  }, [nextImageIndex]);
+  }, []);
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Current Image */}
-      <div
-        className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-2000 ${
-          isTransitioning ? 'opacity-0' : 'opacity-100'
-        }`}
-        style={{
-          backgroundImage: `url('${natureImages[currentImageIndex]}')`
-        }}
-      />
-      
-      {/* Next Image (for smooth transition) */}
-      <div
-        className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-2000 ${
-          isTransitioning ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          backgroundImage: `url('${natureImages[nextImageIndex]}')`
-        }}
-      />
+      {natureImages.map((image, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-[3000ms] ease-in-out ${
+            index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            backgroundImage: `url('${image}')`
+          }}
+        />
+      ))}
       
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
