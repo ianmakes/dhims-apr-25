@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +13,7 @@ import { AuthError } from "@supabase/supabase-js";
 import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAppSettings } from "@/components/settings/GlobalSettingsProvider";
 import { logLogin } from "@/utils/auditLog";
+import { BackgroundSlideshow } from "@/components/auth/BackgroundSlideshow";
 
 const loginSchema = z.object({
   email: z.string().email({
@@ -147,13 +147,8 @@ export default function Auth() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{
         background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`
       }}>
-        {/* Background Illustration */}
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&q=80')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }} />
+        {/* Background Slideshow */}
+        <BackgroundSlideshow />
         
         {/* Content Overlay */}
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
