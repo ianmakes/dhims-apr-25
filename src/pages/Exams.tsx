@@ -40,7 +40,7 @@ export default function Exams() {
   const queryClient = useQueryClient();
   const { selectedAcademicYear, currentAcademicYear } = useAppSettings();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYear, setSelectedYear] = useState(selectedAcademicYear || "all");
+  const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [isAddExamOpen, setIsAddExamOpen] = useState(false);
   const [isEditExamOpen, setIsEditExamOpen] = useState(false);
@@ -55,13 +55,6 @@ export default function Exams() {
     passingScore: "40",
     isActive: true
   });
-
-  // Update selectedYear when global academic year changes
-  useEffect(() => {
-    if (selectedAcademicYear) {
-      setSelectedYear(selectedAcademicYear);
-    }
-  }, [selectedAcademicYear]);
 
   // Fetch academic years from settings
   const { data: academicYearsData = [] } = useQuery({
@@ -78,6 +71,15 @@ export default function Exams() {
 
   // Get the current academic year
   const currentAcademicYearData = academicYearsData.find(year => year.is_current);
+
+  // Initialize selectedYear with the global academic year when component loads or when global setting changes
+  useEffect(() => {
+    if (selectedAcademicYear) {
+      setSelectedYear(selectedAcademicYear);
+    } else if (currentAcademicYearData?.year_name) {
+      setSelectedYear(currentAcademicYearData.year_name);
+    }
+  }, [selectedAcademicYear, currentAcademicYearData?.year_name]);
 
   // Set default academic year when data is loaded
   useEffect(() => {
@@ -426,10 +428,10 @@ export default function Exams() {
     navigate(`/exams/${exam.id}`);
   };
 
-  // Filter exams based on search term and filters
+  // Filter exams based on search term and filters - IMPROVED FILTERING LOGIC
   const filteredExams = exams.filter(exam => {
-    // Academic year filter
-    const yearMatch = selectedYear === "all" || exam.academic_year === selectedYear;
+    // Academic year filter - only filter if selectedYear is set and not empty
+    const yearMatch = !selectedYear || selectedYear === "all" || exam.academic_year === selectedYear;
     
     // Term filter  
     const termMatch = selectedTerm === "all" || exam.term === selectedTerm;
@@ -608,7 +610,7 @@ export default function Exams() {
       </div>
 
       <div className="flex space-x-4 mb-4">
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
+        <Select value={selectedYear || ""} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Academic Year" />
           </SelectTrigger>
@@ -696,7 +698,6 @@ export default function Exams() {
         </CardContent>
       </Card>
 
-      {/* Edit Exam Dialog */}
       <Dialog open={isEditExamOpen} onOpenChange={setIsEditExamOpen}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
