@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +26,7 @@ const loginSchema = z.object({
 });
 
 const resetPasswordSchema = z.object({
-  email: z.string().email({
+  email: z.string().min(1, { message: "Email is required" }).email({
     message: "Please enter a valid email address"
   })
 });
@@ -109,11 +110,14 @@ export default function Auth() {
   const handleResetPassword = async (values: z.infer<typeof resetPasswordSchema>) => {
     try {
       setIsLoading(true);
+      console.log("Reset password attempt for email:", values.email);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
         redirectTo: `${window.location.origin}/auth?reset=true`
       });
       
       if (error) {
+        console.error("Reset password error:", error);
         throw error;
       }
 
@@ -127,6 +131,7 @@ export default function Auth() {
       resetForm.reset();
     } catch (error) {
       const authError = error as AuthError;
+      console.error("Password reset failed:", authError);
       toast({
         title: "Reset failed",
         description: authError?.message || "Something went wrong. Please try again.",
