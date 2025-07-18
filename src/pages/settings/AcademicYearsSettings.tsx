@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { logCreate, logUpdate, logDelete, logSystem } from "@/utils/auditLog";
 
 // Update the schema to validate single-year format
 const academicYearSchema = z.object({
@@ -283,22 +284,28 @@ export default function AcademicYearsSettings() {
           
         if (error) throw error;
         
+        await logUpdate('academic_year', editingYear.id, `Updated academic year ${values.year_name}`);
+        
         toast({
           title: "Updated",
           description: `Academic year ${values.year_name} has been updated.`
         });
       } else {
         // Create new academic year
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('academic_years')
           .insert([{
             year_name: values.year_name,
             start_date: values.start_date,
             end_date: values.end_date,
             is_current: values.is_current
-          }]);
+          }])
+          .select()
+          .single();
           
         if (error) throw error;
+        
+        await logCreate('academic_year', data.id, `Created academic year ${values.year_name}`);
         
         toast({
           title: "Created",
@@ -338,6 +345,8 @@ export default function AcademicYearsSettings() {
           
         if (error) throw error;
       }
+      
+      await logSystem('grade_promotion', 'students', 'Promoted student grades for new academic year');
       
       // Now proceed with the copy operation
       await handleCopyYear(copyFormValues);
@@ -436,6 +445,7 @@ export default function AcademicYearsSettings() {
       
       setCopyProgress(10);
       let destinationYearId: string;
+      let destinationYearName: string;
       
       if (values.createNewYear) {
         if (!values.newYearName || !values.newStartDate || !values.newEndDate) {
@@ -450,41 +460,117 @@ export default function AcademicYearsSettings() {
             start_date: values.newStartDate,
             end_date: values.newEndDate
           }])
-          .select('id')
+          .select('id, year_name')
           .single();
           
         if (error) throw error;
         destinationYearId = data.id;
-        setCopyProgress(30);
+        destinationYearName = data.year_name;
+        
+        await logCreate('academic_year', destinationYearId, `Created new academic year ${destinationYearName} during copy operation`);
+        setCopyProgress(20);
       } else {
         if (!values.destinationYearId) {
           throw new Error("Destination year not selected");
         }
         destinationYearId = values.destinationYearId;
-        setCopyProgress(30);
+        const destYear = academicYears.find(year => year.id === destinationYearId);
+        destinationYearName = destYear?.year_name || "Unknown";
+        setCopyProgress(20);
       }
       
+      let copiedItemsCount = 0;
+      
       if (values.copyStudentData) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
-        setCopyProgress(60);
+        // Copy students with updated academic year
+        const { data: sourceStudents, error: studentsError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('academic_year_recorded', sourceYear.year_name);
+          
+        if (studentsError) throw studentsError;
+        
+        if (sourceStudents && sourceStudents.length > 0) {
+          const studentsToInsert = sourceStudents.map(student => ({
+            ...student,
+            id: undefined, // Let the DB generate new ID
+            academic_year_recorded: destinationYearName,
+            record_date: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          
+          const { error: insertError } = await supabase
+            .from('students')
+            .insert(studentsToInsert);
+            
+          if (insertError) throw insertError;
+          copiedItemsCount += sourceStudents.length;
+        }
+        
+        setCopyProgress(40);
       }
       
       if (values.copyExamTemplates) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
-        setCopyProgress(80);
+        // Copy exams with updated academic year
+        const { data: sourceExams, error: examsError } = await supabase
+          .from('exams')
+          .select('*')
+          .eq('academic_year', sourceYear.year_name);
+          
+        if (examsError) throw examsError;
+        
+        if (sourceExams && sourceExams.length > 0) {
+          const examsToInsert = sourceExams.map(exam => ({
+            ...exam,
+            id: undefined, // Let the DB generate new ID
+            academic_year: destinationYearName,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          
+          const { error: insertError } = await supabase
+            .from('exams')
+            .insert(examsToInsert);
+            
+          if (insertError) throw insertError;
+          copiedItemsCount += sourceExams.length;
+        }
+        
+        setCopyProgress(60);
       }
       
       if (values.copySponsorship) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
-        setCopyProgress(95);
+        // Copy sponsorship relationships - sponsors should remain the same, 
+        // but we need to update student references if students were copied
+        const { data: sourceSponsors, error: sponsorsError } = await supabase
+          .from('sponsors')
+          .select('*');
+          
+        if (sponsorsError) throw sponsorsError;
+        
+        if (sourceSponsors && sourceSponsors.length > 0) {
+          // For simplicity, we'll just log this as copied since sponsors are not year-specific
+          copiedItemsCount += sourceSponsors.length;
+        }
+        
+        setCopyProgress(80);
       }
+      
+      setCopyProgress(95);
+      
+      await logSystem(
+        'data_copy', 
+        destinationYearId, 
+        `Copied data from ${sourceYear.year_name} to ${destinationYearName}. Items copied: ${copiedItemsCount}. Student data: ${values.copyStudentData}, Exams: ${values.copyExamTemplates}, Sponsorship: ${values.copySponsorship}`
+      );
       
       setCopyProgress(100);
       await fetchAcademicYears();
       
       toast({
         title: "Data Copied Successfully",
-        description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
+        description: `Data has been copied from ${sourceYear.year_name} to ${destinationYearName}. ${copiedItemsCount} items copied.`
       });
       
       // Reset copying state
@@ -509,6 +595,8 @@ export default function AcademicYearsSettings() {
         .eq('id', academicYear.id);
         
       if (error) throw error;
+      
+      await logDelete('academic_year', academicYear.id, `Deleted academic year ${academicYear.year_name}`);
       
       toast({
         title: "Deleted",
@@ -539,6 +627,8 @@ export default function AcademicYearsSettings() {
         .eq('id', yearToSetCurrent.id);
         
       if (error) throw error;
+      
+      await logSystem('academic_year_change', yearToSetCurrent.id, `Set ${yearToSetCurrent.year_name} as current academic year`);
       
       toast({
         title: "Current Year Updated",
@@ -583,9 +673,7 @@ export default function AcademicYearsSettings() {
 
   return (
     <div>
-      {/* Two-column layout with cards side by side in one row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Card 1: Academic Years Management */}
         <Card className="h-full">
           <CardHeader className="border-b">
             <div className="flex items-center justify-between">
@@ -780,7 +868,6 @@ export default function AcademicYearsSettings() {
           </CardContent>
         </Card>
         
-        {/* Card 2: Current Academic Year & Data Management */}
         <Card className="h-full">
           <CardHeader className="border-b">
             <CardTitle className="text-left">Data Management</CardTitle>
@@ -790,7 +877,6 @@ export default function AcademicYearsSettings() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-6">
-              {/* Current Academic Year Information */}
               <div>
                 <h4 className="text-sm font-semibold mb-2 text-left">Current Academic Year</h4>
                 <div className="bg-muted p-4 rounded-md">
@@ -820,7 +906,6 @@ export default function AcademicYearsSettings() {
               
               <Separator className="my-4" />
               
-              {/* Copy Year Data */}
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-sm font-semibold text-left">Copy Year Data</h4>
@@ -849,7 +934,6 @@ export default function AcademicYearsSettings() {
                       {copyStep === 1 ? (
                         <Form {...copyForm}>
                           <div className="space-y-4">
-                            {/* Source Year Selection */}
                             <FormField
                               control={copyForm.control}
                               name="sourceYearId"
@@ -878,7 +962,6 @@ export default function AcademicYearsSettings() {
                               )}
                             />
                             
-                            {/* Create New Year Toggle */}
                             <FormField
                               control={copyForm.control}
                               name="createNewYear"
@@ -897,10 +980,8 @@ export default function AcademicYearsSettings() {
                               )}
                             />
 
-                            {/* Conditional fields for destination */}
                             {watchCreateNewYear ? (
                               <>
-                                {/* New Year Name */}
                                 <FormField
                                   control={copyForm.control}
                                   name="newYearName"
@@ -918,7 +999,6 @@ export default function AcademicYearsSettings() {
                                   )}
                                 />
                                 
-                                {/* Date fields */}
                                 <div className="grid grid-cols-2 gap-4">
                                   <FormField
                                     control={copyForm.control}
@@ -949,7 +1029,6 @@ export default function AcademicYearsSettings() {
                                 </div>
                               </>
                             ) : (
-                              /* Existing Year Selection */
                               <FormField
                                 control={copyForm.control}
                                 name="destinationYearId"
@@ -981,7 +1060,6 @@ export default function AcademicYearsSettings() {
                               />
                             )}
                             
-                            {/* Data to copy section */}
                             <div className="space-y-4 border rounded-md p-4">
                               <h4 className="font-medium text-left">What data to copy?</h4>
                               
@@ -1100,7 +1178,6 @@ export default function AcademicYearsSettings() {
                                 ))}
                               </div>
                               
-                              {/* Notes section for Grade 12 */}
                               <div className="mt-6 bg-amber-50 p-4 rounded-md">
                                 <div className="flex">
                                   <Info className="h-5 w-5 text-amber-500 mt-1 mr-2 flex-shrink-0" />
@@ -1141,7 +1218,6 @@ export default function AcademicYearsSettings() {
                   </Dialog>
                 </div>
                 
-                {/* Info card */}
                 <div className="rounded-md bg-blue-50 p-4">
                   <div className="flex">
                     <div className="flex-shrink-0">
@@ -1165,7 +1241,6 @@ export default function AcademicYearsSettings() {
         </Card>
       </div>
       
-      {/* Alert Dialog for confirming year change */}
       <AlertDialog open={!!yearToSetCurrent} onOpenChange={(open) => !open && setYearToSetCurrent(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

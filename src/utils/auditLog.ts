@@ -123,3 +123,15 @@ export const logView = async (entity: string, entityId: string, details: string)
     details
   });
 };
+
+/**
+ * Log a restore action
+ */
+export const logRestore = async (entity: string, entityId: string, details: string): Promise<void> => {
+  return recordAuditLog({
+    action: 'restore',
+    entity,
+    entity_id: entityId,
+    details
+  });
+};

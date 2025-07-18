@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,9 +26,7 @@ const loginSchema = z.object({
 });
 
 const resetPasswordSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address"
-  })
+  email: z.string().min(1, "Email is required").email("Please enter a valid email address")
 });
 
 export default function Auth() {
