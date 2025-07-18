@@ -32,7 +32,7 @@ export function StudentProfileSidebar({
           </Avatar>
         </div>
         
-        <CardTitle className="mt-4 text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
+        <CardTitle className="mt-4 text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-200 bg-clip-text text-transparent text-center">
           {student.name}
         </CardTitle>
         
