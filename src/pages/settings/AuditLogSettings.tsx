@@ -7,12 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Download, Filter, MoreHorizontal, Search, RotateCcw, Eye, AlertTriangle } from "lucide-react";
+import { Download, Filter, MoreHorizontal, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { logRestore } from "@/utils/auditLog";
 
 interface AuditLog {
   id: string;
@@ -30,11 +26,6 @@ export default function AuditLogSettings() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const { toast } = useToast();
-  
   const [filters, setFilters] = useState<{
     action: string[];
     entity: string[];
@@ -70,11 +61,6 @@ export default function AuditLogSettings() {
       }
     } catch (error) {
       console.error("Error fetching audit logs:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch audit logs",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
@@ -103,38 +89,6 @@ export default function AuditLogSettings() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleViewDetails = (log: AuditLog) => {
-    setSelectedLog(log);
-    setShowDetailsDialog(true);
-  };
-
-  const handleRestore = async (log: AuditLog) => {
-    try {
-      // Log the restore action
-      await logRestore(log.id, `Restored system to state from ${log.action} on ${log.entity} at ${new Date(log.created_at).toLocaleString()}`);
-      
-      toast({
-        title: "Restore Logged",
-        description: "Restore action has been logged. Note: This is a reference point - manual restoration may be required for complex operations.",
-        variant: "default"
-      });
-      
-      setShowRestoreDialog(false);
-      setSelectedLog(null);
-      
-      // Refresh audit logs to show the new restore entry
-      await fetchAuditLogs();
-      
-    } catch (error) {
-      console.error("Error during restore:", error);
-      toast({
-        title: "Error",
-        description: "Failed to log restore action",
-        variant: "destructive"
-      });
-    }
   };
 
   // Toggle filter selection
@@ -226,10 +180,6 @@ export default function AuditLogSettings() {
         return "bg-purple-100 text-purple-800";
       case "logout":
         return "bg-gray-100 text-gray-800";
-      case "system":
-        return "bg-orange-100 text-orange-800";
-      case "restore":
-        return "bg-cyan-100 text-cyan-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -240,7 +190,7 @@ export default function AuditLogSettings() {
       <div>
         <h3 className="text-lg font-medium text-left">Audit Logs</h3>
         <p className="text-muted-foreground text-sm text-left">
-          View system activity logs and user actions. Use restore points for reference.
+          View system activity logs and user actions
         </p>
       </div>
 
@@ -396,19 +346,7 @@ export default function AuditLogSettings() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleViewDetails(log)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View details
-                        </DropdownMenuItem>
-                        {log.action !== 'restore' && (
-                          <DropdownMenuItem onSelect={() => {
-                            setSelectedLog(log);
-                            setShowRestoreDialog(true);
-                          }}>
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Create restore point
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem>View details</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -418,86 +356,6 @@ export default function AuditLogSettings() {
           </TableBody>
         </Table>
       </div>
-
-      {/* Details Dialog */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Audit Log Details</DialogTitle>
-            <DialogDescription>
-              Detailed information about this audit log entry
-            </DialogDescription>
-          </DialogHeader>
-          {selectedLog && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">User</label>
-                  <p className="text-sm text-muted-foreground">{selectedLog.username}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Action</label>
-                  <p className="text-sm text-muted-foreground">{selectedLog.action}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Entity</label>
-                  <p className="text-sm text-muted-foreground">{selectedLog.entity}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Entity ID</label>
-                  <p className="text-sm text-muted-foreground">{selectedLog.entity_id}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">IP Address</label>
-                  <p className="text-sm text-muted-foreground">{selectedLog.ip_address || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Timestamp</label>
-                  <p className="text-sm text-muted-foreground">{formatDate(selectedLog.created_at)}</p>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Details</label>
-                <p className="text-sm text-muted-foreground mt-1">{selectedLog.details}</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Restore Dialog */}
-      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Create Restore Point
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will create a restore point reference in the audit log. This action does not automatically restore data but creates a reference point for manual restoration if needed.
-              {selectedLog && (
-                <div className="mt-3 p-3 bg-muted rounded text-left">
-                  <p><strong>Action:</strong> {selectedLog.action}</p>
-                  <p><strong>Entity:</strong> {selectedLog.entity}</p>
-                  <p><strong>Time:</strong> {formatDate(selectedLog.created_at)}</p>
-                  <p><strong>Details:</strong> {selectedLog.details}</p>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowRestoreDialog(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => selectedLog && handleRestore(selectedLog)}>
-              Create Restore Point
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

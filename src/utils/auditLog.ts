@@ -20,13 +20,12 @@ export const recordAuditLog = async (params: AuditLogParams): Promise<void> => {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user && !['login', 'logout', 'system'].includes(action)) {
+    if (!user && action !== 'login') {
       console.warn("No user found for audit log");
-      return;
     }
     
     // Create audit log entry
-    const { error } = await supabase.from('audit_logs').insert({
+    await supabase.from('audit_logs').insert({
       username: user?.email || 'System',
       user_id: user?.id || null,
       action,
@@ -34,10 +33,6 @@ export const recordAuditLog = async (params: AuditLogParams): Promise<void> => {
       entity_id,
       details,
     });
-    
-    if (error) {
-      console.error("Error recording audit log:", error);
-    }
     
   } catch (error) {
     console.error("Error recording audit log:", error);
@@ -124,18 +119,6 @@ export const logView = async (entity: string, entityId: string, details: string)
   return recordAuditLog({
     action: 'view',
     entity,
-    entity_id: entityId,
-    details
-  });
-};
-
-/**
- * Log a restore action
- */
-export const logRestore = async (entityId: string, details: string): Promise<void> => {
-  return recordAuditLog({
-    action: 'restore',
-    entity: 'system',
     entity_id: entityId,
     details
   });

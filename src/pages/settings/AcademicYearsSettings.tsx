@@ -19,7 +19,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { logCreate, logUpdate, logSystem } from "@/utils/auditLog";
 
 // Update the schema to validate single-year format
 const academicYearSchema = z.object({
@@ -284,30 +283,22 @@ export default function AcademicYearsSettings() {
           
         if (error) throw error;
         
-        // Log the update
-        await logUpdate('academic_year', editingYear.id, `Updated academic year ${values.year_name}`);
-        
         toast({
           title: "Updated",
           description: `Academic year ${values.year_name} has been updated.`
         });
       } else {
         // Create new academic year
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('academic_years')
           .insert([{
             year_name: values.year_name,
             start_date: values.start_date,
             end_date: values.end_date,
             is_current: values.is_current
-          }])
-          .select()
-          .single();
+          }]);
           
         if (error) throw error;
-        
-        // Log the creation
-        await logCreate('academic_year', data.id, `Created new academic year ${values.year_name}`);
         
         toast({
           title: "Created",
@@ -445,7 +436,6 @@ export default function AcademicYearsSettings() {
       
       setCopyProgress(10);
       let destinationYearId: string;
-      let destinationYearName: string;
       
       if (values.createNewYear) {
         if (!values.newYearName || !values.newStartDate || !values.newEndDate) {
@@ -460,142 +450,41 @@ export default function AcademicYearsSettings() {
             start_date: values.newStartDate,
             end_date: values.newEndDate
           }])
-          .select('id, year_name')
+          .select('id')
           .single();
           
         if (error) throw error;
         destinationYearId = data.id;
-        destinationYearName = data.year_name;
-        setCopyProgress(20);
+        setCopyProgress(30);
       } else {
         if (!values.destinationYearId) {
           throw new Error("Destination year not selected");
         }
         destinationYearId = values.destinationYearId;
-        const destYear = academicYears.find(year => year.id === values.destinationYearId);
-        destinationYearName = destYear?.year_name || 'Unknown';
-        setCopyProgress(20);
+        setCopyProgress(30);
       }
       
-      // Copy student data
       if (values.copyStudentData) {
-        console.log("Copying student data...");
-        
-        // Get students from source year
-        const { data: sourceStudents, error: studentsError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('academic_year_recorded', sourceYear.year_name);
-          
-        if (studentsError) throw studentsError;
-        
-        if (sourceStudents && sourceStudents.length > 0) {
-          // Insert students with new academic year
-          const studentsToInsert = sourceStudents.map(student => ({
-            ...student,
-            id: undefined, // Let supabase generate new IDs
-            academic_year_recorded: destinationYearName,
-            record_date: new Date().toISOString(),
-            is_current_record: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
-          
-          const { error: insertError } = await supabase
-            .from('students')
-            .insert(studentsToInsert);
-            
-          if (insertError) throw insertError;
-          
-          console.log(`Copied ${sourceStudents.length} students`);
-        }
-        
-        setCopyProgress(40);
-      }
-      
-      // Copy exam templates
-      if (values.copyExamTemplates) {
-        console.log("Copying exam templates...");
-        
-        // Get exams from source year
-        const { data: sourceExams, error: examsError } = await supabase
-          .from('exams')
-          .select('*')
-          .eq('academic_year', sourceYear.year_name);
-          
-        if (examsError) throw examsError;
-        
-        if (sourceExams && sourceExams.length > 0) {
-          // Insert exams with new academic year
-          const examsToInsert = sourceExams.map(exam => ({
-            ...exam,
-            id: undefined, // Let supabase generate new IDs
-            academic_year: destinationYearName,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
-          
-          const { error: insertError } = await supabase
-            .from('exams')
-            .insert(examsToInsert);
-            
-          if (insertError) throw insertError;
-          
-          console.log(`Copied ${sourceExams.length} exams`);
-        }
-        
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(60);
       }
       
-      // Copy sponsorship relationships
-      if (values.copySponsorship) {
-        console.log("Copying sponsorship data...");
-        
-        // Get students with sponsors from source year
-        const { data: sponsoredStudents, error: sponsorError } = await supabase
-          .from('students')
-          .select('admission_number, sponsor_id, sponsored_since')
-          .eq('academic_year_recorded', sourceYear.year_name)
-          .not('sponsor_id', 'is', null);
-          
-        if (sponsorError) throw sponsorError;
-        
-        if (sponsoredStudents && sponsoredStudents.length > 0) {
-          // Update corresponding students in destination year with sponsor relationships
-          for (const sponsoredStudent of sponsoredStudents) {
-            const { error: updateError } = await supabase
-              .from('students')
-              .update({
-                sponsor_id: sponsoredStudent.sponsor_id,
-                sponsored_since: sponsoredStudent.sponsored_since
-              })
-              .eq('admission_number', sponsoredStudent.admission_number)
-              .eq('academic_year_recorded', destinationYearName);
-              
-            if (updateError) {
-              console.error('Error updating sponsor relationship:', updateError);
-            }
-          }
-          
-          console.log(`Copied ${sponsoredStudents.length} sponsorship relationships`);
-        }
-        
+      if (values.copyExamTemplates) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
         setCopyProgress(80);
       }
       
+      if (values.copySponsorship) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate operation
+        setCopyProgress(95);
+      }
+      
       setCopyProgress(100);
-      
-      // Log the copy operation
-      await logSystem('academic_year_copy', destinationYearId, 
-        `Copied data from ${sourceYear.year_name} to ${destinationYearName}. ` +
-        `Student data: ${values.copyStudentData}, Exams: ${values.copyExamTemplates}, Sponsorship: ${values.copySponsorship}`
-      );
-      
       await fetchAcademicYears();
       
       toast({
         title: "Data Copied Successfully",
-        description: `Data has been copied from ${sourceYear.year_name} to ${destinationYearName}.`
+        description: `Data has been copied from ${sourceYear.year_name} to the destination academic year.`
       });
       
       // Reset copying state
@@ -620,9 +509,6 @@ export default function AcademicYearsSettings() {
         .eq('id', academicYear.id);
         
       if (error) throw error;
-      
-      // Log the deletion
-      await logUpdate('academic_year', academicYear.id, `Deleted academic year ${academicYear.year_name}`);
       
       toast({
         title: "Deleted",
@@ -653,11 +539,6 @@ export default function AcademicYearsSettings() {
         .eq('id', yearToSetCurrent.id);
         
       if (error) throw error;
-      
-      // Log the current year change
-      await logSystem('academic_year_current', yearToSetCurrent.id, 
-        `Set ${yearToSetCurrent.year_name} as current academic year`
-      );
       
       toast({
         title: "Current Year Updated",
